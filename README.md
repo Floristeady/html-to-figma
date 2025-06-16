@@ -1,4 +1,4 @@
-# HTML-Figma Bridge Plugin
+# html-to-figma Plugin
 
 A Figma plugin that converts HTML to Figma nodes with complete CSS support and MCP integration with Cursor.
 
@@ -13,7 +13,7 @@ A Figma plugin that converts HTML to Figma nodes with complete CSS support and M
 ```bash
 # Clone the repository
 git clone [repository-url]
-cd space-to-figma-002
+cd html-to-figma
 
 # Install dependencies
 npm install
@@ -36,7 +36,7 @@ node mcp-http-server.js
 ```
 
 3. **Using the Plugin:**
-   - In Figma, right-click and select Plugins > HTML-Figma Bridge
+   - In Figma, right-click and select Plugins > html-to-figma
    - Click "Start MCP Monitoring" in the plugin UI
    - Use Cursor to send HTML content via MCP
 
@@ -59,7 +59,7 @@ All project documentation is available in the `context/` folder:
 ## 📁 Project Structure
 
 ```
-space-to-figma-002/
+html-to-figma/
 ├── context/              # Project documentation
 ├── src/                 # Source code
 ├── examples/            # Test examples
@@ -100,7 +100,7 @@ This project is a Figma plugin that converts HTML to Figma designs with full CSS
 
 1. **Setup Requirements:**
    - Figma desktop app must be running
-   - The HTML-Figma Bridge plugin must be loaded in Figma
+   - The html-to-figma plugin must be loaded in Figma
    - The MCP HTTP server must be running: `node mcp-http-server.js`
    - "Start MCP Monitoring" must be activated in the plugin UI
 
