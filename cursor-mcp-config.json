@@ -3,7 +3,7 @@
     "figma-html-bridge": {
       "command": "node",
       "args": ["mcp-bridge.js"],
-      "cwd": "/Users/florosenfeld/Sites/figma-plugins/space-to-figma-002",
+      "cwd": "/Users/florosenfeld/Sites/figma-plugins/html-to-figma",
       "env": {
         "NODE_ENV": "development"
       }

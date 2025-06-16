@@ -1,9 +1,9 @@
-# PROJECT STATUS - HTML-FIGMA BRIDGE MCP
+# PROJECT STATUS - HTML-FIGMA BRIDGE
 
-## 📅 LATEST CHECKPOINT - June 16, 2024
+## 📅 LATEST CHECKPOINT - June 16, 2025
 
 ### 🎯 PROJECT OBJECTIVE
-✅ **COMPLETED**: Create a Figma plugin that converts HTML to Figma nodes with complete CSS support and MCP integration with Cursor.
+✅ **COMPLETED**: Create a Figma plugin that converts HTML to Figma nodes with complete CSS support, HTTP API integration, and experimental MCP integration with Cursor.
 
 ---
 
@@ -69,11 +69,40 @@
   ```
 - ✅ **Plugin UI Controls**:
   - "Convert to Figma" - Direct HTML input conversion
-  - "Test MCP Connection" - Server health verification  
+  - "Test HTTP Server" - HTTP server connectivity verification  
   - "Start/Stop MCP Monitoring" - Real-time external request processing
   - "Process HTML via MCP" - Manual MCP request handling
 - ✅ **Automatic HTML Processing** from external sources
 - ✅ **Debug Logging System** for development and troubleshooting
+
+---
+
+## 🆕 LATEST IMPROVEMENTS (June 16, 2025)
+
+### **Project Cleanup & Documentation**
+- ✅ **Repository Published**: Available at https://github.com/Floristeady/html-to-figma
+- ✅ **Script Cleanup**: Removed redundant `send-to-figma.js`, kept only essential scripts
+- ✅ **Documentation Organization**: All planning docs moved to `context/` folder
+- ✅ **README Overhaul**: Complete rewrite with accurate instructions and examples
+
+### **System Architecture Clarification**
+- ✅ **Two-System Approach Documented**:
+  - **Primary**: HTTP API system (`mcp-http-server.js`) - Fully operational
+  - **Secondary**: True MCP Bridge (`mcp-bridge.js`) - Beta/experimental
+- ✅ **Honest Naming**: "Test MCP Connection" → "Test HTTP Server" button
+- ✅ **Clear Separation**: HTTP system vs MCP system properly documented
+
+### **Enhanced Testing & Verification**
+- ✅ **Improved HTTP Server Test**: Real connectivity verification with detailed diagnostics
+- ✅ **Error Handling**: Comprehensive troubleshooting messages
+- ✅ **Plugin Compilation**: Fixed and verified TypeScript compilation process
+- ✅ **Command Documentation**: All available scripts properly documented
+
+### **Available Scripts Clarification**
+- ✅ **Primary Tool**: `ai-to-figma.js` - Main script for sending HTML to Figma
+- ✅ **Preprocessor**: `convert-html-for-figma.js` - HTML cleanup for better Figma compatibility
+- ✅ **Server**: `mcp-http-server.js` - HTTP API server for external integration
+- ❌ **Removed**: `send-to-figma.js` - Redundant script eliminated
 
 ---
 
@@ -215,31 +244,46 @@ Figma Canvas (Professional layout)
 
 ### **Production Commands:**
 ```bash
-# Start MCP Server (Production)
+# Start HTTP Server (Production)
 node mcp-http-server.js
 
 # Build Plugin (Latest)
 npm run build
 
-# Test MCP Integration
+# Send HTML to Figma (Primary Method)
+node ai-to-figma.js "<div style='color:red;'>Test</div>" "Test Design"
+
+# Alternative: Direct HTTP API
 curl -X POST http://localhost:3001/mcp-data \
   -H "Content-Type: application/json" \
   -d '{"html":"<div style=\"color:red;\">Test</div>","name":"Test"}'
 
 # Health Check
 curl http://localhost:3001/health
+
+# Preprocess HTML (Optional)
+node convert-html-for-figma.js examples/complex-css-test.html
 ```
 
-### **Recommended MCP Configuration:**
+### **Two System Architecture:**
+
+#### **Primary: HTTP API System (Recommended)**
+```bash
+# Simple, reliable, fully operational
+node mcp-http-server.js  # Start server
+node ai-to-figma.js "<html>" "Design Name"  # Send HTML
+```
+
+#### **Secondary: True MCP System (Beta)**
 ```json
 {
   "mcpServers": {
     "figma-html-bridge": {
       "command": "node",
-      "args": ["mcp-http-server.js"],
-      "cwd": "/path/to/space-to-figma-002",
+      "args": ["mcp-bridge.js"],
+      "cwd": "/path/to/html-to-figma",
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "development"
       }
     }
   }
@@ -277,7 +321,9 @@ The plugin successfully converts complex HTML interfaces to Figma with high fide
 
 **Latest Successful Test**: Sophie's Dashboard with complex layouts, gradients, and styling (timestamp: 1750094215220)
 
+**Latest System Verification**: HTTP Server test button working correctly, all scripts documented and functional (June 16, 2025)
+
 ---
 
-*Project Status Updated: June 16, 2024*
-*Status: Production Ready - Core functionality complete, minor optimizations pending* 
+*Project Status Updated: June 16, 2025*
+*Status: Production Ready - Core functionality complete, documentation updated, system architecture clarified* 

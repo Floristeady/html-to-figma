@@ -289,7 +289,7 @@ const html = `<html>
     
     <div class="status-messages" id="status-messages"></div>
     
-    <button id="mcp-test-btn" class="button test-button">Test MCP Connection</button>
+    <button id="mcp-test-btn" class="button test-button">Test HTTP Server</button>
   </div>
   
   <!-- Paste HTML Tab Content -->
@@ -2426,9 +2426,47 @@ function stopMCPMonitoring() {
         mcpMonitoringInterval = null;
     }
 }
+async function testMCPConnection() {
+    try {
+        // Test HTTP Server (not true MCP - this tests mcp-http-server.js)
+        figma.ui.postMessage({ type: 'mcp-test-response', message: 'Testing HTTP Server connection...' });
+        const healthResponse = await fetch('http://localhost:3001/health');
+        if (!healthResponse.ok) {
+            throw new Error(`HTTP server not responding (status: ${healthResponse.status})`);
+        }
+        const healthData = await healthResponse.json();
+        // Test HTTP data endpoint
+        const dataResponse = await fetch('http://localhost:3001/mcp-data');
+        if (!dataResponse.ok) {
+            throw new Error(`HTTP data endpoint not responding (status: ${dataResponse.status})`);
+        }
+        const dataResult = await dataResponse.json();
+        // Test file communication
+        let fileStatus = 'No shared file';
+        if (healthData.mcpFile === 'exists') {
+            fileStatus = 'Shared file exists';
+        }
+        else if (healthData.mcpFile === 'missing') {
+            fileStatus = 'Shared file missing (normal)';
+        }
+        // Success message with detailed info
+        const message = `✅ HTTP Server Connection Success!\n• HTTP Server: Running on port 3001\n• Health Status: ${healthData.status}\n• Data Endpoint: Responding\n• File System: ${fileStatus}\n• Server Type: mcp-http-server.js\n• Timestamp: ${new Date(healthData.timestamp).toLocaleTimeString()}`;
+        figma.ui.postMessage({ type: 'mcp-test-response', message: message });
+    }
+    catch (error) {
+        // Error with troubleshooting info
+        let troubleshoot = '';
+        if (error.message.includes('Failed to fetch') || error.message.includes('not responding')) {
+            troubleshoot = '\n\nTroubleshooting:\n• Start server: node mcp-http-server.js\n• Check port 3001 is not blocked\n• Ensure server is running in project directory';
+        }
+        const errorMessage = `❌ HTTP Server Connection Failed!\n• Error: ${error.message}${troubleshoot}`;
+        figma.ui.postMessage({ type: 'mcp-test-response', message: errorMessage });
+    }
+}
 figma.ui.onmessage = async (msg) => {
     if (msg.type === 'mcp-test') {
-        figma.ui.postMessage({ type: 'mcp-test-response', message: '¡Hola, recibí tu mensaje MCP!' });
+        // Test actual MCP server connection
+        testMCPConnection();
         return;
     }
     if (msg.type === 'mcp-html') {
