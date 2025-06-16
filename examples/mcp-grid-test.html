@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Grid Layout Test</title>
+    <style>
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            margin: 20px;
+        }
+        
+        .grid-item {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .grid-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .grid-item p {
+            margin: 0;
+            color: #666;
+        }
+        
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+            margin: 20px;
+        }
+        
+        .grid-auto {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-gap: 16px;
+            margin: 20px;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>CSS Grid Layout Tests</h1>
+    
+    <h2>3-Column Grid</h2>
+    <div class="grid-container">
+        <div class="grid-item">
+            <h3>Feature 1</h3>
+            <p>Fast and reliable service</p>
+        </div>
+        <div class="grid-item">
+            <h3>Feature 2</h3>
+            <p>24/7 customer support</p>
+        </div>
+        <div class="grid-item">
+            <h3>Feature 3</h3>
+            <p>Secure data protection</p>
+        </div>
+        <div class="grid-item">
+            <h3>Feature 4</h3>
+            <p>Easy integration</p>
+        </div>
+        <div class="grid-item">
+            <h3>Feature 5</h3>
+            <p>Scalable solution</p>
+        </div>
+        <div class="grid-item">
+            <h3>Feature 6</h3>
+            <p>Cost effective</p>
+        </div>
+    </div>
+    
+    <h2>2-Column Grid (2fr + 1fr)</h2>
+    <div class="grid-2col">
+        <div class="card">
+            <h3>Main Content</h3>
+            <p>This takes up 2/3 of the space</p>
+        </div>
+        <div class="card">
+            <h3>Sidebar</h3>
+            <p>This takes 1/3</p>
+        </div>
+    </div>
+    
+    <h2>Auto-Fit Grid</h2>
+    <div class="grid-auto">
+        <div class="card">Card 1</div>
+        <div class="card">Card 2</div>
+        <div class="card">Card 3</div>
+        <div class="card">Card 4</div>
+    </div>
+</body>
+</html> 

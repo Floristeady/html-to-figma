@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "figma-html-bridge": {
+      "command": "node",
+      "args": ["mcp-bridge.js"],
+      "cwd": "/Users/florosenfeld/Sites/figma-plugins/space-to-figma-002",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+} 

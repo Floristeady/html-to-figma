@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "figma-html-bridge": {
+      "command": "node",
+      "args": ["mcp-bridge.js"],
+      "env": {
+        "FIGMA_PLUGIN_ID": "figma-html-to-design"
+      }
+    }
+  }
+} 

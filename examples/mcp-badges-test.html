@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Badges and Inheritance Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .card {
+            padding: 20px;
+            margin: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .badge {
+            background-color: #007bff;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .status-container {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .status-container span {
+            display: inline-block;
+            margin: 0 5px;
+        }
+        
+        .inherit-styles {
+            color: #8b5cf6;
+            font-size: 18px;
+            text-align: center;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Badges and Style Inheritance Test</h1>
+    
+    <div class="card">
+        <h3>Product Status</h3>
+        <p>
+            iPhone 15 Pro 
+            <span class="badge">New</span>
+            <span class="badge badge-success">In Stock</span>
+            <span class="badge badge-warning">Limited</span>
+        </p>
+        
+        <p>
+            MacBook Air 
+            <span class="badge badge-danger">Out of Stock</span>
+            <span class="badge">Discontinued</span>
+        </p>
+    </div>
+    
+    <div class="card">
+        <h3>User Badges</h3>
+        <div>
+            <span class="badge" style="background-color: #6f42c1;">Premium</span>
+            <span class="badge" style="background-color: #fd7e14;">Pro</span>
+            <span class="badge" style="background-color: #20c997;">Verified</span>
+            <span class="badge" style="background-color: #e83e8c;">VIP</span>
+        </div>
+    </div>
+    
+    <div class="card inherit-styles">
+        <h3>Style Inheritance Test</h3>
+        <p>This text should inherit purple color and center alignment</p>
+        <div>
+            <span>This span inherits styles</span>
+            <span style="color: red;">This span overrides color</span>
+        </div>
+        <ul>
+            <li>List item 1 (inherits center align)</li>
+            <li>List item 2 (inherits center align)</li>
+        </ul>
+    </div>
+    
+    <div class="status-container">
+        <h3>Centered Status</h3>
+        <div>
+            <span class="badge">Status</span>
+            <span>Online</span>
+            <span class="badge badge-success">Active</span>
+        </div>
+        <p>All text in this container should be centered</p>
+    </div>
+</body>
+</html> 
