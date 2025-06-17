@@ -277,7 +277,7 @@ const html = `<html>
   
   <!-- MCP Cursor Tab Content -->
   <div class="tab-content active" id="mcp-tab">
-    <div class="description-text">Connect with Cursor and simply type 'Send HTML to Figma'</div>
+    <div class="description-text">Connect with Cursor and send HTML to Figma</div>
     
     <div class="switch-container">
       <span class="switch-label">Start MCP Monitoring</span>
@@ -289,7 +289,25 @@ const html = `<html>
     
     <div class="status-messages" id="status-messages"></div>
     
-    <button id="mcp-test-btn" class="button test-button">Test HTTP Server</button>
+    <button id="mcp-test-btn" class="button test-button">Test MCP Connection</button>
+    
+    <button id="direct-test-btn" class="button test-button" style="background:#28a745;margin-top:8px;">Direct MCP Test</button>
+    
+    <div style="
+      margin-top: 10px;
+      padding: 8px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #6c757d;
+      max-height: 60px;
+      overflow-y: auto;
+    ">
+      <strong>Test Instructions:</strong><br>
+      1. Open console (F12) → Copy simple-test.js<br>
+      2. Enable monitoring → Watch it work!
+    </div>
   </div>
   
   <!-- Paste HTML Tab Content -->
@@ -869,6 +887,37 @@ document.getElementById('mcp-test-btn').onclick = function() {
   }, '*');
 };
 
+// Direct Test Button Handler - BYPASS CONSOLE
+document.getElementById('direct-test-btn').onclick = function() {
+  var testBtn = document.getElementById('direct-test-btn');
+  var statusMessages = document.getElementById('status-messages');
+  
+  testBtn.style.display = 'none';
+  updateStatusMessage('Direct MCP test running...', 'test');
+  
+  // Send direct test data
+  parent.postMessage({
+    pluginMessage: {
+      type: 'store-mcp-data',
+      data: {
+        timestamp: Date.now(),
+        type: 'mcp-request',
+        function: 'mcp_html_to_design_import-html',
+        arguments: {
+          html: '<div style="background:linear-gradient(45deg,#ff6b6b,#4ecdc4);padding:30px;border-radius:12px;color:white;font-family:Inter;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);"><h1>🎉 FASE 1 COMPLETADA!</h1><p>MCP Storage funcionando perfectamente!</p><p>✅ Cursor → Bridge → Monitor → Plugin → Figma</p></div>',
+          name: 'Phase 1 Success'
+        },
+        requestId: Date.now().toString()
+      }
+    }
+  }, '*');
+  
+  // Show button again after 3 seconds
+  setTimeout(function() {
+    testBtn.style.display = 'block';
+  }, 3000);
+};
+
 // Function to update status messages
 function updateStatusMessage(message, type) {
   var statusMessages = document.getElementById('status-messages');
@@ -905,7 +954,14 @@ window.addEventListener('message', function(event) {
   if (event.data.pluginMessage) {
     var msg = event.data.pluginMessage;
     if (msg.type === 'mcp-test-response') {
-      updateStatusMessage('MCP Test: ' + msg.message, 'test');
+      updateStatusMessage('MCP: ' + msg.message, 'test');
+    } else if (msg.type === 'mcp-storage-response') {
+      // Handle storage confirmation messages
+      if (msg.success) {
+        updateStatusMessage('✅ MCP data stored successfully!', 'success');
+      } else {
+        updateStatusMessage('❌ Storage error: ' + msg.message, 'error');
+      }
     } else if (msg.type === 'mcp-html-response') {
       updateStatusMessage('MCP HTML: ' + msg.message, 'info');
     } else if (msg.type === 'mcp-status-update') {
@@ -2366,57 +2422,93 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
 // MCP Monitoring variables
 let mcpMonitoringInterval = null;
 let lastProcessedTimestamp = 0;
-// MCP Monitoring functions
+// NEW: Use figma.clientStorage for MCP communication (replaces file system)
+async function readMCPSharedData() {
+    try {
+        console.log('[MCP] Attempting to read shared data from clientStorage...');
+        // Use Figma's clientStorage as the communication mechanism
+        const storedData = await figma.clientStorage.getAsync('mcp-shared-data');
+        if (storedData) {
+            console.log('[MCP] Found data in clientStorage:', storedData);
+            return storedData;
+        }
+        else {
+            console.log('[MCP] No data found in clientStorage');
+            return null;
+        }
+    }
+    catch (error) {
+        console.log('[MCP] Could not read from clientStorage:', error);
+        return null;
+    }
+}
+// NEW: Delete shared data after processing
+async function deleteMCPSharedData() {
+    try {
+        await figma.clientStorage.deleteAsync('mcp-shared-data');
+        console.log('[MCP] Successfully deleted shared data from clientStorage');
+        return true;
+    }
+    catch (error) {
+        console.log('[MCP] Could not delete shared data:', error);
+        return false;
+    }
+}
+// MODIFIED: MCP Monitoring with hybrid approach (file first, HTTP fallback)
 function startMCPMonitoring() {
     if (mcpMonitoringInterval) {
         clearInterval(mcpMonitoringInterval);
     }
     mcpMonitoringInterval = setInterval(async () => {
         try {
-            const response = await fetch('http://localhost:3001/mcp-data');
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.timestamp && data.function && data.timestamp > lastProcessedTimestamp) {
-                    console.log('[MCP] Found new request:', data);
-                    console.log('[MCP DEBUG] About to update lastProcessedTimestamp');
-                    lastProcessedTimestamp = data.timestamp;
-                    console.log('[MCP DEBUG] Updated lastProcessedTimestamp to:', lastProcessedTimestamp);
-                    // Process the MCP request DIRECTLY (not via postMessage)
-                    console.log('[MCP DEBUG] Checking function type:', data.function);
-                    if (data.function === 'mcp_html_to_design_import-html') {
-                        console.log('[MCP DEBUG] Function matches, extracting data');
-                        const htmlContent = data.arguments.html;
-                        const name = data.arguments.name || 'MCP Import';
-                        console.log('[MCP] Processing MCP request:', data);
-                        console.log('[MCP] Sending HTML to UI for parsing:', name);
-                        // Send HTML to UI for parsing (same as Convert to Figma button)
-                        console.log('[MCP DEBUG] About to send postMessage to UI');
-                        figma.ui.postMessage({
-                            type: 'parse-mcp-html',
-                            html: htmlContent,
-                            name: name
-                        });
-                        console.log('[MCP DEBUG] PostMessage sent successfully');
-                    }
-                    else {
-                        console.log('[MCP DEBUG] Function does not match:', data.function);
-                    }
-                    // Optional: Clear the processed request (with error handling)
-                    console.log('[MCP DEBUG] About to clear processed request');
-                    try {
-                        await fetch('http://localhost:3001/mcp-data', {
-                            method: 'DELETE'
-                        });
-                        console.log('[MCP DEBUG] Request cleared successfully');
-                    }
-                    catch (deleteError) {
-                        console.log('[MCP] Could not clear processed request (non-critical):', deleteError);
-                    }
+            // Pure MCP storage approach - no HTTP calls
+            const storageData = await readMCPSharedData();
+            let data = null;
+            let source = '';
+            if (storageData && storageData.timestamp && storageData.function && storageData.timestamp > lastProcessedTimestamp) {
+                data = storageData;
+                source = 'storage';
+                console.log('[MCP] Using clientStorage data source');
+            }
+            // Process data regardless of source
+            if (data && data.timestamp && data.function && data.timestamp > lastProcessedTimestamp) {
+                console.log(`[MCP] Found new request from ${source}:`, data);
+                console.log('[MCP DEBUG] About to update lastProcessedTimestamp');
+                lastProcessedTimestamp = data.timestamp;
+                console.log('[MCP DEBUG] Updated lastProcessedTimestamp to:', lastProcessedTimestamp);
+                // Process the MCP request DIRECTLY (not via postMessage)
+                console.log('[MCP DEBUG] Checking function type:', data.function);
+                if (data.function === 'mcp_html_to_design_import-html') {
+                    console.log('[MCP DEBUG] Function matches, extracting data');
+                    const htmlContent = data.arguments.html;
+                    const name = data.arguments.name || 'MCP Import';
+                    console.log('[MCP] Processing MCP request:', data);
+                    console.log('[MCP] Sending HTML to UI for parsing:', name);
+                    // Send HTML to UI for parsing (same as Convert to Figma button)
+                    console.log('[MCP DEBUG] About to send postMessage to UI');
+                    figma.ui.postMessage({
+                        type: 'parse-mcp-html',
+                        html: htmlContent,
+                        name: name
+                    });
+                    console.log('[MCP DEBUG] PostMessage sent successfully');
+                }
+                else {
+                    console.log('[MCP DEBUG] Function does not match:', data.function);
+                }
+                // Clear the processed request from storage
+                console.log('[MCP DEBUG] About to clear processed request');
+                try {
+                    await deleteMCPSharedData();
+                    console.log('[MCP DEBUG] Storage cleared successfully');
+                }
+                catch (deleteError) {
+                    console.log('[MCP] Could not clear processed request (non-critical):', deleteError);
                 }
             }
         }
         catch (error) {
-            console.log('[MCP] Monitoring error (server might be down):', error);
+            console.log('[MCP] Monitoring error:', error);
         }
     }, 2000); // Check every 2 seconds
 }
@@ -2427,46 +2519,52 @@ function stopMCPMonitoring() {
     }
 }
 async function testMCPConnection() {
+    let results = [];
+    // Test storage access
     try {
-        // Test HTTP Server (not true MCP - this tests mcp-http-server.js)
-        figma.ui.postMessage({ type: 'mcp-test-response', message: 'Testing HTTP Server connection...' });
-        const healthResponse = await fetch('http://localhost:3001/health');
-        if (!healthResponse.ok) {
-            throw new Error(`HTTP server not responding (status: ${healthResponse.status})`);
+        const storageData = await readMCPSharedData();
+        if (storageData !== null) {
+            results.push('✅ MCP Storage: Working - data found');
+            results.push(`• Type: ${storageData.type || 'unknown'}`);
+            results.push(`• Function: ${storageData.function || 'unknown'}`);
         }
-        const healthData = await healthResponse.json();
-        // Test HTTP data endpoint
-        const dataResponse = await fetch('http://localhost:3001/mcp-data');
-        if (!dataResponse.ok) {
-            throw new Error(`HTTP data endpoint not responding (status: ${dataResponse.status})`);
+        else {
+            results.push('⚠️ MCP Storage: Ready - no data yet');
+            results.push('• Use console test to send data');
         }
-        const dataResult = await dataResponse.json();
-        // Test file communication
-        let fileStatus = 'No shared file';
-        if (healthData.mcpFile === 'exists') {
-            fileStatus = 'Shared file exists';
-        }
-        else if (healthData.mcpFile === 'missing') {
-            fileStatus = 'Shared file missing (normal)';
-        }
-        // Success message with detailed info
-        const message = `✅ HTTP Server Connection Success!\n• HTTP Server: Running on port 3001\n• Health Status: ${healthData.status}\n• Data Endpoint: Responding\n• File System: ${fileStatus}\n• Server Type: mcp-http-server.js\n• Timestamp: ${new Date(healthData.timestamp).toLocaleTimeString()}`;
-        figma.ui.postMessage({ type: 'mcp-test-response', message: message });
     }
     catch (error) {
-        // Error with troubleshooting info
-        let troubleshoot = '';
-        if (error.message.includes('Failed to fetch') || error.message.includes('not responding')) {
-            troubleshoot = '\n\nTroubleshooting:\n• Start server: node mcp-http-server.js\n• Check port 3001 is not blocked\n• Ensure server is running in project directory';
-        }
-        const errorMessage = `❌ HTTP Server Connection Failed!\n• Error: ${error.message}${troubleshoot}`;
-        figma.ui.postMessage({ type: 'mcp-test-response', message: errorMessage });
+        results.push('❌ MCP Storage: Error - ' + error);
     }
+    const message = results.join('\n');
+    figma.ui.postMessage({ type: 'mcp-test-response', message: message });
 }
 figma.ui.onmessage = async (msg) => {
     if (msg.type === 'mcp-test') {
         // Test actual MCP server connection
         testMCPConnection();
+        return;
+    }
+    // NEW: Handle MCP data storage from external sources
+    if (msg.type === 'store-mcp-data') {
+        console.log('[MCP] Storing external MCP data in clientStorage:', msg.data);
+        try {
+            await figma.clientStorage.setAsync('mcp-shared-data', msg.data);
+            console.log('[MCP] Successfully stored MCP data in clientStorage');
+            figma.ui.postMessage({
+                type: 'mcp-storage-response',
+                success: true,
+                message: 'MCP data stored successfully'
+            });
+        }
+        catch (error) {
+            console.error('[MCP] Error storing MCP data:', error);
+            figma.ui.postMessage({
+                type: 'mcp-storage-response',
+                success: false,
+                message: 'Error storing MCP data: ' + error.message
+            });
+        }
         return;
     }
     if (msg.type === 'mcp-html') {

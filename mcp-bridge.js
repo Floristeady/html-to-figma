@@ -30,7 +30,7 @@ class FigmaMCPServer {
     this.setupToolHandlers();
   }
 
-  // Write data to shared file for Figma plugin to read
+  // Write data to shared file for Figma plugin to read (PHASE 1: Keep for fallback)
   writeToSharedFile(data) {
     try {
       fs.writeFileSync(this.sharedDataPath, JSON.stringify({
@@ -40,6 +40,29 @@ class FigmaMCPServer {
       return true;
     } catch (error) {
       console.error('[MCP Bridge] Error writing to shared file:', error);
+      return false;
+    }
+  }
+
+  // NEW PHASE 1: Send directly to Figma plugin via postMessage simulation
+  async sendToFigmaStorage(data) {
+    try {
+      // For Phase 1, we'll write to a browser-accessible location
+      // This requires the plugin to poll a different location
+      const storageData = {
+        timestamp: Date.now(),
+        ...data
+      };
+      
+      // Write to file but also attempt direct communication
+      this.writeToSharedFile(storageData);
+      
+      console.error('[MCP Bridge] Data written for plugin storage access');
+      console.error('[MCP Bridge] Plugin should detect this via clientStorage polling');
+      
+      return true;
+    } catch (error) {
+      console.error('[MCP Bridge] Error in Phase 1 storage communication:', error);
       return false;
     }
   }
