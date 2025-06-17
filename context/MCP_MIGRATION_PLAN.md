@@ -1,227 +1,286 @@
-# MCP Protocol Migration Plan
+# Plan de Migración: Solo MCP (Sin Localhost)
 
-## Overview
+## 🎯 Objetivo Final
+**Eliminar completamente localhost:3001** y usar únicamente el protocolo MCP para toda la comunicación.
 
-**Current Status**: Using HTTP server (`mcp-http-server.js`) with pseudo-MCP communication
-**Target**: Implement true MCP protocol using `mcp-bridge.js` for Cursor integration
+## 📊 Estado Actual (Enero 2025)
 
-## Why MCP Protocol is Better
+### ✅ Lo que YA funciona:
+- **Cursor MCP**: Conectado y funcionando (`~/.cursor/mcp.json`)
+- **mcp-bridge.js**: Ejecutándose via Cursor MCP
+- **Herramientas MCP**: Disponibles en Cursor
+- **Plugin de Figma**: Cargado y funcionando
+- **Parser HTML/CSS único**: Superior a otros MCP servers existentes
 
-### Current HTTP System Issues:
-- ❌ Non-standard communication
-- ❌ Requires manual server startup  
-- ❌ No integration with Cursor MCP settings
-- ❌ HTTP polling overhead
-- ❌ Not compatible with MCP ecosystem
+### ❌ Problema actual:
+- **Plugin busca localhost:3001** en lugar de leer archivo directamente
+- **Dependencia HTTP innecesaria**: mcp-http-server.js como intermediario
+- **Arquitectura híbrida**: MCP → archivo → HTTP → Plugin
 
-### MCP Protocol Benefits:
-- ✅ **Standard Protocol**: Follows MCP specification
-- ✅ **Cursor Integration**: Native support in Cursor IDE
-- ✅ **Better Performance**: Stdio-based communication
-- ✅ **Tool Discovery**: Automatic tool registration
-- ✅ **Ecosystem**: Compatible with MCP clients
-- ✅ **Future-proof**: Standard protocol evolution
-
-## Current Architecture Analysis
-
-### Working HTTP System:
+### 🎯 Arquitectura objetivo:
 ```
-External Tools → HTTP POST :3001 → mcp-http-server.js → mcp-shared-data.json → Plugin
-Cursor (manual) → ai-to-figma.js → HTTP POST :3001 → ...
+Cursor MCP → mcp-bridge.js → mcp-shared-data.json → Plugin (lectura directa)
 ```
 
-### Target MCP System:
-```
-Cursor → MCP Protocol → mcp-bridge.js → mcp-shared-data.json → Plugin
-External Tools → (need adaptation)
-```
+### 🏆 **Ventajas únicas de nuestro sistema**:
+- **🎨 Parser HTML/CSS inteligente**: Convierte estructuras completas, no nodos individuales
+- **⚡ Conversión en una pasada**: Un HTML complejo → Diseño completo en Figma
+- **🧠 Entendimiento semántico**: Reconoce patrones UI (botones, cards, badges)
+- **🔧 Optimizado para web**: Mejor que sistemas genéricos como Talk to Figma MCP
 
-## Migration Strategy
+## 🔧 Plan de Migración: 3 Fases
 
-### Phase 1: MCP Configuration & Testing
+### Fase 1: Modificar Plugin para Lectura Directa ⚡
+**Duración**: 1-2 horas de desarrollo
+**Objetivo**: Plugin lee `mcp-shared-data.json` directamente
 
-#### 1.1 Cursor MCP Setup ✅
-- [x] Copy `cursor-mcp-config.json` to `~/.cursor/mcp_servers.json`
-- [x] Verify MCP bridge dependencies installed
-- [x] Test MCP bridge startup
+#### 1.1 Modificar src/code.ts
+- [ ] **🚨 IMPORTANTE**: NO tocar la funcionalidad de pegar HTML y generar diseño
+- [ ] **Eliminar funciones HTTP**: Remover `fetch('localhost:3001')` solo para MCP
+- [ ] **Agregar lectura de archivos**: Implementar `readSharedFile()` para MCP
+- [ ] **Adaptador de polling**: Cambiar de HTTP polling a file polling para MCP
+- [ ] **Mantener compatibilidad**: Misma funcionalidad HTML→Figma, solo cambiar fuente MCP
 
-#### 1.2 Test MCP Bridge Communication
-- [ ] Start MCP bridge: `node mcp-bridge.js`
-- [ ] Test in Cursor: `@figma-html-bridge` tool availability
-- [ ] Verify file communication works
-- [ ] Test HTML import function
+#### 1.2 Implementación técnica
+```typescript
+// REMOVER (código actual HTTP):
+const response = await fetch('http://localhost:3001/mcp-data');
 
-### Phase 2: Plugin Adaptation (if needed)
-
-#### 2.1 Plugin MCP Monitoring
-Current plugin already handles:
-- ✅ File polling for `mcp-shared-data.json`
-- ✅ Processing `mcp-request` format
-- ✅ Function: `mcp_html_to_design_import-html`
-
-**No changes needed** - plugin is already MCP-compatible!
-
-#### 2.2 Response Handling Enhancement
-- [ ] Implement two-way communication
-- [ ] Plugin writes responses back to shared file
-- [ ] MCP bridge reads and returns responses
-
-### Phase 3: External Tools Migration
-
-#### 3.1 Replace HTTP Scripts
-Current scripts that need adaptation:
-- `ai-to-figma.js` → Convert to MCP client or keep as HTTP
-- `send-to-figma.js` → Convert to MCP client or keep as HTTP
-
-#### 3.2 Dual Support Option
-Maintain both systems temporarily:
-- **MCP Bridge**: For Cursor integration
-- **HTTP Server**: For external scripts (legacy)
-
-### Phase 4: Embedded MCP Server
-
-#### 4.1 Embed MCP Bridge in Plugin
-Move MCP bridge logic into Figma plugin:
-- Stdio transport within plugin environment
-- Self-contained MCP server
-- Automatic startup with plugin
-
-#### 4.2 Enhanced Features
-- Real-time status updates
-- Better error handling
-- Plugin lifecycle management
-
-## Technical Implementation
-
-### MCP Bridge Current Status
-
-**File**: `mcp-bridge.js`
-- ✅ MCP SDK integration
-- ✅ Tool definitions (`mcp_html_to_design_import-html`)
-- ✅ File-based communication
-- ✅ Error handling
-
-**Available Tools**:
-1. `mcp_html_to_design_import-html` - Import HTML to Figma
-2. `mcp_html_to_design_import-url` - Import from URL
-3. `mcp_figma_get_status` - Get plugin status
-
-### Plugin Compatibility
-
-**Current plugin code is already MCP-ready**:
-- ✅ Reads `mcp-shared-data.json`
-- ✅ Processes `mcp-request` format
-- ✅ Handles correct function names
-- ✅ File-based communication works
-
-### Configuration Files
-
-#### Cursor MCP Config:
-```json
-{
-  "mcpServers": {
-    "figma-html-bridge": {
-      "command": "node",
-      "args": ["mcp-bridge.js"],
-      "cwd": "/Users/florosenfeld/Sites/figma-plugins/html-to-figma",
-      "env": {
-        "NODE_ENV": "development"
-      }
-    }
+// AGREGAR (lectura directa):
+function readMCPSharedFile(): any | null {
+  try {
+    // Figma plugins pueden acceder a archivos en su directorio
+    const data = figma.fileSystem.readFileSync('mcp-shared-data.json');
+    return JSON.parse(data);
+  } catch (error) {
+    return null;
   }
 }
 ```
 
-## Migration Steps
+#### 1.3 Validación Fase 1
+- [ ] **✅ Funcionalidad principal intacta**: Pegar HTML → Generar diseño sigue funcionando
+- [ ] Compilar TypeScript: `npm run build`
+- [ ] Plugin funciona sin localhost para MCP
+- [ ] MCP Tools desde Cursor → Plugin directamente
+- [ ] **✅ Parser HTML/CSS sin cambios**: Toda la lógica de conversión preservada
+- [ ] Eliminar mcp-http-server.js del flujo MCP
 
-### Step 1: Test Current MCP Bridge ⏳
+### Fase 2: Cleanup y Optimización 🧹
+**Duración**: 30 minutos
+**Objetivo**: Limpiar código legacy y optimizar
 
-```bash
-# 1. Start MCP bridge
-node mcp-bridge.js
+#### 2.1 Eliminar archivos HTTP
+- [ ] **Deprecar**: `mcp-http-server.js` (mantener por compatibilidad)
+- [ ] **Actualizar scripts**: `ai-to-figma.js` para usar solo archivos
+- [ ] **Cleanup**: Remover referencias localhost del código
 
-# 2. Test in Cursor
-# - Restart Cursor
-# - Check if @figma-html-bridge appears
-# - Test HTML import
+#### 2.2 Simplificar arquitectura
+- [ ] **Un solo proceso**: Solo `mcp-bridge.js` via Cursor
+- [ ] **Comunicación directa**: Sin intermediarios HTTP
+- [ ] **Documentación**: Actualizar README
+
+#### 2.3 Validación Fase 2
+- [ ] Sistema funciona con un solo comando: "Abrir Cursor"
+- [ ] No requiere ejecutar servidores manualmente
+- [ ] Performance mejorado (sin HTTP overhead)
+
+### Fase 3: Embedded MCP (Futuro) 🚀
+**Duración**: Proyecto futuro
+**Objetivo**: MCP server dentro del plugin
+
+#### 3.1 Plugin autónomo
+- [ ] **MCP integrado**: mcp-bridge.js embebido en plugin
+- [ ] **Sin dependencias externas**: Plugin completamente autónomo
+- [ ] **Auto-registro**: Plugin se registra en Cursor automáticamente
+
+#### 3.2 Arquitectura ideal
+```
+Cursor ←→ Plugin Figma (MCP embebido)
 ```
 
-### Step 2: Enhance MCP Bridge Response System
+## 🛠️ Implementación Detallada: Fase 1
 
-**Current Issue**: MCP bridge doesn't wait for plugin response
-**Solution**: Implement response polling
+### Cambios en src/code.ts
 
-```javascript
-// Enhanced callFigmaPlugin method
-async callFigmaPlugin(functionName, args) {
-  // 1. Write request to file
-  // 2. Wait for plugin to process
-  // 3. Read response from file
-  // 4. Return structured response
+#### 1. Agregar función de lectura directa:
+```typescript
+// Nueva función para reemplazar HTTP
+function readMCPData(): any | null {
+  try {
+    // En Figma plugins, usar __dirname o ruta relativa
+    const filePath = './mcp-shared-data.json';
+    
+    // Verificar si el archivo existe
+    if (!fileExists(filePath)) {
+      return null;
+    }
+    
+    // Leer y parsear archivo
+    const data = readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(data);
+    
+    // Validar estructura MCP
+    if (parsed.type === 'mcp-request') {
+      return parsed;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error reading MCP file:', error);
+    return null;
+  }
 }
 ```
 
-### Step 3: Maintain HTTP Compatibility (Optional)
+#### 2. Modificar función de polling:
+```typescript
+// ANTES (HTTP):
+async function checkForMCPData() {
+  try {
+    const response = await fetch('http://localhost:3001/mcp-data');
+    const data = await response.json();
+    // ...
+  } catch (error) {
+    // ...
+  }
+}
 
-Keep `mcp-http-server.js` running alongside MCP for external tools:
-
-```bash
-# Both systems running
-node mcp-bridge.js &          # MCP for Cursor
-node mcp-http-server.js &     # HTTP for external tools
+// DESPUÉS (Archivo):
+async function checkForMCPData() {
+  try {
+    const data = readMCPData();
+    if (data && data.type === 'mcp-request') {
+      // Procesar request MCP
+      await processMCPRequest(data);
+      
+      // Eliminar archivo después de procesarlo
+      deleteSharedFile();
+    }
+  } catch (error) {
+    console.error('MCP data check failed:', error);
+  }
+}
 ```
 
-### Step 4: Embedded MCP Implementation
+#### 3. Eliminar funciones HTTP:
+```typescript
+// ELIMINAR todas las referencias a:
+// - fetch('http://localhost:3001/...')
+// - HTTP health checks
+// - HTTP error handling
+// - Botón "Test HTTP Server"
+```
 
-Move MCP bridge into plugin as embedded server:
-- Plugin starts MCP server on load
-- Stdio communication within Figma environment
-- No external server processes needed
+### Cambios en archivos de soporte
 
-## Testing Strategy
+#### ai-to-figma.js (opcional - mantener compatibilidad):
+```javascript
+// Opción 1: Escribir directamente al archivo
+const data = {
+  type: 'mcp-request',
+  function: 'mcp_html_to_design_import-html',
+  arguments: { html: htmlContent, name: designName },
+  requestId: Date.now().toString()
+};
 
-### Test Cases:
-- [ ] Cursor MCP integration works
-- [ ] HTML import via Cursor
-- [ ] Complex HTML with CSS renders correctly
-- [ ] Badge rendering works
-- [ ] Plugin monitoring functions
-- [ ] External HTTP tools still work (if maintaining)
-- [ ] Error handling for MCP failures
+fs.writeFileSync('mcp-shared-data.json', JSON.stringify(data));
 
-### Success Criteria:
-- ✅ Cursor recognizes MCP server
-- ✅ Can send HTML from Cursor to Figma
-- ✅ Same quality rendering as HTTP system
-- ✅ Better user experience than HTTP system
+// Opción 2: Mantener HTTP como fallback (si está ejecutándose)
+```
 
-## Benefits After Migration
+## 📋 Checklist de Migración
 
-### For Users:
-- **Native Cursor Integration**: Use `@figma-html-bridge` commands
-- **Automatic Discovery**: Tools appear in Cursor automatically
-- **Better UX**: No manual server startup (after embedding)
-- **Standard Workflow**: Follows MCP conventions
+### Pre-migración
+- [ ] **Backup**: Crear backup del código actual
+- [ ] **🧪 Test funcionalidad principal**: Probar pegar HTML → generar diseño (debe funcionar)
+- [ ] **Test baseline**: Verificar funcionamiento actual con HTTP para MCP
+- [ ] **Compilar**: Asegurar que `npm run build` funciona
 
-### For Development:
-- **Future-proof**: Standard protocol
-- **Extensible**: Easy to add new tools
-- **Maintainable**: Clear separation of concerns
-- **Ecosystem**: Compatible with other MCP tools
+### Durante migración
+- [ ] **Modificar src/code.ts**: Implementar lectura directa
+- [ ] **Compilar y probar**: `npm run build` + test en Figma
+- [ ] **Validar MCP**: Probar herramientas desde Cursor
+- [ ] **Cleanup HTTP**: Remover código localhost
 
-## Current Status
+### Post-migración
+- [ ] **🧪 Test funcionalidad principal**: Verificar que pegar HTML → generar diseño SIGUE funcionando
+- [ ] **Documentar**: Actualizar README con nueva arquitectura
+- [ ] **Performance**: Medir mejoras de rendimiento
+- [ ] **Rollback plan**: Tener plan de vuelta atrás si es necesario
 
-- ✅ **MCP Dependencies**: Installed (`@modelcontextprotocol/sdk`)
-- ✅ **MCP Bridge**: Implemented and ready
-- ✅ **Cursor Config**: Added to `~/.cursor/mcp_servers.json`
-- ⏳ **Testing**: Need to verify Cursor integration
-- ⏳ **Enhancement**: Two-way communication
-- ⏳ **Embedding**: Move to plugin (Phase 4)
+## 🎯 Beneficios Esperados
 
-## Next Actions
+### Simplicidad operacional:
+- ✅ **Un solo comando**: Abrir Cursor (automático)
+- ✅ **Sin servidores**: No más `node mcp-http-server.js`
+- ✅ **Sin puertos**: No depender de localhost:3001
+- ✅ **Configuración mínima**: Solo Cursor MCP config
 
-1. **Test MCP Bridge**: Verify Cursor sees the MCP server
-2. **Test HTML Import**: Send HTML via Cursor MCP
-3. **Enhance Response**: Implement proper response handling
-4. **Plan Embedding**: Design embedded MCP architecture
-5. **Migrate Gradually**: Maintain HTTP during transition 
+### Performance:
+- ✅ **Menor latencia**: Sin HTTP overhead
+- ✅ **Menos recursos**: Sin servidor HTTP
+- ✅ **Más confiable**: Sin problemas de conectividad
+
+### Mantenimiento:
+- ✅ **Código más simple**: Menos capas de abstracción
+- ✅ **Menos dependencias**: Sin express, cors, etc.
+- ✅ **Debugging más fácil**: Comunicación directa
+
+## 🚨 Riesgos y Mitigaciones
+
+### Riesgo 1: Romper funcionalidad principal HTML→Figma
+**Mitigación**: NO tocar código de parsing HTML/CSS durante migración
+**Plan B**: Rollback inmediato si algo se rompe
+**Validación**: Probar pegar HTML antes y después de cada cambio
+
+### Riesgo 2: Figma plugins no pueden leer archivos
+**Mitigación**: Investigar API de Figma para file system access
+**Plan B**: Mantener HTTP como fallback solo para MCP
+
+### Riesgo 3: Performance de polling de archivos
+**Mitigación**: Optimizar frecuencia de polling
+**Plan B**: File watching si está disponible
+
+### Riesgo 4: Compatibilidad con scripts externos
+**Mitigación**: Mantener `ai-to-figma.js` funcionando con archivos
+**Plan B**: Dual support (archivo + HTTP)
+
+## 📅 Timeline Sugerido
+
+### Día 1: Investigación y diseño (2 horas)
+- [ ] Investigar API de Figma para file access
+- [ ] Diseñar nueva arquitectura de polling
+- [ ] Preparar entorno de desarrollo
+
+### Día 2: Implementación (3-4 horas)
+- [ ] Modificar src/code.ts
+- [ ] Compilar y probar
+- [ ] Validar con herramientas MCP
+- [ ] Cleanup código HTTP
+
+### Día 3: Testing y documentación (1-2 horas)
+- [ ] Test completo del sistema
+- [ ] Actualizar documentación
+- [ ] Preparar rollback si es necesario
+
+## 🏁 Estado Final Esperado
+
+### Arquitectura limpia:
+```
+Cursor MCP Tools → mcp-bridge.js → mcp-shared-data.json → Plugin Figma
+     (automático)    (automático)        (archivo)         (lectura directa)
+```
+
+### Experiencia del usuario:
+1. **Abrir Cursor** → MCP automáticamente disponible
+2. **Usar herramienta MCP** → HTML aparece en Figma
+3. **Fin** → Sin configuración manual
+
+### Código limpio:
+- ❌ Sin referencias a localhost
+- ❌ Sin mcp-http-server.js en el flujo
+- ❌ Sin dependencias HTTP innecesarias
+- ✅ Solo MCP protocol estándar
+- ✅ Comunicación directa por archivos
+- ✅ Sistema autónomo y confiable 
