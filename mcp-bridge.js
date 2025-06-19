@@ -1,22 +1,35 @@
 #!/usr/bin/env node
 
 /**
- * MCP Bridge for Figma HTML-to-Design Plugin
- * This script acts as a bridge between MCP clients (like Cursor) and the Figma plugin
+ * MCP Bridge for Figma HTML-to-Design Plugin - SSE Version
+ * Clean implementation with Server-Sent Events for real-time communication
  */
 
-const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
-const fs = require('fs');
-const path = require('path');
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import http from 'http';
+import url from 'url';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-class FigmaMCPServer {
+// ES module equivalent of __dirname
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Configuration
+const SSE_PORT = 3003;
+
+console.log('[MCP-SSE] Starting MCP Bridge with SSE support...');
+console.log('[MCP-SSE] Working directory:', __dirname);
+
+class FigmaMCPBridge {
   constructor() {
+    // MCP Server setup
     this.server = new Server(
       {
         name: 'figma-html-bridge',
-        version: '1.0.0',
+        version: '2.0.0-sse',
       },
       {
         capabilities: {
@@ -25,61 +38,20 @@ class FigmaMCPServer {
       }
     );
 
-    // Create shared communication file path
+    // SSE connections management
+    this.sseConnections = new Set();
+    this.httpServer = null;
+
+    // Fallback file system (for backward compatibility)
     this.sharedDataPath = path.join(__dirname, 'mcp-shared-data.json');
+
     this.setupToolHandlers();
+    this.setupSSEServer();
   }
 
-  // Write data to shared file for Figma plugin to read (PHASE 1: Keep for fallback)
-  writeToSharedFile(data) {
-    try {
-      fs.writeFileSync(this.sharedDataPath, JSON.stringify({
-        timestamp: Date.now(),
-        ...data
-      }), 'utf8');
-      return true;
-    } catch (error) {
-      console.error('[MCP Bridge] Error writing to shared file:', error);
-      return false;
-    }
-  }
-
-  // NEW PHASE 1: Send directly to Figma plugin via postMessage simulation
-  async sendToFigmaStorage(data) {
-    try {
-      // For Phase 1, we'll write to a browser-accessible location
-      // This requires the plugin to poll a different location
-      const storageData = {
-        timestamp: Date.now(),
-        ...data
-      };
-      
-      // Write to file but also attempt direct communication
-      this.writeToSharedFile(storageData);
-      
-      console.error('[MCP Bridge] Data written for plugin storage access');
-      console.error('[MCP Bridge] Plugin should detect this via clientStorage polling');
-      
-      return true;
-    } catch (error) {
-      console.error('[MCP Bridge] Error in Phase 1 storage communication:', error);
-      return false;
-    }
-  }
-
-  // Read response from shared file
-  readFromSharedFile() {
-    try {
-      if (fs.existsSync(this.sharedDataPath)) {
-        const data = fs.readFileSync(this.sharedDataPath, 'utf8');
-        return JSON.parse(data);
-      }
-      return null;
-    } catch (error) {
-      console.error('[MCP Bridge] Error reading from shared file:', error);
-      return null;
-    }
-  }
+  // ===============================================
+  // MCP TOOL HANDLERS
+  // ===============================================
 
   setupToolHandlers() {
     // List available tools
@@ -88,54 +60,21 @@ class FigmaMCPServer {
         tools: [
           {
             name: 'mcp_html_to_design_import-html',
-            description: 'Import HTML content directly into Figma design',
+            description: 'Import HTML content and convert it to Figma design elements',
             inputSchema: {
               type: 'object',
               properties: {
                 html: {
                   type: 'string',
-                  description: 'The HTML content to import into Figma'
+                  description: 'HTML content to convert to Figma design'
                 },
                 name: {
                   type: 'string',
-                  description: 'Name for the imported design element'
+                  description: 'Name for the imported design (optional)',
+                  default: 'HTML Import'
                 }
               },
-              required: ['html', 'name']
-            }
-          },
-          {
-            name: 'mcp_html_to_design_import-url',
-            description: 'Import HTML content from a URL into Figma design',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                url: {
-                  type: 'string',
-                  description: 'The URL to import content from'
-                },
-                viewport: {
-                  type: 'number',
-                  description: 'Viewport width for rendering (default: 1200)',
-                  default: 1200
-                },
-                theme: {
-                  type: 'string',
-                  enum: ['default', 'light', 'dark'],
-                  description: 'Theme for rendering',
-                  default: 'default'
-                }
-              },
-              required: ['url']
-            }
-          },
-          {
-            name: 'mcp_figma_get_status',
-            description: 'Get current status of the Figma plugin and canvas',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: []
+              required: ['html']
             }
           }
         ]
@@ -147,105 +86,324 @@ class FigmaMCPServer {
       const { name, arguments: args } = request.params;
 
       try {
-        const result = await this.callFigmaPlugin(name, args);
-        
+        switch (name) {
+          case 'mcp_html_to_design_import-html':
+            return await this.handleHtmlImport(args);
+          
+          default:
+            throw new Error(`Unknown tool: ${name}`);
+        }
+      } catch (error) {
+        console.error(`[MCP] Error executing tool ${name}:`, error);
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2)
+              text: `Error: ${error.message}`
             }
-          ]
+          ],
+          isError: true
         };
-      } catch (error) {
-        throw new Error(`Tool ${name} failed: ${error.message}`);
       }
     });
   }
 
-  // Real communication with Figma plugin
-  async callFigmaPlugin(functionName, args) {
-    console.error(`[MCP Bridge] Calling ${functionName} with args:`, JSON.stringify(args, null, 2));
+  async handleHtmlImport(args) {
+    const { html, name = 'MCP HTML Import' } = args;
     
-    // Write request to shared file
-    const request = {
-      type: 'mcp-request',
-      function: functionName,
-      arguments: args,
-      requestId: Date.now().toString()
-    };
+    console.log(`[MCP] Processing HTML import: ${name}`);
+    console.log(`[MCP] HTML length: ${html.length} characters`);
 
-    if (!this.writeToSharedFile(request)) {
-      return {
-        success: false,
-        error: 'Failed to write request to shared file'
+    try {
+      // Validate HTML
+      if (!html || typeof html !== 'string') {
+        throw new Error('Invalid HTML content provided');
+      }
+
+      // Prepare data for SSE broadcast
+      const mcpData = {
+        type: 'mcp-request',
+        function: 'mcp_html_to_design_import-html',
+        arguments: {
+          html: html,
+          name: name
+        },
+        requestId: `mcp-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        source: 'mcp-bridge'
       };
-    }
 
-    console.error(`[MCP Bridge] Request written to ${this.sharedDataPath}`);
-    console.error(`[MCP Bridge] Please ensure Figma plugin is open and monitoring for MCP requests`);
+      // Broadcast to SSE clients
+      const broadcastSuccess = this.broadcastToSSEClients(mcpData);
+      
+      // Also write to shared file for backward compatibility
+      this.writeToSharedFile(mcpData);
 
-    // For now, return immediate response with instructions
-    // In a full implementation, this would wait for the plugin to process and respond
-    switch (functionName) {
-      case 'mcp_html_to_design_import-html':
-        return {
-          success: true,
-          message: `MCP request sent to Figma plugin`,
-          instruction: 'The HTML has been sent to the Figma plugin. If the plugin is open, it should automatically process this request.',
-          htmlPreview: args.html.substring(0, 200) + (args.html.length > 200 ? '...' : ''),
-          requestId: request.requestId,
-          sharedFile: this.sharedDataPath
-        };
-        
-      case 'mcp_html_to_design_import-url':
-        return {
-          success: true,
-          message: `URL import request sent to Figma plugin`,
-          instruction: 'The URL import request has been sent to the Figma plugin.',
-          url: args.url,
-          viewport: args.viewport || 1200,
-          theme: args.theme || 'default',
-          requestId: request.requestId,
-          sharedFile: this.sharedDataPath
-        };
-        
-      case 'mcp_figma_get_status':
-        return {
-          success: true,
-          status: 'bridge-active',
-          message: 'MCP Bridge is running and communicating with Figma plugin via shared file',
-          plugin: {
-            name: 'HTML to Figma Bridge',
-            version: '1.0.0',
-            status: 'bridge-mode',
-            capabilities: ['html-import', 'url-import', 'css-parsing', 'grid-layout']
-          },
-          communication: {
-            method: 'shared-file',
-            path: this.sharedDataPath,
-            status: 'active'
-          },
-          instructions: [
-            '1. Ensure Figma is open with the HTML-to-Figma plugin loaded',
-            '2. The plugin monitors the shared file for MCP requests',
-            '3. Requests are processed automatically when detected'
-          ]
-        };
-        
-      default:
-        throw new Error(`Unknown function: ${functionName}`);
+      console.log(`[MCP] HTML import processed successfully`);
+      console.log(`[MCP] SSE broadcast: ${broadcastSuccess ? 'Success' : 'No active connections'}`);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `HTML import "${name}" processed successfully.\n` +
+                  `- Content length: ${html.length} characters\n` +
+                  `- SSE broadcast: ${broadcastSuccess ? 'Sent to active connections' : 'No active connections'}\n` +
+                  `- Fallback file: Updated\n` +
+                  `- Request ID: ${mcpData.requestId}`
+          }
+        ]
+      };
+
+    } catch (error) {
+      console.error('[MCP] Error in HTML import:', error);
+      throw error;
     }
   }
 
-  async run() {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error('Figma MCP Bridge running on stdio');
-    console.error(`Shared communication file: ${this.sharedDataPath}`);
+  // ===============================================
+  // SSE SERVER SETUP
+  // ===============================================
+
+  setupSSEServer() {
+    this.httpServer = http.createServer((req, res) => {
+      const parsedUrl = url.parse(req.url, true);
+
+      // Handle CORS preflight
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        });
+        res.end();
+        return;
+      }
+
+      // SSE Endpoint
+      if (parsedUrl.pathname === '/mcp-stream') {
+        this.handleSSEConnection(req, res);
+        return;
+      }
+
+      // Status endpoint
+      if (parsedUrl.pathname === '/mcp-status') {
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          status: 'running',
+          activeConnections: this.sseConnections.size,
+          sseEndpoint: `http://localhost:${SSE_PORT}/mcp-stream`,
+          version: '2.0.0-sse',
+          timestamp: new Date().toISOString()
+        }));
+        return;
+      }
+
+      // Test endpoint for manual testing
+      if (parsedUrl.pathname === '/test-broadcast') {
+        const testData = {
+          type: 'test-message',
+          message: 'Test broadcast from MCP Bridge',
+          timestamp: new Date().toISOString()
+        };
+        
+        const success = this.broadcastToSSEClients(testData);
+        
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          success: success,
+          activeConnections: this.sseConnections.size,
+          message: success ? 'Test broadcast sent' : 'No active connections'
+        }));
+        return;
+      }
+
+      // 404 for other endpoints
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    });
+
+    // Start HTTP server
+    this.httpServer.listen(SSE_PORT, () => {
+      console.log(`[SSE] Server running on http://localhost:${SSE_PORT}`);
+      console.log(`[SSE] Stream endpoint: /mcp-stream`);
+      console.log(`[SSE] Status endpoint: /mcp-status`);
+      console.log(`[SSE] Test endpoint: /test-broadcast`);
+    });
+
+    // Handle server errors
+    this.httpServer.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`[SSE] Port ${SSE_PORT} is already in use`);
+        console.error(`[SSE] Please close other applications using this port`);
+        process.exit(1);
+      } else {
+        console.error(`[SSE] Server error:`, error);
+      }
+    });
+  }
+
+  handleSSEConnection(req, res) {
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Add connection to active connections
+    this.sseConnections.add(res);
+    console.log(`[SSE] New connection established. Active: ${this.sseConnections.size}`);
+
+    // Send initial connection confirmation
+    res.write(`data: ${JSON.stringify({
+      type: 'connection-established',
+      message: 'SSE connection established',
+      timestamp: new Date().toISOString(),
+      activeConnections: this.sseConnections.size
+    })}\n\n`);
+
+    // Setup heartbeat to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      try {
+        res.write(`: heartbeat ${Date.now()}\n\n`);
+      } catch (error) {
+        // Connection closed, cleanup will be handled by 'close' event
+        clearInterval(heartbeatInterval);
+      }
+    }, 30000); // Every 30 seconds
+
+    // Handle connection close
+    req.on('close', () => {
+      clearInterval(heartbeatInterval);
+      this.sseConnections.delete(res);
+      console.log(`[SSE] Connection closed. Active: ${this.sseConnections.size}`);
+    });
+
+    req.on('error', (error) => {
+      console.error('[SSE] Connection error:', error);
+      clearInterval(heartbeatInterval);
+      this.sseConnections.delete(res);
+    });
+  }
+
+  // ===============================================
+  // SSE BROADCASTING
+  // ===============================================
+
+  broadcastToSSEClients(data) {
+    if (this.sseConnections.size === 0) {
+      console.log('[SSE] No active connections to broadcast to');
+      return false;
+    }
+
+    const eventData = `data: ${JSON.stringify(data)}\n\n`;
+    let successCount = 0;
+    let failureCount = 0;
+
+    this.sseConnections.forEach(client => {
+      try {
+        client.write(eventData);
+        successCount++;
+      } catch (error) {
+        console.error('[SSE] Failed to send to client:', error);
+        this.sseConnections.delete(client);
+        failureCount++;
+      }
+    });
+
+    console.log(`[SSE] Broadcast complete: ${successCount} success, ${failureCount} failed`);
+    return successCount > 0;
+  }
+
+  // ===============================================
+  // FALLBACK FILE SYSTEM (Backward Compatibility)
+  // ===============================================
+
+  writeToSharedFile(data) {
+    try {
+      fs.writeFileSync(this.sharedDataPath, JSON.stringify(data, null, 2));
+      console.log('[File] Shared data file updated for backward compatibility');
+    } catch (error) {
+      console.error('[File] Error writing shared data file:', error);
+    }
+  }
+
+  // ===============================================
+  // SERVER LIFECYCLE
+  // ===============================================
+
+  async start() {
+    try {
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
+      console.log('[MCP] Server started successfully');
+      console.log('[MCP] Ready to handle tool requests');
+      } catch (error) {
+      console.error('[MCP] Failed to start server:', error);
+      process.exit(1);
+    }
+  }
+
+  shutdown() {
+    console.log('[MCP-SSE] Shutting down...');
+    
+    // Close all SSE connections
+    this.sseConnections.forEach(client => {
+      try {
+        client.end();
+      } catch (error) {
+        // Ignore errors when closing connections
+      }
+    });
+    this.sseConnections.clear();
+
+    // Close HTTP server
+    if (this.httpServer) {
+      this.httpServer.close();
+    }
+
+    // Close MCP server
+    if (this.server) {
+      // MCP server doesn't have a direct close method, but the transport will handle cleanup
+    }
+
+    console.log('[MCP-SSE] Shutdown complete');
   }
 }
 
-// Start the server
-const server = new FigmaMCPServer();
-server.run().catch(console.error); 
+// ===============================================
+// MAIN EXECUTION
+// ===============================================
+
+// Create and start the bridge
+const bridge = new FigmaMCPBridge();
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n[MCP-SSE] Received SIGINT, shutting down gracefully...');
+  bridge.shutdown();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n[MCP-SSE] Received SIGTERM, shutting down gracefully...');
+  bridge.shutdown();
+  process.exit(0);
+});
+
+// Start the bridge
+bridge.start().catch(error => {
+  console.error('[MCP-SSE] Fatal error:', error);
+  process.exit(1);
+});
+
+console.log('[MCP-SSE] Bridge initialization complete'); 

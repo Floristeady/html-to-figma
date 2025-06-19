@@ -14,17 +14,17 @@ const html = `<html>
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #FFFFFF;
       color: #1A1A1A;
-      padding: 20px;
+      padding: 16px;
       line-height: 1.4;
-      height: 360px;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto;
     }
     
     .header {
       text-align: left;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
     
     .subtitle {
@@ -37,7 +37,7 @@ const html = `<html>
     .tab-container {
       display: flex;
       gap: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     
     .tab {
@@ -70,7 +70,7 @@ const html = `<html>
       flex: 1;
       display: none;
       min-height: 0;
-      overflow: hidden;
+      overflow-y: auto;
     }
     
     .tab-content.active {
@@ -91,8 +91,8 @@ const html = `<html>
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
-      padding: 14px;
+      margin-bottom: 12px;
+      padding: 12px;
       background: #F8F8F8;
       border-radius: 6px;
     }
@@ -149,47 +149,14 @@ const html = `<html>
       transform: translateX(24px);
     }
     
-    /* Status Messages */
+        /* Legacy Status Messages - Hidden to avoid conflicts */
     .status-messages {
-      padding: 12px;
-      background: #FFFFFF;
-      border: 2px solid #E6E6E6;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #333;
-      min-height: 40px;
-      margin-bottom: 12px;
-      display: none;
-      overflow-y: auto;
-    }
-    
-    .status-messages.visible {
-      display: block;
-    }
-    
-    .status-messages.success {
-      border-color: #28a745;
-      color: #155724;
-    }
-    
-    .status-messages.error {
-      border-color: #dc3545;
-      color: #721c24;
-    }
-    
-    .status-messages.info {
-      border-color: #9747FF;
-      color: #5a2d91;
-    }
-    
-    .status-messages.test {
-      border-color: #CCCCCC;
-      color: #666666;
+      display: none !important;
     }
     
     /* Paste HTML Tab Styles */
     .input-container {
-      margin-bottom: 20px;
+      margin-bottom: 12px;
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -210,6 +177,7 @@ const html = `<html>
       outline: none;
       transition: border-color 0.2s ease;
       overflow-y: auto;
+      margin-bottom: 4px;
     }
     
     .textarea:focus {
@@ -245,74 +213,331 @@ const html = `<html>
     }
 
     .test-button {
-      background: #353030;
-      margin-bottom: 16px;
+      background: #6B7280;
+      margin-top: auto;
       height: 32px;
       font-size: 13px;
     }
 
     .test-button:hover {
-      background: #2a2626;
+      background: #4B5563;
     }
 
     .description-text {
       font-size: 14px;
       color: #1A1A1A;
       opacity: 0.7;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       text-align: left;
+    }
+
+    .description-text small {
+      display: block;
+      margin-top: 8px;
+      color: #6c757d;
+      font-size: 12px;
+      line-height: 1.4;
+      opacity: 0.8;
+    }
+
+    /* CONNECTION STATUS STYLES */
+    .connection-status {
+      margin: 12px 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 3px solid #dee2e6;
+      transition: all 0.3s ease;
+    }
+
+    .connection-status.connected {
+      background: #d4edda;
+      border-left-color: #28a745;
+    }
+
+    .connection-status.error {
+      background: #f8d7da;
+      border-left-color: #dc3545;
+    }
+
+    .connection-status.warning {
+      background: #fff3cd;
+      border-left-color: #ffc107;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      margin: 4px 0;
+    }
+
+    .status-icon {
+      margin-right: 8px;
+      font-size: 12px;
+      min-width: 16px;
+    }
+
+    .status-text {
+      font-weight: 500;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .info-row {
+      margin-top: 6px;
+    }
+
+    .status-detail {
+      font-size: 11px;
+      color: #6c757d;
+      font-style: italic;
+    }
+
+    /* ACTION BUTTONS */
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .button.secondary {
+      background: #6c757d;
+      color: white;
+      font-size: 12px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      width: auto;
+      height: auto;
+    }
+
+    .button.secondary:hover {
+      background: #5a6268;
+    }
+
+    .button.tertiary {
+      background: transparent;
+      color: #6c757d;
+      border: 1px solid #6c757d;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: auto;
+      height: auto;
+    }
+
+    .button.tertiary:hover {
+      background: #6c757d;
+      color: white;
+    }
+
+    /* ADVANCED PANEL STYLES */
+    .advanced-panel {
+      margin-top: 12px;
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .panel-header {
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .setting-group {
+      margin-bottom: 15px;
+    }
+
+    .setting-label {
+      display: block;
+      font-weight: 500;
+      font-size: 12px;
+      color: #495057;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 6px 0;
+      font-size: 13px;
+    }
+
+    .setting-input, .setting-select {
+      width: 80px;
+      padding: 4px 6px;
+      border: 1px solid #ced4da;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    .checkbox-row label {
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+      font-size: 12px;
+    }
+
+    .info-row code {
+      background: #f8f9fa;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: #e83e8c;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #dee2e6;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="subtitle">Select an option to convert to Figma.</div>
+    <div class="subtitle">Convert HTML to Figma designs instantly</div>
   </div>
   
   <!-- Tabs -->
   <div class="tab-container">
-    <button class="tab active" data-tab="mcp">MCP Cursor</button>
-    <button class="tab" data-tab="paste">Paste HTML to Figma</button>
+    <button class="tab active" data-tab="mcp">MCP Bridge</button>
+    <button class="tab" data-tab="paste">Paste HTML</button>
   </div>
   
-  <!-- MCP Cursor Tab Content -->
+  <!-- MCP Bridge Tab Content -->
   <div class="tab-content active" id="mcp-tab">
-    <div class="description-text">Connect with Cursor and send HTML to Figma</div>
+    <div class="description-text">
+      Connect with Cursor AI tools to send HTML directly to Figma.<br>
+      <small>1. Enable MCP Bridge below 2. Use Cursor MCP tools 3. See instant results in Figma</small>
+    </div>
     
+    <!-- MAIN CONTROL -->
     <div class="switch-container">
-      <span class="switch-label">Start MCP Monitoring</span>
+      <span class="switch-label">Enable MCP Bridge</span>
       <label class="switch">
         <input type="checkbox" id="mcp-switch">
         <span class="slider"></span>
       </label>
     </div>
     
-    <div class="status-messages" id="status-messages"></div>
+    <!-- CONNECTION STATUS -->
+    <div class="connection-status" id="connection-status">
+      <div class="status-row">
+        <span class="status-icon" id="sse-indicator">🔴</span>
+        <span class="status-text" id="sse-status-text">SSE Disconnected</span>
+      </div>
+      <div class="status-row">
+        <span class="status-icon" id="mcp-indicator">⚪</span>
+        <span class="status-text" id="mcp-status-text">MCP Inactive</span>
+      </div>
+      <div class="status-row info-row">
+        <span class="status-detail" id="connection-details">Ready to connect</span>
+      </div>
+    </div>
     
-    <button id="mcp-test-btn" class="button test-button">Test MCP Connection</button>
+    <!-- ACTIONS -->
+    <div class="action-buttons">
+      <button id="test-broadcast-btn" class="button secondary">📡 Test Broadcast</button>
+      <button id="advanced-btn" class="button secondary">🔧 Advanced</button>
+    </div>
     
-    <button id="direct-test-btn" class="button test-button" style="background:#28a745;margin-top:8px;">Direct MCP Test</button>
-    
-    <div style="
-      margin-top: 10px;
-      padding: 8px;
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #6c757d;
-      max-height: 60px;
-      overflow-y: auto;
-    ">
-      <strong>Test Instructions:</strong><br>
-      1. Open console (F12) → Copy simple-test.js<br>
-      2. Enable monitoring → Watch it work!
+    <!-- ADVANCED SETTINGS PANEL (Hidden by default) -->
+    <div class="advanced-panel" id="advanced-panel" style="display: none;">
+      <div class="panel-header">Advanced Settings</div>
+      
+      <div class="setting-group">
+        <label class="setting-label">Server Configuration</label>
+        <div class="setting-row">
+          <span>SSE Port:</span>
+          <input type="number" id="sse-port" value="3003" class="setting-input">
+        </div>
+        <div class="setting-row">
+          <span>Reconnect Attempts:</span>
+          <input type="number" id="reconnect-attempts" value="5" class="setting-input">
+        </div>
+        <div class="setting-row">
+          <span>Heartbeat Interval:</span>
+          <select id="heartbeat-interval" class="setting-select">
+            <option value="30">30 seconds</option>
+            <option value="60">1 minute</option>
+            <option value="120">2 minutes</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="setting-group">
+        <label class="setting-label">Debug Options</label>
+        <div class="checkbox-row">
+          <input type="checkbox" id="detailed-logs" checked>
+          <label for="detailed-logs">Show detailed logs</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="connection-metrics" checked>
+          <label for="connection-metrics">Monitor connection metrics</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="fallback-mode">
+          <label for="fallback-mode">Enable fallback mode</label>
+        </div>
+      </div>
+      
+      <div class="setting-group">
+        <label class="setting-label">Connection Info</label>
+        <div class="info-row">
+          <span>Endpoint:</span>
+          <code id="endpoint-info">localhost:3003/mcp-stream</code>
+        </div>
+        <div class="info-row">
+          <span>Uptime:</span>
+          <span id="uptime-info">--:--:--</span>
+        </div>
+        <div class="info-row">
+          <span>Messages:</span>
+          <span id="messages-count">0 sent</span>
+        </div>
+      </div>
+      
+      <div class="panel-actions">
+        <button id="reset-defaults-btn" class="button tertiary">Reset to Defaults</button>
+        <button id="save-settings-btn" class="button">Save Settings</button>
+      </div>
     </div>
   </div>
   
   <!-- Paste HTML Tab Content -->
   <div class="tab-content" id="paste-tab">
-    <div class="description-text">Copy your HTML code, paste it here, and click 'Convert to Figma'</div>
+    <div class="description-text">Paste your HTML code and convert it to Figma elements</div>
     
     <div class="input-container">
       <textarea 
@@ -326,55 +551,21 @@ const html = `<html>
   </div>
 
 <script>
-// Lista de propiedades CSS problemáticas que Figma no soporta
+// Essential CSS properties that Figma doesn't support
 var UNSUPPORTED_CSS_PROPERTIES = [
-  'animation',
-  'animation-name',
-  'animation-duration', 
-  'animation-timing-function',
-  'animation-delay',
-  'animation-iteration-count',
-  'animation-direction',
-  'animation-fill-mode',
-  'animation-play-state',
-  'transition',
-  'transition-property',
-  'transition-duration',
-  'transition-timing-function', 
-  'transition-delay',
-  'transform'
-  // Nota: 'content' ya no está aquí - ahora lo soportamos parcialmente
+  'animation', 'animation-name', 'animation-duration', 'animation-timing-function',
+  'animation-delay', 'animation-iteration-count', 'animation-direction',
+  'animation-fill-mode', 'animation-play-state', 'transition', 'transition-property',
+  'transition-duration', 'transition-timing-function', 'transition-delay', 'transform'
 ];
 
-// Content soportado para pseudoelementos ::before/::after
+// Supported content for pseudo-elements
 var SUPPORTED_CONTENT = {
-  '"📚"': '📚',
-  '"💬"': '💬', 
-  '"🏛️"': '🏛️',
-  '"⚽"': '⚽',
-  '"🏠"': '🏠',
-  '"👥"': '👥',
-  '"📈"': '📈',
-  '"📖"': '📖',
-  '"★"': '★',
-  '"•"': '•',
-  '"→"': '→',
-  '"←"': '←',
-  '"▼"': '▼',
-  '"▲"': '▲',
-  '"✓"': '✓',
-  '"✗"': '✗',
-  '"💡"': '💡',
-  '"🎯"': '🎯',
-  '"📅"': '📅',
-  '"🕐"': '🕐',
-  '"⏱️"': '⏱️',
-  '"📊"': '📊',
-  '"📝"': '📝',
-  '"🏟️"': '🏟️',
-  '"📍"': '📍',
-  '"🏢"': '🏢',
-  '""': '' // Content vacío
+  '"📚"': '📚', '"💬"': '💬', '"🏛️"': '🏛️', '"⚽"': '⚽', '"🏠"': '🏠', '"👥"': '👥',
+  '"📈"': '📈', '"📖"': '📖', '"★"': '★', '"•"': '•', '"→"': '→', '"←"': '←',
+  '"▼"': '▼', '"▲"': '▲', '"✓"': '✓', '"✗"': '✗', '"💡"': '💡', '"🎯"': '🎯',
+  '"📅"': '📅', '"🕐"': '🕐', '"⏱️"': '⏱️', '"📊"': '📊', '"📝"': '📝',
+  '"🏟️"': '🏟️', '"📍"': '📍', '"🏢"': '🏢', '""': ''
 };
 
 // Tab functionality
@@ -400,26 +591,40 @@ document.querySelectorAll('.tab').forEach(function(tab) {
 var mcpMonitoring = false;
 document.getElementById('mcp-switch').addEventListener('change', function() {
   mcpMonitoring = this.checked;
-  var statusMessages = document.getElementById('status-messages');
-  var testBtn = document.getElementById('mcp-test-btn');
   
   if (mcpMonitoring) {
-    updateStatusMessage('MCP Monitoring started. Waiting for connections...', 'test');
-    // Hide test button when monitoring is active
-    if (testBtn) {
-      testBtn.style.display = 'none';
-    }
+    updateConnectionStatus('connecting');
+    updateSSEStatus('🟡 SSE Connecting...', 'connecting');
+    updateMCPStatus('🔄 MCP Starting', 'connecting');
+    updateConnectionDetails('Establishing connection...');
+    
+    // Start SSE connection
+    parent.postMessage({
+      pluginMessage: {
+        type: 'start-sse'
+      }
+    }, '*');
+    
+    // Start MCP monitoring
     parent.postMessage({
       pluginMessage: {
         type: 'start-mcp-monitoring'
       }
     }, '*');
   } else {
-    statusMessages.classList.remove('visible', 'success', 'error', 'info', 'test');
-    // Show test button when monitoring is stopped
-    if (testBtn) {
-      testBtn.style.display = 'block';
-    }
+    updateConnectionStatus('disconnected');
+    updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
+    updateMCPStatus('⚪ MCP Inactive', 'disconnected');
+    updateConnectionDetails('Ready to connect');
+    
+    // Stop SSE connection
+    parent.postMessage({
+      pluginMessage: {
+        type: 'stop-sse'
+      }
+    }, '*');
+    
+    // Stop MCP monitoring
     parent.postMessage({
       pluginMessage: {
         type: 'stop-mcp-monitoring'
@@ -428,22 +633,136 @@ document.getElementById('mcp-switch').addEventListener('change', function() {
   }
 });
 
-// Función para filtrar propiedades CSS no soportadas
+// Advanced settings panel toggle
+document.getElementById('advanced-btn').addEventListener('click', function() {
+  var panel = document.getElementById('advanced-panel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    this.textContent = '🔼 Hide Advanced';
+  } else {
+    panel.style.display = 'none';
+    this.textContent = '🔧 Advanced';
+  }
+});
+
+// Test broadcast button
+document.getElementById('test-broadcast-btn').addEventListener('click', function() {
+  updateConnectionDetails('Sending test broadcast...');
+  
+  // Send test request via SSE
+  parent.postMessage({
+    pluginMessage: {
+      type: 'test-broadcast'
+    }
+  }, '*');
+  
+  setTimeout(function() {
+    updateConnectionDetails('Test broadcast sent');
+  }, 1000);
+});
+
+// Settings save button
+document.getElementById('save-settings-btn').addEventListener('click', function() {
+  var port = document.getElementById('sse-port').value;
+  var reconnectAttempts = document.getElementById('reconnect-attempts').value;
+  var heartbeatInterval = document.getElementById('heartbeat-interval').value;
+  
+  // Save settings (could be stored in localStorage or sent to plugin)
+  localStorage.setItem('sse-settings', JSON.stringify({
+    port: port,
+    reconnectAttempts: reconnectAttempts,
+    heartbeatInterval: heartbeatInterval
+  }));
+  
+  updateConnectionDetails('Settings saved');
+});
+
+// Reset defaults button
+document.getElementById('reset-defaults-btn').addEventListener('click', function() {
+  document.getElementById('sse-port').value = '3001';
+  document.getElementById('reconnect-attempts').value = '5';
+  document.getElementById('heartbeat-interval').value = '30';
+  document.getElementById('detailed-logs').checked = true;
+  document.getElementById('connection-metrics').checked = true;
+  document.getElementById('fallback-mode').checked = false;
+  
+  updateConnectionDetails('Reset to defaults');
+});
+
+// Helper functions for new UI elements
+function updateConnectionStatus(status) {
+  var statusContainer = document.getElementById('connection-status');
+  statusContainer.className = 'connection-status ' + status;
+}
+
+function updateSSEStatus(text, status) {
+  var indicator = document.getElementById('sse-indicator');
+  var statusText = document.getElementById('sse-status-text');
+  
+  if (statusText) {
+    statusText.textContent = text;
+  }
+  
+  if (indicator) {
+    switch(status) {
+      case 'connected':
+        indicator.textContent = '🟢';
+        break;
+      case 'connecting':
+        indicator.textContent = '🟡';
+        break;
+      case 'error':
+        indicator.textContent = '❌';
+        break;
+      default:
+        indicator.textContent = '🔴';
+    }
+  }
+}
+
+function updateMCPStatus(text, status) {
+  var indicator = document.getElementById('mcp-indicator');
+  var statusText = document.getElementById('mcp-status-text');
+  
+  if (statusText) {
+    statusText.textContent = text;
+  }
+  
+  if (indicator) {
+    switch(status) {
+      case 'connected':
+        indicator.textContent = '✅';
+        break;
+      case 'connecting':
+        indicator.textContent = '🔄';
+        break;
+      case 'error':
+        indicator.textContent = '🔴';
+        break;
+      default:
+        indicator.textContent = '⚪';
+    }
+  }
+}
+
+function updateConnectionDetails(text) {
+  var details = document.getElementById('connection-details');
+  if (details) {
+    details.textContent = text;
+  }
+}
+
+// CSS filtering and parsing functions
 function filterUnsupportedCSS(styles) {
   var filteredStyles = {};
   for (var prop in styles) {
     if (styles.hasOwnProperty(prop)) {
-      // Manejar 'content' de manera especial
       if (prop === 'content') {
         var contentValue = styles[prop];
         if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
-          // Solo incluir content si está en nuestra lista soportada
           filteredStyles[prop] = styles[prop];
         }
-        // Si no está soportado, se omite automáticamente
-      }
-      // Omitir otras propiedades problemáticas
-      else if (UNSUPPORTED_CSS_PROPERTIES.indexOf(prop) === -1) {
+      } else if (UNSUPPORTED_CSS_PROPERTIES.indexOf(prop) === -1) {
         filteredStyles[prop] = styles[prop];
       }
     }
@@ -466,59 +785,7 @@ function parseInlineStyles(styleStr) {
       }
     }
   }
-  // Filtrar propiedades no soportadas antes de retornar
   return filterUnsupportedCSS(styles);
-}
-
-// Función para verificar si un selector CSS es problemático
-function isUnsupportedSelector(selector) {
-  // Omitir @keyframes, @media, etc.
-  if (selector.charAt(0) === '@') {
-    return true;
-  }
-  
-  // Omitir pseudo-selectores problemáticos (excepto ::before/::after que ahora soportamos)
-  if (selector.includes(':hover') || 
-      selector.includes(':active') || 
-      selector.includes(':focus') ||
-      selector.includes(':nth-child') ||
-      selector.includes(':first-child') ||
-      selector.includes(':last-child')) {
-    return true;
-  }
-  
-  // Permitir ::before y ::after (ahora los soportamos parcialmente)
-  return false;
-}
-
-// Función mejorada para manejar selectores CSS complejos
-function parseComplexSelector(selector) {
-  // Limpiar espacios extra
-  selector = selector.replace(/\\s+/g, ' ').trim();
-  
-  // Manejar múltiples selectores separados por coma
-  if (selector.includes(',')) {
-    return selector.split(',').map(s => s.trim());
-  }
-  
-  return [selector];
-}
-
-// Función mejorada para validar selectores CSS
-function isValidCSSSelector(selector) {
-  // Selectores básicos válidos
-  var validPatterns = [
-    /^[a-zA-Z][a-zA-Z0-9-]*$/,           // elementos: h1, div, span
-    /^\\.[a-zA-Z][a-zA-Z0-9-_]*$/,        // clases: .class
-    /^#[a-zA-Z][a-zA-Z0-9-_]*$/,         // IDs: #id
-    /^\\.[\\w-]+(\\s+\\.[\\w-]+)*$/,       // clases anidadas: .parent .child
-    /^\\.[\\w-]+(\\s+[a-zA-Z][\\w-]*)*$/, // clase + elemento: .parent h2
-    /^[a-zA-Z][\\w-]*(\\s+\\.[\\w-]+)*$/, // elemento + clase: div .child
-    /^\\.[a-zA-Z][a-zA-Z0-9-_]*::(before|after)$/, // pseudoelementos de clase: .class::before
-    /^[a-zA-Z][a-zA-Z0-9-]*::(before|after)$/,     // pseudoelementos de elemento: div::before
-  ];
-  
-  return validPatterns.some(pattern => pattern.test(selector));
 }
 
 function extractCSS(htmlStr) {
@@ -532,12 +799,6 @@ function extractCSS(htmlStr) {
     // Remove CSS comments to prevent parsing corruption
     cssText = cssText.replace(/\\/\\*[\\s\\S]*?\\*\\//g, '');
     
-    // Remover @keyframes completos (incluyendo contenido anidado)
-    cssText = cssText.replace(/@keyframes[^{]*{[^{}]*({[^}]*})*[^}]*}/g, '');
-    
-    // Remover @media queries completas
-    cssText = cssText.replace(/@media[^{]*{[\\s\\S]*?}\\s*}/g, '');
-    
     var rules = cssText.split('}');
     
     for (var i = 0; i < rules.length; i++) {
@@ -548,26 +809,18 @@ function extractCSS(htmlStr) {
           var selector = rule.substring(0, braceIdx).trim();
           var declarations = rule.substring(braceIdx + 1).trim();
           
-          if (selector && declarations && !isUnsupportedSelector(selector)) {
-            // Procesar selectores múltiples (separados por coma)
-            var selectors = parseComplexSelector(selector);
-            
-            for (var j = 0; j < selectors.length; j++) {
-              var singleSelector = selectors[j];
-              
-              if (isValidCSSSelector(singleSelector)) {
-                // Almacenar la regla CSS procesada
-                cssRules[singleSelector] = parseInlineStyles(declarations);
-                
-                // También manejar variaciones del selector
-                if (singleSelector.includes(' ')) {
-                  // Para selectores anidados, también guardar versión normalizada
-                  var normalizedSelector = singleSelector.replace(/\\s+/g, ' ');
-                  if (normalizedSelector !== singleSelector) {
-                    cssRules[normalizedSelector] = parseInlineStyles(declarations);
-                  }
-                }
-              }
+          if (selector && declarations) {
+            // Handle class selectors (simple and nested)
+            if (selector.charAt(0) === '.') {
+              cssRules[selector] = parseInlineStyles(declarations);
+            }
+            // Handle nested selectors like ".card .badge" or ".form-section h2"
+            else if (selector.includes('.') && selector.includes(' ')) {
+              cssRules[selector] = parseInlineStyles(declarations);
+            }
+            // Handle element selectors like "th" or "td"
+            else if (selector.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
+              cssRules[selector] = parseInlineStyles(declarations);
             }
           }
         }
@@ -578,217 +831,59 @@ function extractCSS(htmlStr) {
   return cssRules;
 }
 
+// HTML parsing function (restored from backup with full CSS support)
 function simpleParseHTML(htmlStr) {
   var parser = new DOMParser();
   var doc = parser.parseFromString(htmlStr, 'text/html');
   var body = doc.body || doc.documentElement;
   
-
-  
   var cssRules = extractCSS(htmlStr);
-
-  // Función para extraer content de pseudoelementos
-  function extractPseudoContent(element, cssRules) {
-    var className = element.getAttribute('class');
-    var tagName = element.tagName.toLowerCase();
-    var beforeContent = '';
-    var afterContent = '';
-    
-    if (className) {
-      var classes = className.split(' ').filter(c => c.trim());
-      
-      // Buscar ::before content
-      for (var i = 0; i < classes.length; i++) {
-        var beforeSelector = '.' + classes[i] + '::before';
-        if (cssRules[beforeSelector] && cssRules[beforeSelector].content) {
-          var contentValue = cssRules[beforeSelector].content;
-          if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
-            beforeContent = SUPPORTED_CONTENT[contentValue];
-            break;
-          }
-        }
-      }
-      
-      // Buscar ::after content  
-      for (var i = 0; i < classes.length; i++) {
-        var afterSelector = '.' + classes[i] + '::after';
-        if (cssRules[afterSelector] && cssRules[afterSelector].content) {
-          var contentValue = cssRules[afterSelector].content;
-          if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
-            afterContent = SUPPORTED_CONTENT[contentValue];
-            break;
-          }
-        }
-      }
-    }
-    
-    // También buscar por elemento
-    var beforeElementSelector = tagName + '::before';
-    var afterElementSelector = tagName + '::after';
-    
-    if (cssRules[beforeElementSelector] && cssRules[beforeElementSelector].content && !beforeContent) {
-      var contentValue = cssRules[beforeElementSelector].content;
-      if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
-        beforeContent = SUPPORTED_CONTENT[contentValue];
-      }
-    }
-    
-    if (cssRules[afterElementSelector] && cssRules[afterElementSelector].content && !afterContent) {
-      var contentValue = cssRules[afterElementSelector].content;
-      if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
-        afterContent = SUPPORTED_CONTENT[contentValue];
-      }
-    }
-    
-    return { before: beforeContent, after: afterContent };
-  }
-
-  // Función mejorada para obtener todos los selectores que aplican a un elemento
-  function getAllMatchingSelectors(element) {
-    var matchingSelectors = [];
-    var className = element.getAttribute('class');
-    var tagName = element.tagName.toLowerCase();
-    var elementId = element.getAttribute('id');
-    
-    // Construir jerarquía de ancestors
-    var ancestors = [];
-    var currentElement = element.parentElement;
-    while (currentElement && currentElement.tagName !== 'BODY') {
-      var ancestorClasses = currentElement.getAttribute('class');
-      var ancestorTag = currentElement.tagName.toLowerCase();
-      var ancestorId = currentElement.getAttribute('id');
-      
-      ancestors.push({
-        classes: ancestorClasses ? ancestorClasses.split(' ').filter(c => c.trim()) : [],
-        tag: ancestorTag,
-        id: ancestorId
-      });
-      currentElement = currentElement.parentElement;
-    }
-    
-    // Verificar todos los selectores CSS disponibles
-    for (var selector in cssRules) {
-      if (cssRules.hasOwnProperty(selector)) {
-        if (selectorMatches(selector, element, className, tagName, elementId, ancestors)) {
-          matchingSelectors.push({
-            selector: selector,
-            specificity: calculateSpecificity(selector),
-            styles: cssRules[selector]
-          });
-        }
-      }
-    }
-    
-    // Ordenar por especificidad (menor a mayor)
-    matchingSelectors.sort(function(a, b) {
-      return a.specificity - b.specificity;
-    });
-    
-    return matchingSelectors;
-  }
-  
-  // Función para verificar si un selector CSS coincide con un elemento
-  function selectorMatches(selector, element, className, tagName, elementId, ancestors) {
-    // Selector de elemento simple
-    if (selector === tagName) {
-      return true;
-    }
-    
-    // Selector de clase simple
-    if (selector.charAt(0) === '.' && className) {
-      var selectorClass = selector.substring(1);
-      var classes = className.split(' ').filter(c => c.trim());
-      return classes.includes(selectorClass);
-    }
-    
-    // Selector de ID
-    if (selector.charAt(0) === '#' && elementId) {
-      return selector.substring(1) === elementId;
-    }
-    
-    // Selectores anidados (descendant)
-    if (selector.includes(' ')) {
-      return matchesNestedSelector(selector, element, className, tagName, elementId, ancestors);
-    }
-    
-    // Selectores múltiples con clases combinadas (.class1.class2)
-    if (selector.includes('.') && !selector.includes(' ') && selector.indexOf('.') !== selector.lastIndexOf('.')) {
-      return matchesCombinedClasses(selector, className);
-    }
-    
-    return false;
-  }
-  
-  // Función para manejar selectores anidados
-  function matchesNestedSelector(selector, element, className, tagName, elementId, ancestors) {
-    var parts = selector.split(' ').filter(p => p.trim()).reverse(); // Reverse para ir desde el elemento hacia arriba
-    
-    // La primera parte debe coincidir con el elemento actual
-    if (!selectorMatches(parts[0], element, className, tagName, elementId, [])) {
-      return false;
-    }
-    
-    // Verificar las partes restantes con los ancestors
-    var ancestorIndex = 0;
-    for (var i = 1; i < parts.length; i++) {
-      var found = false;
-      while (ancestorIndex < ancestors.length) {
-        var ancestor = ancestors[ancestorIndex];
-        var ancestorClassNames = ancestor.classes.join(' ');
-        
-        if (selectorMatches(parts[i], null, ancestorClassNames, ancestor.tag, ancestor.id, [])) {
-          found = true;
-          ancestorIndex++;
-          break;
-        }
-        ancestorIndex++;
-      }
-      
-      if (!found) {
-        return false;
-      }
-    }
-    
-    return true;
-  }
-  
-  // Función para manejar clases combinadas (.class1.class2)
-  function matchesCombinedClasses(selector, className) {
-    if (!className) return false;
-    
-    var requiredClasses = selector.split('.').filter(c => c.trim());
-    var elementClasses = className.split(' ').filter(c => c.trim());
-    
-    return requiredClasses.every(function(reqClass) {
-      return elementClasses.includes(reqClass);
-    });
-  }
-  
-  // Calcular especificidad CSS básica
-  function calculateSpecificity(selector) {
-    var specificity = 0;
-    
-    // IDs = 100
-    specificity += (selector.match(/#/g) || []).length * 100;
-    
-    // Classes = 10
-    specificity += (selector.match(/\\./g) || []).length * 10;
-    
-    // Elements = 1
-    var elementMatches = selector.match(/\\b[a-z][a-z0-9]*\\b/gi) || [];
-    specificity += elementMatches.length * 1;
-    
-    return specificity;
-  }
 
   function getElementStyles(element) {
     var styles = {};
+    var className = element.getAttribute('class');
     
-    // Obtener todos los selectores que coinciden y aplicar en orden de especificidad
-    var matchingSelectors = getAllMatchingSelectors(element);
+    if (className) {
+      var classes = className.split(' ');
+  
+      for (var i = 0; i < classes.length; i++) {
+        var cls = classes[i].trim();
+        if (cls && cssRules['.' + cls]) {
+          styles = Object.assign(styles, cssRules['.' + cls]);
+        }
+      }
+      
+      // Check for combined class selectors like ".card.active"
+      var combinedSelector = '.' + classes.join('.');
+      if (cssRules[combinedSelector]) {
+        styles = Object.assign(styles, cssRules[combinedSelector]);
+      }
+    }
     
-    for (var i = 0; i < matchingSelectors.length; i++) {
-      styles = Object.assign(styles, matchingSelectors[i].styles);
+    // Check for element selectors (like "th", "td", "body")
+    var tagName = element.tagName.toLowerCase();
+    if (cssRules[tagName]) {
+      styles = Object.assign(styles, cssRules[tagName]);
+    }
+    
+    // Check for nested selectors - find parent classes
+    var parent = element.parentElement;
+    while (parent && parent.tagName !== 'BODY') {
+      var parentClass = parent.getAttribute('class');
+      if (parentClass && className) {
+        var nestedClassSelector = '.' + parentClass.split(' ')[0] + ' .' + className.split(' ')[0];
+        if (cssRules[nestedClassSelector]) {
+          styles = Object.assign(styles, cssRules[nestedClassSelector]);
+        }
+      }
+      
+      if (parentClass) {
+        var nestedElementSelector = '.' + parentClass.split(' ')[0] + ' ' + tagName;
+        if (cssRules[nestedElementSelector]) {
+          styles = Object.assign(styles, cssRules[nestedElementSelector]);
+        }
+      }
+      parent = parent.parentElement;
     }
     
     // Apply inline styles last (highest priority)
@@ -797,7 +892,7 @@ function simpleParseHTML(htmlStr) {
       var inlineStyles = parseInlineStyles(inlineStyle);
       styles = Object.assign(styles, inlineStyles);
     }
-      
+    
     return styles;
   }
 
@@ -807,9 +902,6 @@ function simpleParseHTML(htmlStr) {
       var styles = getElementStyles(node);
       var text = '';
       var children = [];
-
-      // Extraer contenido de pseudoelementos
-      var pseudoContent = extractPseudoContent(node, cssRules);
 
       for (var i = 0; i < node.childNodes.length; i++) {
         var child = node.childNodes[i];
@@ -826,24 +918,18 @@ function simpleParseHTML(htmlStr) {
         }
       }
 
-      // Agregar contenido ::before como texto inicial
-      if (pseudoContent.before) {
-        text = pseudoContent.before + (text ? ' ' + text : '');
-      }
-
-      // Agregar contenido ::after como texto final
-      if (pseudoContent.after) {
-        text = (text || '') + (text ? ' ' : '') + pseudoContent.after;
-      }
-
       return {
         type: 'element',
         tagName: tag,
         text: text.trim(),
         styles: styles,
-        attributes: {},
-        children: children,
-        pseudoContent: pseudoContent // Guardar para referencia
+        attributes: {
+          value: node.getAttribute('value'),
+          placeholder: node.getAttribute('placeholder'),
+          alt: node.getAttribute('alt'),
+          rows: node.getAttribute('rows')
+        },
+        children: children
       };
     }
     return null;
@@ -855,13 +941,17 @@ function simpleParseHTML(htmlStr) {
     if (child) result.push(child);
   }
   
-
-  
   return result;
 }
 
+// Convert to Figma button functionality
 document.getElementById('send-btn').onclick = function() {
   var htmlValue = document.getElementById('html-input').value;
+  if (!htmlValue.trim()) {
+    alert('Please paste some HTML code first.');
+    return;
+  }
+  
   var structure = simpleParseHTML(htmlValue);
   parent.postMessage({
     pluginMessage: {
@@ -871,112 +961,66 @@ document.getElementById('send-btn').onclick = function() {
   }, '*');
 };
 
-// MCP Test Button Handler
-document.getElementById('mcp-test-btn').onclick = function() {
-  var testBtn = document.getElementById('mcp-test-btn');
-  var statusMessages = document.getElementById('status-messages');
-  
-  // Hide button and show loading message
-  testBtn.style.display = 'none';
-  updateStatusMessage('Testing MCP connection...', 'test');
-  
-  parent.postMessage({
-    pluginMessage: {
-      type: 'mcp-test'
-    }
-  }, '*');
-};
+// Test Connection button functionality - REMOVED (now handled by addEventListener above)
+// The test button is now 'test-broadcast-btn' and handled in the event listeners section
 
-// Direct Test Button Handler - BYPASS CONSOLE
-document.getElementById('direct-test-btn').onclick = function() {
-  var testBtn = document.getElementById('direct-test-btn');
-  var statusMessages = document.getElementById('status-messages');
-  
-  testBtn.style.display = 'none';
-  updateStatusMessage('Direct MCP test running...', 'test');
-  
-  // Send direct test data
-  parent.postMessage({
-    pluginMessage: {
-      type: 'store-mcp-data',
-      data: {
-        timestamp: Date.now(),
-        type: 'mcp-request',
-        function: 'mcp_html_to_design_import-html',
-        arguments: {
-          html: '<div style="background:linear-gradient(45deg,#ff6b6b,#4ecdc4);padding:30px;border-radius:12px;color:white;font-family:Inter;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);"><h1>🎉 FASE 1 COMPLETADA!</h1><p>MCP Storage funcionando perfectamente!</p><p>✅ Cursor → Bridge → Monitor → Plugin → Figma</p></div>',
-          name: 'Phase 1 Success'
-        },
-        requestId: Date.now().toString()
-      }
-    }
-  }, '*');
-  
-  // Show button again after 3 seconds
-  setTimeout(function() {
-    testBtn.style.display = 'block';
-  }, 3000);
-};
-
-// Function to update status messages
-function updateStatusMessage(message, type) {
-  var statusMessages = document.getElementById('status-messages');
-  if (statusMessages) {
-    statusMessages.textContent = message;
-    statusMessages.classList.add('visible');
-    
-    // Remove previous type classes
-    statusMessages.classList.remove('success', 'error', 'info', 'test');
-    
-    // Add current type class
-    if (type) {
-      statusMessages.classList.add(type);
-    }
-    
-    // Auto-hide messages after 3 seconds for test button clicks and show button again
-    if (type === 'test' || (type === 'info' && message.includes('MCP Test:'))) {
-      setTimeout(function() {
-        if (statusMessages.textContent === message) {
-          statusMessages.classList.remove('visible', 'success', 'error', 'info', 'test');
-          // Show test button again
-          var testBtn = document.getElementById('mcp-test-btn');
-          if (testBtn) {
-            testBtn.style.display = 'block';
-          }
-        }
-      }, 3000);
-    }
+// Helper functions for new status system
+function updateConnectionDetails(text) {
+  var details = document.getElementById('connection-details');
+  if (details) {
+    details.textContent = text;
   }
 }
 
-// Listen for messages from plugin code
+function updateMCPStatus(text, status) {
+  var indicator = document.getElementById('mcp-indicator');
+  var statusText = document.getElementById('mcp-status-text');
+  
+  if (statusText) {
+    statusText.textContent = text;
+  }
+  
+  if (indicator) {
+    switch(status) {
+      case 'success':
+        indicator.textContent = '✅';
+        break;
+      case 'waiting':
+      case 'info':
+        indicator.textContent = '🔄';
+        break;
+      case 'error':
+        indicator.textContent = '🔴';
+        break;
+      default:
+        indicator.textContent = '⚪';
+    }
+  }
+    }
+    
+// Status message function - DEPRECATED - now using direct status functions
+function updateStatusMessage(message, type) {
+  // Legacy function - redirected to new system
+  updateConnectionDetails(message);
+  if (message.includes('MCP') || message.includes('connection') || message.includes('test')) {
+    updateMCPStatus(message, type);
+  }
+}
+
+// Listen for messages from the plugin
 window.addEventListener('message', function(event) {
   if (event.data.pluginMessage) {
     var msg = event.data.pluginMessage;
+    
     if (msg.type === 'mcp-test-response') {
-      updateStatusMessage('MCP: ' + msg.message, 'test');
-    } else if (msg.type === 'mcp-storage-response') {
-      // Handle storage confirmation messages
-      if (msg.success) {
-        updateStatusMessage('✅ MCP data stored successfully!', 'success');
-      } else {
-        updateStatusMessage('❌ Storage error: ' + msg.message, 'error');
-      }
-    } else if (msg.type === 'mcp-html-response') {
-      updateStatusMessage('MCP HTML: ' + msg.message, 'info');
+      updateStatusMessage(msg.message, 'info');
     } else if (msg.type === 'mcp-status-update') {
-      updateStatusMessage(msg.message, msg.status || 'test');
+      updateStatusMessage(msg.message, msg.status || 'info');
     } else if (msg.type === 'parse-mcp-html') {
-      // MCP HTML PARSING - Use same logic as Convert to Figma button
-      console.log('[MCP UI] Parsing HTML for MCP:', msg.name);
-              updateStatusMessage('Processing HTML from MCP: ' + msg.name, 'test');
+      updateStatusMessage('Processing: ' + msg.name, 'waiting');
       
       try {
-        // Use the same DOMParser function as the Convert to Figma button
         var structure = simpleParseHTML(msg.html);
-        console.log('[MCP UI] Parsed successfully, sending back to plugin');
-        
-        // Send parsed structure back to plugin
         parent.postMessage({
           pluginMessage: {
             type: 'html-structure',
@@ -986,19 +1030,238 @@ window.addEventListener('message', function(event) {
           }
         }, '*');
         
-        updateStatusMessage('Successfully processed HTML: ' + msg.name, 'test');
-        
+        updateStatusMessage('✅ Converted: ' + msg.name, 'success');
       } catch (error) {
-        console.error('[MCP UI] Error parsing HTML:', error);
-        updateStatusMessage('Error processing HTML: ' + error.message, 'test');
+        updateStatusMessage('❌ Error processing HTML', 'error');
       }
+    } else if (msg.type === 'request-file-mcp-data') {
+      // Handle file system reading for MCP data
+      fetch('./mcp-shared-data.json')
+        .then(response => response.ok ? response.json() : Promise.reject('Not found'))
+        .then(data => {
+          parent.postMessage({
+            pluginMessage: {
+              type: 'file-mcp-data-response',
+              data: data
+            }
+          }, '*');
+        })
+        .catch(error => {
+          parent.postMessage({
+            pluginMessage: {
+              type: 'file-mcp-data-response',
+              data: null
+            }
+          }, '*');
+        });
+    } else if (msg.type === 'delete-file-mcp-data') {
+      // Handle cleanup request
+      fetch('./mcp-shared-data.json', { method: 'DELETE' })
+        .then(() => console.log('MCP file cleanup completed'))
+        .catch(() => console.log('MCP file cleanup attempted'));
     }
   }
 });
+
+// ===============================================
+// SSE FUNCTIONALITY - Real Implementation
+// ===============================================
+
+var eventSource = null;
+var sseConnected = false;
+var sseReconnectAttempts = 0;
+var maxReconnectAttempts = 5;
+var sseReconnectDelay = 3000;
+
+function startRealSSEConnection() {
+  console.log('[SSE] Starting real SSE connection...');
+  
+  if (eventSource) {
+    eventSource.close();
+  }
+  
+  try {
+            eventSource = new EventSource('http://localhost:3003/mcp-stream');
+    
+    eventSource.onopen = function(event) {
+      console.log('[SSE] Connection opened successfully');
+      sseConnected = true;
+      sseReconnectAttempts = 0;
+      updateSSEStatus('🟢 SSE Connected', 'connected');
+      updateConnectionStatus('connected');
+      updateConnectionDetails('Ready for MCP requests');
+    };
+    
+    eventSource.onmessage = function(event) {
+      console.log('[SSE] Message received:', event.data);
+      
+      try {
+        var data = JSON.parse(event.data);
+        processSSEMessage(data);
+      } catch (error) {
+        console.error('[SSE] Error parsing message:', error);
+      }
+    };
+    
+    eventSource.onerror = function(event) {
+      console.error('[SSE] Connection error:', event);
+      sseConnected = false;
+      
+      if (eventSource.readyState === EventSource.CLOSED) {
+        updateSSEStatus('🔴 SSE Disconnected', 'error');
+        updateConnectionStatus('error');
+        updateConnectionDetails('Connection lost');
+        attemptSSEReconnection();
+      } else {
+        updateSSEStatus('🟡 SSE Connection Issues', 'warning');
+        updateConnectionStatus('warning');
+        updateConnectionDetails('Connection unstable');
+      }
+    };
+    
+  } catch (error) {
+    console.error('[SSE] Failed to create EventSource:', error);
+    updateSSEStatus('❌ SSE Failed to Start', 'error');
+    updateConnectionStatus('error');
+    updateConnectionDetails('Failed to start SSE');
+  }
+}
+
+function stopRealSSEConnection() {
+  console.log('[SSE] Stopping real SSE connection...');
+  
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+  
+  sseConnected = false;
+  sseReconnectAttempts = 0;
+  updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
+  updateConnectionStatus('disconnected');
+  updateConnectionDetails('Ready to connect');
+}
+
+function attemptSSEReconnection() {
+  if (sseReconnectAttempts >= maxReconnectAttempts) {
+    console.log('[SSE] Max reconnection attempts reached');
+    updateSSEStatus('❌ SSE Connection Failed', 'error');
+    updateConnectionStatus('error');
+    updateConnectionDetails('Max reconnection attempts reached');
+    return;
+  }
+  
+  sseReconnectAttempts++;
+  updateSSEStatus('🔄 Reconnecting... (' + sseReconnectAttempts + '/' + maxReconnectAttempts + ')', 'connecting');
+  updateConnectionStatus('warning');
+  updateConnectionDetails('Reconnecting...');
+  
+  setTimeout(function() {
+    console.log('[SSE] Reconnection attempt ' + sseReconnectAttempts);
+    startRealSSEConnection();
+  }, sseReconnectDelay);
+}
+
+function processSSEMessage(data) {
+  console.log('[SSE] Processing message:', data);
+  
+  switch (data.type) {
+    case 'connection-established':
+      console.log('[SSE] Connection established confirmed');
+      updateSSEStatus('✅ SSE Ready for MCP', 'connected');
+      updateMCPStatus('✅ MCP Ready', 'connected');
+      updateConnectionDetails('Ready for MCP requests');
+      break;
+      
+    case 'mcp-request':
+      console.log('[SSE] MCP request received:', data);
+      handleSSEMCPRequest(data);
+      break;
+      
+    case 'test-message':
+      console.log('[SSE] Test message received:', data.message);
+      updateConnectionDetails('Test: ' + data.message);
+      break;
+      
+    case 'heartbeat':
+      console.log('[SSE] Heartbeat received');
+      // Heartbeat messages keep the connection alive, no action needed
+      break;
+      
+    default:
+      console.log('[SSE] Unknown message type:', data.type);
+  }
+}
+
+function handleSSEMCPRequest(data) {
+  if (data.function === 'mcp_html_to_design_import-html') {
+    var htmlContent = data.arguments.html;
+    var designName = data.arguments.name || 'SSE Import';
+    
+    console.log('[SSE] Processing HTML import:', designName);
+    console.log('[SSE] *** USING DIRECT PARSING - TYPESCRIPT VERSION 4.0 ***');
+    updateConnectionDetails('Processing: ' + designName);
+    updateMCPStatus('🎨 Processing: ' + designName, 'connecting');
+    
+    // DIRECT PROCESSING: Parse HTML and send structure directly
+    try {
+      console.log('[SSE] Calling simpleParseHTML directly...');
+      var structure = simpleParseHTML(htmlContent);
+      console.log('[SSE] HTML parsed, structure length:', structure?.length || 0);
+      
+      // Send html-structure directly to main handler (skip parse-mcp-html)
+      parent.postMessage({
+        pluginMessage: {
+          type: 'html-structure',
+          structure: structure,
+          name: designName,
+          fromMCP: true,
+          mcpSource: 'sse',
+          requestId: data.requestId,
+          timestamp: data.timestamp
+        }
+      }, '*');
+      
+      console.log('[SSE] Sent html-structure directly to main handler');
+      updateMCPStatus('✅ Converted: ' + designName, 'success');
+      
+    } catch (error) {
+      console.error('[SSE] Error parsing HTML:', error);
+      updateMCPStatus('❌ Error: ' + error.message, 'error');
+    }
+    
+  } else {
+    console.log('[SSE] Unknown MCP function:', data.function);
+    updateConnectionDetails('Unknown function: ' + data.function);
+  }
+}
+
+// Enhanced message handling for SSE
+window.addEventListener('message', function(event) {
+  if (event.data.pluginMessage) {
+    var msg = event.data.pluginMessage;
+    
+    // Handle SSE control messages
+    if (msg.type === 'start-sse-connection') {
+      startRealSSEConnection();
+    } else if (msg.type === 'stop-sse-connection') {
+      stopRealSSEConnection();
+    } else if (msg.type === 'sse-connected') {
+      updateSSEStatus('✅ SSE Connected', 'connected');
+      updateMCPStatus('✅ MCP Ready', 'connected');
+    } else if (msg.type === 'sse-disconnected') {
+      updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
+      updateMCPStatus('⚪ MCP Inactive', 'disconnected');
+    } else if (msg.type === 'test-broadcast-complete') {
+      updateConnectionDetails('✅ Test broadcast completed');
+    }
+  }
+});
+
 </script>
 </body>
 </html>`;
-figma.showUI(html, { width: 360, height: 400 });
+figma.showUI(html, { width: 360, height: 500 });
 function hexToRgb(color) {
     // First handle CSS color keywords
     const colorKeywords = {
@@ -1724,7 +1987,12 @@ async function createGridLayout(children, parentFrame, columns, gap, inheritedSt
 }
 async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0, startY = 0, inheritedStyles) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56;
+    console.log('[NODE CREATION] Starting createFigmaNodesFromStructure');
+    console.log('[NODE CREATION] Structure:', structure);
+    console.log('[NODE CREATION] ParentFrame:', (parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) || 'none');
+    console.log('[NODE CREATION] Structure length:', (structure === null || structure === void 0 ? void 0 : structure.length) || 0);
     for (const node of structure) {
+        console.log('[NODE CREATION] Processing node:', node.tagName, node.type);
         if (node.type === 'element') {
             // Skip script, style, and other non-visual elements
             if (['script', 'style', 'meta', 'link', 'title'].includes(node.tagName)) {
@@ -2425,94 +2693,97 @@ let lastProcessedTimestamp = 0;
 // NEW: Use figma.clientStorage for MCP communication (replaces file system)
 async function readMCPSharedData() {
     try {
-        console.log('[MCP] Attempting to read shared data from clientStorage...');
-        // Use Figma's clientStorage as the communication mechanism
-        const storedData = await figma.clientStorage.getAsync('mcp-shared-data');
-        if (storedData) {
-            console.log('[MCP] Found data in clientStorage:', storedData);
-            return storedData;
-        }
-        else {
-            console.log('[MCP] No data found in clientStorage');
-            return null;
-        }
+        console.log('[MCP] Reading MCP data from file system...');
+        // Simple file-based reading via UI
+        return new Promise((resolve) => {
+            const handleFileResponse = (msg) => {
+                if (msg.type === 'file-mcp-data-response') {
+                    figma.ui.off('message', handleFileResponse);
+                    if (msg.data) {
+                        console.log('[MCP] Found data in file system:', msg.data);
+                        resolve(msg.data);
+                    }
+                    else {
+                        console.log('[MCP] No data found in file system');
+                        resolve(null);
+                    }
+                }
+            };
+            figma.ui.on('message', handleFileResponse);
+            figma.ui.postMessage({ type: 'request-file-mcp-data' });
+            // Timeout after 500ms if no response
+            setTimeout(() => {
+                figma.ui.off('message', handleFileResponse);
+                resolve(null);
+            }, 500);
+        });
     }
     catch (error) {
-        console.log('[MCP] Could not read from clientStorage:', error);
+        console.log('[MCP] Error reading MCP data:', error);
         return null;
     }
 }
-// NEW: Delete shared data after processing
+// Delete shared data after processing (file-based)
 async function deleteMCPSharedData() {
     try {
-        await figma.clientStorage.deleteAsync('mcp-shared-data');
-        console.log('[MCP] Successfully deleted shared data from clientStorage');
+        figma.ui.postMessage({ type: 'delete-file-mcp-data' });
+        console.log('[MCP] Requested deletion of MCP data file');
         return true;
     }
     catch (error) {
-        console.log('[MCP] Could not delete shared data:', error);
+        console.log('[MCP] Could not delete MCP data:', error);
         return false;
     }
 }
-// MODIFIED: MCP Monitoring with hybrid approach (file first, HTTP fallback)
+// NEW: SSE-based MCP Monitoring (replaces polling)
 function startMCPMonitoring() {
+    console.log('[MCP] Starting SSE-based monitoring...');
+    // Stop any existing polling interval
     if (mcpMonitoringInterval) {
         clearInterval(mcpMonitoringInterval);
+        mcpMonitoringInterval = null;
     }
+    // Start SSE connection in UI
+    figma.ui.postMessage({ type: 'start-sse' });
+    // Set up fallback polling for backward compatibility (less frequent)
     mcpMonitoringInterval = setInterval(async () => {
         try {
-            // Pure MCP storage approach - no HTTP calls
-            const storageData = await readMCPSharedData();
-            let data = null;
-            let source = '';
-            if (storageData && storageData.timestamp && storageData.function && storageData.timestamp > lastProcessedTimestamp) {
-                data = storageData;
-                source = 'storage';
-                console.log('[MCP] Using clientStorage data source');
-            }
-            // Process data regardless of source
+            // Fallback file-based check (every 10 seconds instead of 2)
+            const data = await readMCPSharedData();
             if (data && data.timestamp && data.function && data.timestamp > lastProcessedTimestamp) {
-                console.log(`[MCP] Found new request from ${source}:`, data);
-                console.log('[MCP DEBUG] About to update lastProcessedTimestamp');
+                const source = data.source || 'fallback';
+                console.log(`[MCP] Fallback: Found request from ${source}:`, data);
                 lastProcessedTimestamp = data.timestamp;
-                console.log('[MCP DEBUG] Updated lastProcessedTimestamp to:', lastProcessedTimestamp);
-                // Process the MCP request DIRECTLY (not via postMessage)
-                console.log('[MCP DEBUG] Checking function type:', data.function);
                 if (data.function === 'mcp_html_to_design_import-html') {
-                    console.log('[MCP DEBUG] Function matches, extracting data');
                     const htmlContent = data.arguments.html;
-                    const name = data.arguments.name || 'MCP Import';
-                    console.log('[MCP] Processing MCP request:', data);
-                    console.log('[MCP] Sending HTML to UI for parsing:', name);
-                    // Send HTML to UI for parsing (same as Convert to Figma button)
-                    console.log('[MCP DEBUG] About to send postMessage to UI');
+                    const name = data.arguments.name || 'MCP Import (Fallback)';
+                    console.log('[MCP] Processing fallback request:', name);
                     figma.ui.postMessage({
                         type: 'parse-mcp-html',
                         html: htmlContent,
-                        name: name
+                        name: name,
+                        mcpSource: 'fallback'
                     });
-                    console.log('[MCP DEBUG] PostMessage sent successfully');
                 }
-                else {
-                    console.log('[MCP DEBUG] Function does not match:', data.function);
-                }
-                // Clear the processed request from storage
-                console.log('[MCP DEBUG] About to clear processed request');
+                // Clear processed request
                 try {
                     await deleteMCPSharedData();
-                    console.log('[MCP DEBUG] Storage cleared successfully');
                 }
                 catch (deleteError) {
-                    console.log('[MCP] Could not clear processed request (non-critical):', deleteError);
+                    console.log('[MCP] Could not clear fallback request:', deleteError);
                 }
             }
         }
         catch (error) {
-            console.log('[MCP] Monitoring error:', error);
+            console.log('[MCP] Fallback monitoring error:', error);
         }
-    }, 2000); // Check every 2 seconds
+    }, 10000); // Check every 10 seconds as fallback
 }
 function stopMCPMonitoring() {
+    console.log('[MCP] Stopping SSE-based monitoring...');
+    // Stop SSE connection in UI
+    figma.ui.postMessage({ type: 'stop-sse' });
+    // Stop fallback polling
     if (mcpMonitoringInterval) {
         clearInterval(mcpMonitoringInterval);
         mcpMonitoringInterval = null;
@@ -2520,26 +2791,36 @@ function stopMCPMonitoring() {
 }
 async function testMCPConnection() {
     let results = [];
-    // Test storage access
+    // Test file system access only
     try {
-        const storageData = await readMCPSharedData();
-        if (storageData !== null) {
-            results.push('✅ MCP Storage: Working - data found');
-            results.push(`• Type: ${storageData.type || 'unknown'}`);
-            results.push(`• Function: ${storageData.function || 'unknown'}`);
+        const fileData = await readMCPSharedData();
+        if (fileData !== null) {
+            results.push('✅ MCP FileSystem: Working - data found');
+            results.push(`• Source: ${fileData.source || 'unknown'}`);
+            results.push(`• Tool: ${fileData.tool || 'unknown'}`);
+            results.push(`• Environment: ${fileData.environment || 'unknown'}`);
+            results.push(`• Type: ${fileData.type || 'unknown'}`);
+            results.push(`• Function: ${fileData.function || 'unknown'}`);
         }
         else {
-            results.push('⚠️ MCP Storage: Ready - no data yet');
-            results.push('• Use console test to send data');
+            results.push('⚠️ MCP FileSystem: Ready - no data yet');
         }
     }
     catch (error) {
-        results.push('❌ MCP Storage: Error - ' + error);
+        results.push('❌ MCP FileSystem: Error - ' + error);
+    }
+    if (results.filter(r => r.includes('data found')).length === 0) {
+        results.push('');
+        results.push('💡 To test:');
+        results.push('• Run: node ai-to-figma.js "test" "Test"');
+        results.push('• Or use browser console with test script');
     }
     const message = results.join('\n');
     figma.ui.postMessage({ type: 'mcp-test-response', message: message });
 }
 figma.ui.onmessage = async (msg) => {
+    var _a;
+    console.log('[MAIN HANDLER] Message received:', msg.type, msg);
     if (msg.type === 'mcp-test') {
         // Test actual MCP server connection
         testMCPConnection();
@@ -2567,6 +2848,7 @@ figma.ui.onmessage = async (msg) => {
         }
         return;
     }
+    // REMOVED: Let UI handle parse-mcp-html directly (it already works correctly)
     if (msg.type === 'mcp-html') {
         console.log('[MCP] Recibido HTML vía MCP:', msg.html);
         try {
@@ -2581,6 +2863,10 @@ figma.ui.onmessage = async (msg) => {
         return;
     }
     if (msg.type === 'html-structure') {
+        console.log('[MAIN HANDLER] Processing html-structure message');
+        console.log('[MAIN HANDLER] Structure length:', ((_a = msg.structure) === null || _a === void 0 ? void 0 : _a.length) || 0);
+        console.log('[MAIN HANDLER] From MCP:', msg.fromMCP);
+        console.log('[MAIN HANDLER] Name:', msg.name);
         // Create a main container frame for all HTML content
         const mainContainer = figma.createFrame();
         const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'} (from Cursor)` : 'HTML Import Container';
@@ -2603,8 +2889,10 @@ figma.ui.onmessage = async (msg) => {
         mainContainer.y = viewport.y - 200;
         // Add to current page
         figma.currentPage.appendChild(mainContainer);
+        console.log('[MAIN HANDLER] Created main container, calling createFigmaNodesFromStructure...');
         // Create all HTML content inside this container
         await createFigmaNodesFromStructure(msg.structure, mainContainer, 0, 0, undefined);
+        console.log('[MAIN HANDLER] Finished creating nodes');
         // Select the created container for immediate visibility
         figma.currentPage.selection = [mainContainer];
         figma.viewport.scrollAndZoomIntoView([mainContainer]);
@@ -2620,5 +2908,30 @@ figma.ui.onmessage = async (msg) => {
         console.log('[MCP] Stopping MCP monitoring...');
         stopMCPMonitoring();
         figma.notify('⏹️ MCP Monitoring detenido');
+    }
+    // NEW UI ELEMENT HANDLERS
+    // SSE HANDLERS - Properly integrated
+    if (msg.type === 'start-sse') {
+        console.log('[SSE] Starting SSE connection from UI...');
+        // Start actual SSE connection
+        figma.ui.postMessage({
+            type: 'start-sse-connection'
+        });
+    }
+    if (msg.type === 'stop-sse') {
+        console.log('[SSE] Stopping SSE connection from UI...');
+        // Stop actual SSE connection
+        figma.ui.postMessage({
+            type: 'stop-sse-connection'
+        });
+    }
+    if (msg.type === 'test-broadcast') {
+        console.log('[SSE] Test broadcast requested from UI...');
+        // This could trigger a test request to the bridge server
+        figma.notify('📡 Test broadcast sent');
+        // Send confirmation back to UI
+        setTimeout(() => {
+            figma.ui.postMessage({ type: 'test-broadcast-complete' });
+        }, 1000);
     }
 };

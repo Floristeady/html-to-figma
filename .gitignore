@@ -37,8 +37,11 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
-# MCP data files (temporary communication files)
+# MCP and SSE temporary files
 mcp-shared-data.json
+*.log
+mcp-bridge.log
+sse-server.log
 
 # Backup files
 *_backup*.js

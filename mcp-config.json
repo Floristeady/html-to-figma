@@ -1,11 +1,7 @@
 {
-  "mcpServers": {
-    "figma-html-bridge": {
-      "command": "node",
-      "args": ["mcp-bridge.js"],
-      "env": {
-        "FIGMA_PLUGIN_ID": "figma-html-to-design"
-      }
-    }
+  "figma-html-bridge": {
+    "command": "node",
+    "args": ["mcp-server.js"],
+    "cwd": "/Users/florosenfeld/Sites/figma-plugins/html-to-figma"
   }
 } 

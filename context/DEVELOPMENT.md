@@ -1,142 +1,294 @@
-# Development Guide - HTML-Figma Bridge Plugin
+# Development Guide
 
-## 🚨 CRITICAL: Where to Make Code Changes
+**Last Updated**: June 18, 2025
 
-### ⚠️ NEVER edit `code.js` directly!
+## 🚀 Development Setup
 
-**WRONG:** ❌ Editing `code.js`
-**CORRECT:** ✅ Edit `src/code.ts` then run `npm run build`
+### Prerequisites
+- Node.js v14+ 
+- Figma Desktop App
+- Cursor IDE (for MCP testing)
+- Basic TypeScript knowledge
 
-### Why?
-- `code.js` is **auto-generated** from `src/code.ts` 
-- Any changes to `code.js` will be **overwritten** when you compile
-- Always edit the TypeScript source file: `src/code.ts`
-
----
-
-## 📁 File Structure for Development
-
-```
-space-to-figma-001/
-├── src/
-│   └── code.ts          ← EDIT THIS FILE
-├── code.js              ← AUTO-GENERATED (don't edit)
-├── tsconfig.json        ← TypeScript config
-└── package.json         ← Build scripts
-```
-
----
-
-## 🔧 Development Workflow
-
-1. **Edit source:** Modify `src/code.ts`
-2. **Compile:** Run `npm run build`
-3. **Test:** Plugin uses the generated `code.js`
-
-### Build Commands
+### Quick Setup
 ```bash
-# One-time build
-npm run build
+# Clone and install
+git clone <repository-url>
+cd html-to-figma
+npm install
 
-# Watch mode (auto-build on changes)
+# Start development servers
+node start-servers.js
+
+# In another terminal, watch for changes
 npm run watch
 ```
 
----
+## 🏗️ Project Architecture
 
-## 🐛 Common Issues & Solutions
+### Core Components
 
-### Issue: Changes don't appear in plugin
-**Cause:** You edited `code.js` instead of `src/code.ts`  
-**Solution:** 
-1. Edit `src/code.ts`
-2. Run `npm run build`
-3. Reload plugin in Figma
+1. **MCP Server** (`mcp-server.js`)
+   - Handles stdio communication with Cursor IDE
+   - Registers the `mcp_html_to_design_import-html` tool
+   - Processes HTML from Cursor commands
 
-### Issue: Line-height shows as "1.5%" instead of normal spacing
-**Cause:** Hardcoded `lineHeight` values in multiple places  
-**Solution:** Only apply `lineHeight` in `applyStylesToText()` function  
-**Files to check:**
-- `src/code.ts` line ~580 (applyStylesToText function)
-- `src/code.ts` line ~1130+ (check for hardcoded lineHeight values)
+2. **SSE Server** (`sse-server.js`) 
+   - HTTP server broadcasting via Server-Sent Events
+   - Runs on port 3003
+   - Relays messages from MCP server to Figma plugin
 
-### Issue: Box-shadow not rendering (appears as hardcoded shadow)
-**Cause:** `applyStylesToFrame()` used hardcoded shadow instead of parsing CSS  
-**Solution:** Use `parseBoxShadow()` function to parse actual CSS values  
-**Fixed:** Line ~497 in `src/code.ts`
+3. **Figma Plugin**
+   - **UI** (`ui.js`): Interface with SSE connection
+   - **Main** (`src/code.ts` → `code.js`): Core logic and Figma API
 
-### Issue: Box-shadow validation errors (effects property failed)
-**Cause:** `parseBoxShadow()` returned wrong format (offsetX/offsetY vs offset.x/y)  
-**Solution:** Return correct Figma effect format with `type`, `offset`, `radius`, `color.a`, `blendMode`, `visible`  
-**Fixed:** Line ~269 in `src/code.ts` - parseBoxShadow function
-
-### Issue: Color inheritance fails (text appears black instead of inherited color)
-**Cause:** `applyStylesToText()` only applied color if explicitly set  
-**Solution:** Always apply a color (inherited or black default)  
-**Fixed:** Line ~551 in `src/code.ts`
-
-### Issue: Flex elements don't expand (flex: 1 ignored)
-**Cause:** `flex: 1` only set `primaryAxisSizingMode = 'AUTO'`  
-**Solution:** Also set `layoutGrow = 1` for proper flex behavior  
-**Fixed:** Line ~450 in `src/code.ts`
-
----
-
-## 📍 Key Functions to Modify
-
-### Text Styling
-**Function:** `applyStylesToText()`  
-**Location:** `src/code.ts` ~line 556  
-**Purpose:** Apply CSS text properties to Figma text nodes
-
-### Frame Styling  
-**Function:** `applyStylesToFrame()`  
-**Location:** `src/code.ts` ~line 413  
-**Purpose:** Apply CSS frame properties to Figma frames
-
-### HTML Structure Processing
-**Function:** `createFigmaNodesFromStructure()`  
-**Location:** `src/code.ts` ~line 719  
-**Purpose:** Convert HTML nodes to Figma nodes
-
----
-
-## ⚡ Quick Fix Checklist
-
-Before making changes:
-- [ ] Am I editing `src/code.ts`? (not `code.js`)
-- [ ] Did I run `npm run build` after changes?
-- [ ] Did I test in Figma after building?
-
-Common fixes:
-- [ ] Check for hardcoded `lineHeight` values
-- [ ] Verify CSS property parsing in `applyStylesToText`
-- [ ] Check for conflicting style applications
-
----
-
-## 🔍 Debugging CSS Properties
-
-### Line-height Issues
-```typescript
-// ✅ CORRECT: Only apply if has units
-if (value.match(/^[0-9.]+px$/)) {
-  text.lineHeight = { value: px, unit: 'PIXELS' };
-} else if (!isNaN(Number(value))) {
-  // ✅ CORRECT: Ignore unitless values
-  console.log('IGNORED unitless line-height:', value);
-}
-
-// ❌ WRONG: Don't hardcode lineHeight
-text.lineHeight = { value: 1.5, unit: 'PERCENT' };
+### Message Flow
+```
+Cursor → MCP Server → SSE Server → Plugin UI → Plugin Main → Figma Canvas
 ```
 
-### General CSS Property Flow
-1. CSS parsed in UI (DOMParser)
-2. Styles passed to `applyStylesToText()` or `applyStylesToFrame()`
-3. Properties applied to Figma nodes
-4. **No hardcoded values should override CSS**
+## 📁 File Structure
+
+```
+html-to-figma/
+├── src/
+│   └── code.ts              # Main plugin TypeScript source
+├── code.js                  # Compiled plugin (auto-generated)
+├── ui.js                    # Plugin UI with SSE connection
+├── mcp-server.js           # MCP stdio server
+├── sse-server.js           # SSE broadcast server  
+├── start-servers.js        # Start both servers
+├── test-mcp-status.js      # Test server connectivity
+├── manifest.json           # Plugin configuration
+├── examples/               # Test HTML files
+│   ├── mcp-form-test.html
+│   ├── mcp-badges-test.html
+│   └── complex-css-test.html
+└── context/                # Documentation
+```
+
+## 🔧 Development Commands
+
+### Building
+```bash
+# Compile TypeScript
+npm run build
+
+# Watch for changes (recommended for development)
+npm run watch
+```
+
+### Server Management
+```bash
+# Start both servers
+node start-servers.js
+
+# Start individually
+node mcp-server.js          # MCP server (stdio)
+node sse-server.js          # SSE server (HTTP)
+
+# Test connectivity
+node test-mcp-status.js
+```
+
+### Testing
+```bash
+# Test with example files
+curl -X POST http://localhost:3003/mcp-trigger \
+  -H "Content-Type: application/json" \
+  -d @examples/mcp-form-test.html
+
+# Quick HTML test
+curl -X POST http://localhost:3003/mcp-trigger \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "mcp-request",
+    "function": "mcp_html_to_design_import-html",
+    "arguments": {
+      "html": "<div style=\"color:blue\">Test</div>",
+      "name": "Development Test"
+    }
+  }'
+```
+
+## 🔍 Key Development Areas
+
+### 1. HTML Parsing (`src/code.ts`)
+
+Key function: `simpleParseHTML(htmlString)`
+- Converts HTML string to structured data
+- Handles CSS parsing and inheritance
+- Returns array of element objects
+
+```typescript
+interface ElementStructure {
+  tagName: string;
+  textContent?: string;
+  styles: Record<string, string>;
+  children: ElementStructure[];
+}
+```
+
+### 2. Figma Node Creation (`src/code.ts`)
+
+Key function: `createFigmaNodesFromStructure(structure, parentFrame)`
+- Creates Figma frames, text nodes, and components
+- Applies CSS styles to Figma properties
+- Handles layout (flexbox, grid, positioning)
+
+### 3. CSS Style Application (`src/code.ts`)
+
+Key function: `applyStyles(node, styles)`
+- Maps CSS properties to Figma properties
+- Handles colors, fonts, sizes, spacing
+- Supports gradients, shadows, borders
+
+### 4. MCP Request Handling (`src/code.ts`)
+
+Key function: `handleSSEMCPRequest(data)`
+- Processes incoming MCP requests
+- Calls HTML parsing
+- Triggers Figma node creation
+
+## 🐛 Debugging
+
+### Plugin Debugging
+1. Open Figma
+2. Right-click → Plugins → Development → Open Console
+3. Look for logs starting with `[MAIN HANDLER]`, `[SSE]`, `[NODE CREATION]`
+
+### Server Debugging
+```bash
+# Check server processes
+ps aux | grep "mcp-server\|sse-server"
+
+# View server logs
+node start-servers.js  # Shows both server outputs
+
+# Test SSE connection
+curl http://localhost:3003/health
+```
+
+### Common Issues
+
+**Plugin shows 🔴 Not Connected**
+```bash
+# Restart servers
+pkill -f "sse-server\|mcp-server"
+node start-servers.js
+```
+
+**TypeScript changes not reflected**
+```bash
+# Ensure compilation
+npm run build
+
+# Or use watch mode
+npm run watch
+```
+
+**No visual elements in Figma**
+- Check browser console for errors
+- Verify HTML is valid
+- Ensure plugin is loaded and connected
+
+## 🔧 Development Workflow
+
+### Adding New Features
+
+1. **Modify TypeScript source** (`src/code.ts`)
+2. **Compile** with `npm run build` or `npm run watch`
+3. **Test** with example HTML files
+4. **Debug** using plugin console logs
+5. **Iterate** until feature works correctly
+
+### CSS Property Support
+
+To add new CSS property support:
+
+1. **Update `applyStyles()` function** in `src/code.ts`
+2. **Add property mapping** to Figma equivalent
+3. **Test** with example HTML
+4. **Handle edge cases** and fallbacks
+
+Example:
+```typescript
+// In applyStyles function
+case 'border-radius':
+  if (node.type === 'FRAME') {
+    node.cornerRadius = parseFloat(value) || 0;
+  }
+  break;
+```
+
+### Testing New HTML Structures
+
+1. **Create test file** in `examples/` directory
+2. **Send via curl** or MCP tool
+3. **Verify output** in Figma
+4. **Check logs** for any issues
+
+## 📊 Performance Considerations
+
+### Optimization Tips
+- Use `npm run watch` during development
+- Test with small HTML snippets first
+- Monitor server memory usage
+- Use browser dev tools for plugin debugging
+
+### Memory Management
+- Large HTML documents may require chunking
+- Clean up Figma nodes if errors occur
+- Monitor SSE connection count
+
+## 🧪 Testing Strategy
+
+### Unit Testing
+- HTML parsing functions
+- CSS property conversions
+- Style inheritance logic
+
+### Integration Testing  
+- Full MCP → Figma pipeline
+- Server communication
+- Plugin UI interactions
+
+### Manual Testing
+- Various HTML structures
+- Complex CSS properties
+- Error conditions and edge cases
+
+## 📝 Code Style
+
+### TypeScript Guidelines
+- Use strict types when possible
+- Add JSDoc comments for functions
+- Handle errors gracefully
+- Use descriptive variable names
+
+### Logging Standards
+```typescript
+console.log('[COMPONENT] Action: details');
+// Examples:
+console.log('[MCP] Processing HTML import:', name);
+console.log('[SSE] Connection established');
+console.log('[NODE CREATION] Created frame:', frameName);
+```
+
+## 🚀 Deployment
+
+### Production Build
+```bash
+npm run build
+```
+
+### Plugin Distribution
+1. Ensure `manifest.json` is configured
+2. Include compiled `code.js` (not `src/code.ts`)
+3. Test in clean Figma environment
+4. Package plugin files for distribution
 
 ---
 
-**Remember:** Always edit `src/code.ts`, never `code.js`! 
+**Development Status**: ✅ Fully operational development environment  
+**Next Steps**: Feature development and testing 

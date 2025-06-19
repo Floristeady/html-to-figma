@@ -2,14 +2,21 @@
   "name": "html-figma-bridge",
   "version": "0.1.0",
   "description": "Figma plugin to convert HTML to Figma nodes via MCP integration.",
+  "type": "module",
   "main": "code.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "watch": "npm run build -- --watch"
+    "dev": "npm run build:dev",
+    "build": "tsc",
+    "build:dev": "tsc --watch",
+    "sse-server": "node sse-server.js",
+    "mcp-server": "node mcp-server.js",
+    "start-sse": "node sse-server.js",
+    "test-mcp": "echo 'Testing MCP connection...' && node mcp-server.js"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.65.0",
     "copyfiles": "^2.4.1",
+    "eventsource": "^4.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
