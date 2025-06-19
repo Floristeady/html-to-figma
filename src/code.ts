@@ -1518,7 +1518,8 @@ function parseLinearGradient(gradientStr: string): any {
 
 function applyStylesToFrame(frame: FrameNode, styles: any) {
   
-
+  // CRITICAL: First, check if this element should have NO background
+  const hasExplicitBackground = styles['background'] || styles['background-color'];
   
   // Background: Improved gradient support
   if (styles['background'] && styles['background'].includes('linear-gradient')) {
@@ -1553,6 +1554,9 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
         opacity: bgColorWithAlpha.a
       }];
     }
+  } else if (!hasExplicitBackground) {
+    // FIXED: Explicitly set empty fills for elements without background CSS
+    frame.fills = [];
   }
 
   // Width - Aplicar ancho según CSS
@@ -2077,7 +2081,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         
         // Only apply default background if the element doesn't have any background AND it's not inside a gradient container
         const hasBackground = frame.fills && (frame.fills as Paint[]).length > 0;
-        const isInsideGradientContainer = inheritedStyles?.['background'] && inheritedStyles['background'].includes('linear-gradient');
+        const isInsideGradientContainer = inheritedStyles?.['parent-has-gradient'];
         
         // Remove hardcoded backgrounds - let CSS handle all styling
         if (!hasBackground && !isInsideGradientContainer) {
@@ -2088,8 +2092,10 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             if (bgColor) {
               frame.fills = [{ type: 'SOLID', color: bgColor }];
             }
+          } else {
+            // FIXED: Explicitly set no background for elements without CSS background
+            frame.fills = [];
           }
-          // If no CSS background, leave transparent (no hardcoded defaults)
         }
         
         // Padding ONLY from CSS - no hardcoded defaults
@@ -2179,13 +2185,10 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           'font-size': node.styles?.['font-size'] || inheritedStyles?.['font-size'],
           'line-height': node.styles?.['line-height'] || inheritedStyles?.['line-height'],
           
-          // Pass gradient background info to children so they don't get default backgrounds
-          'background': node.styles?.['background'] || inheritedStyles?.['background'],
-          
-          // Heredar background-color solo si el elemento no tiene uno propio
-          'background-color': node.styles?.['background-color'] || 
-                             (inheritedStyles?.['background-color'] && !node.styles?.['background-color'] ? 
-                              inheritedStyles?.['background-color'] : undefined),
+          // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
+          // Only pass parent background info for container detection, not for inheritance
+          'parent-has-gradient': (node.styles?.['background'] && node.styles['background'].includes('linear-gradient')) || 
+                                (inheritedStyles?.['parent-has-gradient']),
                               
           // Pass parent class name to help with styling decisions
           'parent-class': node.styles?.className || inheritedStyles?.['parent-class']
@@ -2202,6 +2205,14 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           applyStylesToText(textNode, { ...inheritableStyles, ...node.styles });
           
           frame.appendChild(textNode);
+          
+          // FIXED: Set appropriate width for text wrapping in auto-layout
+          if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
+            const maxWidth = Math.min(frame.width - frame.paddingLeft - frame.paddingRight, 800);
+            const textWidth = Math.max(maxWidth > 0 ? maxWidth : 400, 200);
+            textNode.resize(textWidth, textNode.height);
+            textNode.textAutoResize = 'HEIGHT';
+          }
         }
         
         // Process children if they exist
@@ -2744,8 +2755,16 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           figma.currentPage.appendChild(text);
         } else {
           parentFrame.appendChild(text);
-          // If parent has auto-layout, text will auto-size
-          if (parentFrame.layoutMode !== 'NONE') {
+          // FIXED: For long text, set a max width and allow height to grow
+          if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
+            // Calculate appropriate width based on parent
+            const maxWidth = Math.min(parentFrame.width - parentFrame.paddingLeft - parentFrame.paddingRight, 800);
+            const textWidth = Math.max(maxWidth > 0 ? maxWidth : 400, 200);
+            
+            // Set text width and allow height to grow for wrapping
+            text.resize(textWidth, text.height);
+            text.textAutoResize = 'HEIGHT';
+          } else {
             text.textAutoResize = 'WIDTH_AND_HEIGHT';
           }
         }
