@@ -51,12 +51,13 @@ const mcpChild = spawn('node', ['mcp-server.js'], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
-let mcpStatus = '❌ MCP Server: Problemas';
+let mcpWorking = false;
+let mcpErrors = [];
 
 mcpChild.stdout.on('data', (data) => {
   const output = data.toString();
   if (output.includes('MCP server ready')) {
-    mcpStatus = '✅ MCP Server: Funcionando';
+    mcpWorking = true;
     console.log('✅ MCP Server se inicia correctamente');
   }
 });
@@ -64,46 +65,57 @@ mcpChild.stdout.on('data', (data) => {
 mcpChild.stderr.on('data', (data) => {
   const output = data.toString();
   if (output.includes('[MCP-SERVER]')) {
-    mcpStatus = '✅ MCP Server: Funcionando';
+    mcpWorking = true;
     console.log('✅ MCP Server produce logs correctos');
+  }
+  mcpErrors.push(output);
+});
+
+// 4. Test de SSE Server
+console.log('\n4. Probando SSE Server...');
+const sseChild = spawn('node', ['sse-server.js'], {
+  stdio: ['pipe', 'pipe', 'pipe']
+});
+
+let sseWorking = false;
+let sseErrors = [];
+
+sseChild.stdout.on('data', (data) => {
+  const output = data.toString();
+  if (output.includes('SSE server listening on port 3003')) {
+    sseWorking = true;
+    console.log('✅ SSE Server se inicia en puerto 3003');
   }
 });
 
-// 4. Test de SSE Server con fetch
-console.log('\n4. Probando SSE Server...');
-let sseStatus = '❌ SSE Server: Problemas';
+sseChild.stderr.on('data', (data) => {
+  sseErrors.push(data.toString());
+});
 
-// Función para probar SSE Server
-async function testSSEServer() {
-  try {
-    const sseResponse = await fetch('http://localhost:3003/mcp-status');
-    if (sseResponse.ok) {
-      const data = await sseResponse.json();
-      console.log('✅ SSE Server: Funcionando');
-      console.log(`   - Versión: ${data.version}`);
-      console.log(`   - Conexiones activas: ${data.activeConnections}`);
-      console.log(`   - Endpoint SSE: ${data.sseEndpoint}`);
-      sseStatus = '✅ SSE Server: Funcionando';
-    } else {
-      console.log('❌ SSE Server: Respuesta no OK');
-      sseStatus = '❌ SSE Server: Respuesta no OK';
-    }
-  } catch (error) {
-    console.log('❌ SSE Server: No responde (posiblemente no iniciado)');
-    console.log(`   Error: ${error.message}`);
-    sseStatus = '❌ SSE Server: No disponible';
-  }
-}
-
-// Dar tiempo a los servidores para iniciarse y luego probar SSE
-setTimeout(async () => {
-  await testSSEServer();
-  
+// Dar tiempo a los servidores para iniciarse
+setTimeout(() => {
   mcpChild.kill('SIGTERM');
+  sseChild.kill('SIGTERM');
   
   console.log('\n📋 Resumen del diagnóstico:');
-  console.log(mcpStatus);
-  console.log(sseStatus);
+  
+  if (mcpWorking) {
+    console.log('✅ MCP Server: Funcionando');
+  } else {
+    console.log('❌ MCP Server: Problemas');
+    if (mcpErrors.length > 0) {
+      console.log('   Errores MCP:', mcpErrors.slice(0, 2).join(''));
+    }
+  }
+  
+  if (sseWorking) {
+    console.log('✅ SSE Server: Funcionando');
+  } else {
+    console.log('❌ SSE Server: Problemas');
+    if (sseErrors.length > 0) {
+      console.log('   Errores SSE:', sseErrors.slice(0, 2).join(''));
+    }
+  }
   
   console.log('\n🚀 Para usar el sistema:');
   console.log('1. Inicia SSE Server: node sse-server.js');

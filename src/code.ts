@@ -368,21 +368,7 @@ const html = `<html>
       letter-spacing: 0.5px;
     }
 
-    .setting-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: 6px 0;
-      font-size: 13px;
-    }
 
-    .setting-input, .setting-select {
-      width: 80px;
-      padding: 4px 6px;
-      border: 1px solid #ced4da;
-      border-radius: 3px;
-      font-size: 12px;
-    }
 
     .checkbox-row {
       display: flex;
@@ -415,13 +401,7 @@ const html = `<html>
       color: #e83e8c;
     }
 
-    .panel-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid #dee2e6;
-    }
+
   </style>
 </head>
 <body>
@@ -468,47 +448,19 @@ const html = `<html>
     
     <!-- ACTIONS -->
     <div class="action-buttons">
-      <button id="test-broadcast-btn" class="button secondary">📡 Test Broadcast</button>
+      <button id="test-broadcast-btn" class="button secondary">🔗 Test Connection</button>
       <button id="advanced-btn" class="button secondary">🔧 Advanced</button>
     </div>
     
     <!-- ADVANCED SETTINGS PANEL (Hidden by default) -->
     <div class="advanced-panel" id="advanced-panel" style="display: none;">
-      <div class="panel-header">Advanced Settings</div>
-      
-      <div class="setting-group">
-        <label class="setting-label">Server Configuration</label>
-        <div class="setting-row">
-          <span>SSE Port:</span>
-          <input type="number" id="sse-port" value="3003" class="setting-input">
-        </div>
-        <div class="setting-row">
-          <span>Reconnect Attempts:</span>
-          <input type="number" id="reconnect-attempts" value="5" class="setting-input">
-        </div>
-        <div class="setting-row">
-          <span>Heartbeat Interval:</span>
-          <select id="heartbeat-interval" class="setting-select">
-            <option value="30">30 seconds</option>
-            <option value="60">1 minute</option>
-            <option value="120">2 minutes</option>
-          </select>
-        </div>
-      </div>
+      <div class="panel-header">Debug & Status</div>
       
       <div class="setting-group">
         <label class="setting-label">Debug Options</label>
         <div class="checkbox-row">
           <input type="checkbox" id="detailed-logs" checked>
-          <label for="detailed-logs">Show detailed logs</label>
-        </div>
-        <div class="checkbox-row">
-          <input type="checkbox" id="connection-metrics" checked>
-          <label for="connection-metrics">Monitor connection metrics</label>
-        </div>
-        <div class="checkbox-row">
-          <input type="checkbox" id="fallback-mode">
-          <label for="fallback-mode">Enable fallback mode</label>
+          <label for="detailed-logs">Show detailed console logs</label>
         </div>
       </div>
       
@@ -516,21 +468,12 @@ const html = `<html>
         <label class="setting-label">Connection Info</label>
         <div class="info-row">
           <span>Endpoint:</span>
-          <code id="endpoint-info">localhost:3003/mcp-stream</code>
+          <code>localhost:3003/mcp-stream</code>
         </div>
         <div class="info-row">
-          <span>Uptime:</span>
-          <span id="uptime-info">--:--:--</span>
+          <span>Status:</span>
+          <span id="detailed-status">Ready</span>
         </div>
-        <div class="info-row">
-          <span>Messages:</span>
-          <span id="messages-count">0 sent</span>
-        </div>
-      </div>
-      
-      <div class="panel-actions">
-        <button id="reset-defaults-btn" class="button tertiary">Reset to Defaults</button>
-        <button id="save-settings-btn" class="button">Save Settings</button>
       </div>
     </div>
   </div>
@@ -551,6 +494,16 @@ const html = `<html>
   </div>
 
 <script>
+// Global variable to control detailed logging
+var detailedLogsEnabled = true;
+
+// Function for conditional debugging logs
+function debugLog(...args) {
+  if (detailedLogsEnabled) {
+    console.log(...args);
+  }
+}
+
 // Essential CSS properties that Figma doesn't support
 var UNSUPPORTED_CSS_PROPERTIES = [
   'animation', 'animation-name', 'animation-duration', 'animation-timing-function',
@@ -645,9 +598,19 @@ document.getElementById('advanced-btn').addEventListener('click', function() {
   }
 });
 
-// Test broadcast button
+// Detailed logs toggle
+document.getElementById('detailed-logs').addEventListener('change', function() {
+  detailedLogsEnabled = this.checked;
+  var statusElement = document.getElementById('detailed-status');
+  if (statusElement) {
+    statusElement.textContent = this.checked ? 'Debug logs enabled' : 'Debug logs disabled';
+  }
+  updateConnectionDetails(this.checked ? 'Detailed logs enabled' : 'Detailed logs disabled');
+});
+
+// Test connection button
 document.getElementById('test-broadcast-btn').addEventListener('click', function() {
-  updateConnectionDetails('Sending test broadcast...');
+  updateConnectionDetails('Testing connection...');
   
   // Send test request via SSE
   parent.postMessage({
@@ -657,37 +620,11 @@ document.getElementById('test-broadcast-btn').addEventListener('click', function
   }, '*');
   
   setTimeout(function() {
-    updateConnectionDetails('Test broadcast sent');
+    updateConnectionDetails('Connection test sent');
   }, 1000);
 });
 
-// Settings save button
-document.getElementById('save-settings-btn').addEventListener('click', function() {
-  var port = document.getElementById('sse-port').value;
-  var reconnectAttempts = document.getElementById('reconnect-attempts').value;
-  var heartbeatInterval = document.getElementById('heartbeat-interval').value;
-  
-  // Save settings (could be stored in localStorage or sent to plugin)
-  localStorage.setItem('sse-settings', JSON.stringify({
-    port: port,
-    reconnectAttempts: reconnectAttempts,
-    heartbeatInterval: heartbeatInterval
-  }));
-  
-  updateConnectionDetails('Settings saved');
-});
 
-// Reset defaults button
-document.getElementById('reset-defaults-btn').addEventListener('click', function() {
-  document.getElementById('sse-port').value = '3001';
-  document.getElementById('reconnect-attempts').value = '5';
-  document.getElementById('heartbeat-interval').value = '30';
-  document.getElementById('detailed-logs').checked = true;
-  document.getElementById('connection-metrics').checked = true;
-  document.getElementById('fallback-mode').checked = false;
-  
-  updateConnectionDetails('Reset to defaults');
-});
 
 // Helper functions for new UI elements
 function updateConnectionStatus(status) {
@@ -1074,7 +1011,7 @@ var maxReconnectAttempts = 5;
 var sseReconnectDelay = 3000;
 
 function startRealSSEConnection() {
-  console.log('[SSE] Starting real SSE connection...');
+          debugLog('[SSE] Starting real SSE connection...');
   
   if (eventSource) {
     eventSource.close();
@@ -1084,7 +1021,7 @@ function startRealSSEConnection() {
             eventSource = new EventSource('http://localhost:3003/mcp-stream');
     
     eventSource.onopen = function(event) {
-      console.log('[SSE] Connection opened successfully');
+      debugLog('[SSE] Connection opened successfully');
       sseConnected = true;
       sseReconnectAttempts = 0;
       updateSSEStatus('🟢 SSE Connected', 'connected');
@@ -1093,7 +1030,7 @@ function startRealSSEConnection() {
     };
     
     eventSource.onmessage = function(event) {
-      console.log('[SSE] Message received:', event.data);
+      debugLog('[SSE] Message received:', event.data);
       
       try {
         var data = JSON.parse(event.data);
@@ -1128,7 +1065,7 @@ function startRealSSEConnection() {
 }
 
 function stopRealSSEConnection() {
-  console.log('[SSE] Stopping real SSE connection...');
+  debugLog('[SSE] Stopping real SSE connection...');
   
   if (eventSource) {
     eventSource.close();
@@ -1144,7 +1081,7 @@ function stopRealSSEConnection() {
 
 function attemptSSEReconnection() {
   if (sseReconnectAttempts >= maxReconnectAttempts) {
-    console.log('[SSE] Max reconnection attempts reached');
+    debugLog('[SSE] Max reconnection attempts reached');
     updateSSEStatus('❌ SSE Connection Failed', 'error');
     updateConnectionStatus('error');
     updateConnectionDetails('Max reconnection attempts reached');
@@ -1157,39 +1094,39 @@ function attemptSSEReconnection() {
   updateConnectionDetails('Reconnecting...');
   
   setTimeout(function() {
-    console.log('[SSE] Reconnection attempt ' + sseReconnectAttempts);
+    debugLog('[SSE] Reconnection attempt ' + sseReconnectAttempts);
     startRealSSEConnection();
   }, sseReconnectDelay);
 }
 
 function processSSEMessage(data) {
-  console.log('[SSE] Processing message:', data);
+  debugLog('[SSE] Processing message:', data);
   
   switch (data.type) {
     case 'connection-established':
-      console.log('[SSE] Connection established confirmed');
+      debugLog('[SSE] Connection established confirmed');
       updateSSEStatus('✅ SSE Ready for MCP', 'connected');
       updateMCPStatus('✅ MCP Ready', 'connected');
       updateConnectionDetails('Ready for MCP requests');
       break;
       
     case 'mcp-request':
-      console.log('[SSE] MCP request received:', data);
+      debugLog('[SSE] MCP request received:', data);
       handleSSEMCPRequest(data);
       break;
       
     case 'test-message':
-      console.log('[SSE] Test message received:', data.message);
+      debugLog('[SSE] Test message received:', data.message);
       updateConnectionDetails('Test: ' + data.message);
       break;
       
     case 'heartbeat':
-      console.log('[SSE] Heartbeat received');
+      debugLog('[SSE] Heartbeat received');
       // Heartbeat messages keep the connection alive, no action needed
       break;
       
     default:
-      console.log('[SSE] Unknown message type:', data.type);
+      debugLog('[SSE] Unknown message type:', data.type);
   }
 }
 
@@ -1198,16 +1135,16 @@ function handleSSEMCPRequest(data) {
     var htmlContent = data.arguments.html;
     var designName = data.arguments.name || 'SSE Import';
     
-    console.log('[SSE] Processing HTML import:', designName);
-    console.log('[SSE] *** USING DIRECT PARSING - TYPESCRIPT VERSION 4.0 ***');
+    debugLog('[SSE] Processing HTML import:', designName);
+    debugLog('[SSE] *** USING DIRECT PARSING - TYPESCRIPT VERSION 4.0 ***');
     updateConnectionDetails('Processing: ' + designName);
     updateMCPStatus('🎨 Processing: ' + designName, 'connecting');
     
     // DIRECT PROCESSING: Parse HTML and send structure directly
     try {
-      console.log('[SSE] Calling simpleParseHTML directly...');
+      debugLog('[SSE] Calling simpleParseHTML directly...');
       var structure = simpleParseHTML(htmlContent);
-      console.log('[SSE] HTML parsed, structure length:', structure?.length || 0);
+      debugLog('[SSE] HTML parsed, structure length:', structure?.length || 0);
       
       // Send html-structure directly to main handler (skip parse-mcp-html)
       parent.postMessage({
@@ -1222,7 +1159,7 @@ function handleSSEMCPRequest(data) {
         }
       }, '*');
       
-      console.log('[SSE] Sent html-structure directly to main handler');
+      debugLog('[SSE] Sent html-structure directly to main handler');
       updateMCPStatus('✅ Converted: ' + designName, 'success');
       
     } catch (error) {
@@ -1231,7 +1168,7 @@ function handleSSEMCPRequest(data) {
     }
     
   } else {
-    console.log('[SSE] Unknown MCP function:', data.function);
+    debugLog('[SSE] Unknown MCP function:', data.function);
     updateConnectionDetails('Unknown function: ' + data.function);
   }
 }
@@ -1253,7 +1190,7 @@ window.addEventListener('message', function(event) {
       updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
       updateMCPStatus('⚪ MCP Inactive', 'disconnected');
     } else if (msg.type === 'test-broadcast-complete') {
-      updateConnectionDetails('✅ Test broadcast completed');
+      updateConnectionDetails('✅ Connection test completed');
     }
   }
 });
@@ -2033,13 +1970,13 @@ async function createGridLayout(children: any[], parentFrame: FrameNode, columns
 }
 
 async function createFigmaNodesFromStructure(structure: any[], parentFrame?: FrameNode, startX = 0, startY = 0, inheritedStyles?: any) {
-  console.log('[NODE CREATION] Starting createFigmaNodesFromStructure');
-  console.log('[NODE CREATION] Structure:', structure);
-  console.log('[NODE CREATION] ParentFrame:', parentFrame?.name || 'none');
-  console.log('[NODE CREATION] Structure length:', structure?.length || 0);
+  debugLog('[NODE CREATION] Starting createFigmaNodesFromStructure');
+  debugLog('[NODE CREATION] Structure:', structure);
+  debugLog('[NODE CREATION] ParentFrame:', parentFrame?.name || 'none');
+  debugLog('[NODE CREATION] Structure length:', structure?.length || 0);
   
   for (const node of structure) {
-    console.log('[NODE CREATION] Processing node:', node.tagName, node.type);
+    debugLog('[NODE CREATION] Processing node:', node.tagName, node.type);
     
     if (node.type === 'element') {
       // Skip script, style, and other non-visual elements
@@ -2825,10 +2762,43 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 let mcpMonitoringInterval: any = null;
 let lastProcessedTimestamp: number = 0;
 
+// NEW: SSE status tracking for intelligent fallback
+let sseConnected: boolean = false;
+let sseLastSuccessTimestamp: number = 0;
+let sseHeartbeatTimeout: any = null;
+
+// Debug logs control (cleaned up for production)
+var detailedLogsEnabled = false; // Set to true only for debugging
+function debugLog(...args: any[]) {
+  if (detailedLogsEnabled) {
+    console.log(...args);
+  }
+}
+
+// RequestID deduplication to prevent duplicate processing
+const processedRequestIDs = new Set<string>();
+const PROCESSED_IDS_MAX_SIZE = 1000; // Prevent memory leaks
+
+function isRequestProcessed(requestId: string): boolean {
+  return processedRequestIDs.has(requestId);
+}
+
+function markRequestProcessed(requestId: string): void {
+  // Prevent memory leaks by limiting set size
+  if (processedRequestIDs.size >= PROCESSED_IDS_MAX_SIZE) {
+    const firstId = processedRequestIDs.values().next().value;
+    if (firstId) {
+      processedRequestIDs.delete(firstId);
+    }
+  }
+  processedRequestIDs.add(requestId);
+  console.log(`[DEDUP] Marked RequestID as processed: ${requestId}`);
+}
+
 // NEW: Use figma.clientStorage for MCP communication (replaces file system)
 async function readMCPSharedData(): Promise<any | null> {
   try {
-    console.log('[MCP] Reading MCP data from file system...');
+    debugLog('[MCP] Reading MCP data from file system...');
     
     // Simple file-based reading via UI
     return new Promise((resolve) => {
@@ -2836,10 +2806,10 @@ async function readMCPSharedData(): Promise<any | null> {
         if (msg.type === 'file-mcp-data-response') {
           figma.ui.off('message', handleFileResponse);
           if (msg.data) {
-            console.log('[MCP] Found data in file system:', msg.data);
+            debugLog('[MCP] Found data in file system:', msg.data);
             resolve(msg.data);
           } else {
-            console.log('[MCP] No data found in file system');
+            debugLog('[MCP] No data found in file system');
             resolve(null);
           }
         }
@@ -2865,7 +2835,7 @@ async function readMCPSharedData(): Promise<any | null> {
 async function deleteMCPSharedData(): Promise<boolean> {
   try {
     figma.ui.postMessage({ type: 'delete-file-mcp-data' });
-    console.log('[MCP] Requested deletion of MCP data file');
+    debugLog('[MCP] Requested deletion of MCP data file');
     return true;
   } catch (error) {
     console.log('[MCP] Could not delete MCP data:', error);
@@ -2873,9 +2843,9 @@ async function deleteMCPSharedData(): Promise<boolean> {
   }
 }
 
-// NEW: SSE-based MCP Monitoring (replaces polling)
+// NEW: SSE-based MCP Monitoring with Intelligent Fallback
 function startMCPMonitoring() {
-  console.log('[MCP] Starting SSE-based monitoring...');
+  console.log('[MCP] Starting SSE-based monitoring with intelligent fallback...');
   
   // Stop any existing polling interval
   if (mcpMonitoringInterval) {
@@ -2883,46 +2853,52 @@ function startMCPMonitoring() {
     mcpMonitoringInterval = null;
   }
   
+  // Reset SSE tracking
+  sseConnected = false;
+  sseLastSuccessTimestamp = Date.now(); // Start with current time instead of 0
+  
   // Start SSE connection in UI
   figma.ui.postMessage({ type: 'start-sse' });
   
-  // Set up fallback polling for backward compatibility (less frequent)
+  // ✅ INTELLIGENT FALLBACK: Only activates when SSE fails
   mcpMonitoringInterval = setInterval(async () => {
-    try {
-      // Fallback file-based check (every 10 seconds instead of 2)
-      const data = await readMCPSharedData();
+    const now = Date.now();
+    const timeSinceLastSSE = now - sseLastSuccessTimestamp;
+    
+    // Only use fallback if SSE has been silent for more than 30 seconds
+    if (!sseConnected || timeSinceLastSSE > 30000) {
+      console.log('[MCP] 🔄 SSE inactive, checking fallback...');
       
-      if (data && data.timestamp && data.function && data.timestamp > lastProcessedTimestamp) {
-        const source = data.source || 'fallback';
-        console.log(`[MCP] Fallback: Found request from ${source}:`, data);
-        
-        lastProcessedTimestamp = data.timestamp;
-        
-        if (data.function === 'mcp_html_to_design_import-html') {
-          const htmlContent = data.arguments.html;
-          const name = data.arguments.name || 'MCP Import (Fallback)';
+      try {
+        const mcpData = await readMCPSharedData();
+        if (mcpData) {
+          const dataTimestamp = mcpData.timestamp ? new Date(mcpData.timestamp).getTime() : 0;
           
-          console.log('[MCP] Processing fallback request:', name);
-          
-          figma.ui.postMessage({ 
-            type: 'parse-mcp-html',
-            html: htmlContent,
-            name: name,
-            mcpSource: 'fallback'
-          });
+          // Only process if this data is newer than our last SSE success
+          if (dataTimestamp > sseLastSuccessTimestamp) {
+            console.log('[MCP] 💾 Fallback processing new data');
+            
+            // Process and clean up
+            figma.ui.postMessage({ 
+              type: 'parse-mcp-html', 
+              html: mcpData.content,
+              name: mcpData.name || 'Fallback Import',
+              fromMCP: true,
+              mcpSource: 'fallback'
+            });
+            
+            await deleteMCPSharedData();
+          }
         }
-        
-        // Clear processed request
-        try {
-          await deleteMCPSharedData();
-        } catch (deleteError) {
-          console.log('[MCP] Could not clear fallback request:', deleteError);
-        }
+      } catch (error) {
+        console.log('[MCP] Fallback check failed:', error);
       }
-    } catch (error) {
-      console.log('[MCP] Fallback monitoring error:', error);
+    } else {
+      debugLog('[MCP] 🟢 SSE active, fallback not needed');
     }
-  }, 10000); // Check every 10 seconds as fallback
+  }, 15000); // Check every 15 seconds
+  
+     console.log('[MCP] ✅ Intelligent fallback enabled (SSE-priority)');
 }
 
 function stopMCPMonitoring() {
@@ -2970,7 +2946,7 @@ async function testMCPConnection() {
 }
 
 figma.ui.onmessage = async (msg) => {
-  console.log('[MAIN HANDLER] Message received:', msg.type, msg);
+  debugLog('[MAIN HANDLER] Message received:', msg.type);
   
   if (msg.type === 'mcp-test') {
     // Test actual MCP server connection
@@ -2980,10 +2956,10 @@ figma.ui.onmessage = async (msg) => {
   
   // NEW: Handle MCP data storage from external sources
   if (msg.type === 'store-mcp-data') {
-    console.log('[MCP] Storing external MCP data in clientStorage:', msg.data);
+    debugLog('[MCP] Storing external MCP data in clientStorage');
     try {
       await figma.clientStorage.setAsync('mcp-shared-data', msg.data);
-      console.log('[MCP] Successfully stored MCP data in clientStorage');
+      debugLog('[MCP] Successfully stored MCP data in clientStorage');
       figma.ui.postMessage({ 
         type: 'mcp-storage-response', 
         success: true, 
@@ -3003,11 +2979,11 @@ figma.ui.onmessage = async (msg) => {
   // REMOVED: Let UI handle parse-mcp-html directly (it already works correctly)
   
   if (msg.type === 'mcp-html') {
-    console.log('[MCP] Recibido HTML vía MCP:', msg.html);
+    debugLog('[MCP] Recibido HTML vía MCP');
     try {
       figma.notify('Procesando HTML recibido vía MCP...');
       figma.ui.postMessage({ type: 'mcp-html-response', message: '✅ HTML recibido y procesado vía MCP.' });
-      console.log('[MCP] HTML procesado correctamente.');
+      debugLog('[MCP] HTML procesado correctamente.');
     } catch (error: any) {
       figma.ui.postMessage({ type: 'mcp-html-response', message: '❌ Error procesando HTML vía MCP: ' + error.message });
       console.error('[MCP] Error procesando HTML vía MCP:', error);
@@ -3016,10 +2992,19 @@ figma.ui.onmessage = async (msg) => {
   }
   
   if (msg.type === 'html-structure') {
-    console.log('[MAIN HANDLER] Processing html-structure message');
-    console.log('[MAIN HANDLER] Structure length:', msg.structure?.length || 0);
-    console.log('[MAIN HANDLER] From MCP:', msg.fromMCP);
-    console.log('[MAIN HANDLER] Name:', msg.name);
+    console.log(`[HTML] Processing: ${msg.name || 'Unnamed'}`);
+    debugLog('[MAIN HANDLER] Structure length:', msg.structure?.length || 0);
+    debugLog('[MAIN HANDLER] From MCP:', msg.fromMCP);
+    
+    // ✅ DEDUPLICATION: Check if RequestID was already processed
+    const requestId = msg.requestId || msg.timestamp || `fallback-${Date.now()}`;
+    if (isRequestProcessed(requestId)) {
+      console.log(`[DEDUP] 🚫 RequestID already processed, skipping: ${requestId}`);
+      return;
+    }
+    
+    // Mark as processed immediately to prevent any race conditions
+    markRequestProcessed(requestId);
     
     // Create a main container frame for all HTML content
     const mainContainer = figma.createFrame();
@@ -3049,12 +3034,12 @@ figma.ui.onmessage = async (msg) => {
     // Add to current page
     figma.currentPage.appendChild(mainContainer);
     
-    console.log('[MAIN HANDLER] Created main container, calling createFigmaNodesFromStructure...');
+    debugLog('[MAIN HANDLER] Created main container, calling createFigmaNodesFromStructure...');
     
     // Create all HTML content inside this container
     await createFigmaNodesFromStructure(msg.structure, mainContainer, 0, 0, undefined);
     
-    console.log('[MAIN HANDLER] Finished creating nodes');
+    console.log('[HTML] ✅ Conversion completed');
     
     // Select the created container for immediate visibility
     figma.currentPage.selection = [mainContainer];
@@ -3076,10 +3061,33 @@ figma.ui.onmessage = async (msg) => {
     figma.notify('⏹️ MCP Monitoring detenido');
   }
 
+  // NEW: SSE Status Updates from UI
+  if (msg.type === 'sse-connected') {
+    sseConnected = true;
+    sseLastSuccessTimestamp = Date.now();
+    console.log('[SSE] 🟢 Connected');
+  }
+
+  if (msg.type === 'sse-disconnected') {
+    sseConnected = false;
+    console.log('[SSE] 🔴 Disconnected');
+  }
+
+  if (msg.type === 'sse-message-processed') {
+    sseLastSuccessTimestamp = msg.timestamp || Date.now();
+    debugLog('[MCP] 📡 SSE message processed, timestamp updated');
+  }
+
+  if (msg.type === 'sse-processing-timestamp') {
+    // SSE is actively processing this timestamp - mark it to prevent fallback
+    sseLastSuccessTimestamp = msg.timestamp;
+    debugLog('[MCP] 🎯 SSE processing timestamp - fallback blocked');
+  }
+
   // NEW UI ELEMENT HANDLERS
   // SSE HANDLERS - Properly integrated
   if (msg.type === 'start-sse') {
-    console.log('[SSE] Starting SSE connection from UI...');
+    debugLog('[SSE] Starting SSE connection from UI...');
     // Start actual SSE connection
     figma.ui.postMessage({ 
       type: 'start-sse-connection'
@@ -3087,7 +3095,7 @@ figma.ui.onmessage = async (msg) => {
   }
 
   if (msg.type === 'stop-sse') {
-    console.log('[SSE] Stopping SSE connection from UI...');
+    debugLog('[SSE] Stopping SSE connection from UI...');
     // Stop actual SSE connection
     figma.ui.postMessage({ 
       type: 'stop-sse-connection'
@@ -3095,9 +3103,9 @@ figma.ui.onmessage = async (msg) => {
   }
 
   if (msg.type === 'test-broadcast') {
-    console.log('[SSE] Test broadcast requested from UI...');
+    debugLog('[SSE] Connection test requested from UI...');
     // This could trigger a test request to the bridge server
-    figma.notify('📡 Test broadcast sent');
+    figma.notify('🔗 Connection test sent');
     
     // Send confirmation back to UI
     setTimeout(() => {
@@ -3105,3 +3113,4 @@ figma.ui.onmessage = async (msg) => {
     }, 1000);
   }
 }; 
+

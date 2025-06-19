@@ -11,6 +11,9 @@ var sseReconnectAttempts = 0;
 var maxReconnectAttempts = 5;
 var sseReconnectDelay = 3000; // 3 seconds
 
+// Deduplication tracking
+var processedRequests = new Set();
+
 // ===============================================
 // SSE FUNCTIONALITY
 // ===============================================
@@ -32,6 +35,11 @@ function startSSEConnection() {
             updateSSEStatus('🟢 SSE Connected', 'success');
             // Also update MCP status to indicate SSE is ready for MCP
             updateMCPStatus('🟢 Ready for MCP Tools', 'success');
+            
+            // Notify main code that SSE is connected
+            parent.postMessage({
+                pluginMessage: { type: 'sse-connected' }
+            }, '*');
         };
         
         eventSource.onmessage = function(event) {
@@ -48,6 +56,11 @@ function startSSEConnection() {
         eventSource.onerror = function(event) {
             console.error('[SSE] Connection error:', event);
             sseConnected = false;
+            
+            // Notify main code that SSE is disconnected
+            parent.postMessage({
+                pluginMessage: { type: 'sse-disconnected' }
+            }, '*');
             
             if (eventSource.readyState === EventSource.CLOSED) {
                 updateSSEStatus('🔴 SSE Disconnected', 'error');
@@ -95,6 +108,14 @@ function attemptSSEReconnection() {
 function processSSEMessage(data) {
     console.log('[SSE] Processing message:', data);
     
+    // Update heartbeat timestamp for all message types
+    parent.postMessage({
+        pluginMessage: { 
+            type: 'sse-message-processed',
+            timestamp: data.timestamp || Date.now()
+        }
+    }, '*');
+    
     switch (data.type) {
         case 'connection-established':
             console.log('[SSE] Connection established confirmed');
@@ -122,16 +143,40 @@ function processSSEMessage(data) {
     }
 }
 
-// FORCE CACHE REFRESH - VERSION 3.0
+// INTELLIGENT FALLBACK - VERSION 4.0 WITH DEDUPLICATION
 function handleMCPRequest(data) {
-    console.log('[SSE] *** CACHE BUSTER - VERSION 3.0 LOADED ***');
+    console.log('[SSE] *** INTELLIGENT FALLBACK V4.0 WITH DEDUPLICATION ***');
+    
     if (data.function === 'mcp_html_to_design_import-html') {
+        // Check for duplicates using requestId
+        const requestId = data.requestId || data.timestamp;
+        if (processedRequests.has(requestId)) {
+            console.log('[SSE] 🚫 Duplicate request detected, skipping:', requestId);
+            return;
+        }
+        
+        // Mark as processed immediately
+        processedRequests.add(requestId);
+        // Clean old entries (keep only last 10)
+        if (processedRequests.size > 10) {
+            const firstEntry = processedRequests.values().next().value;
+            processedRequests.delete(firstEntry);
+        }
+        
         const htmlContent = data.arguments.html;
         const designName = data.arguments.name || 'SSE Import';
         
-        console.log('[SSE] Processing HTML import:', designName);
-        console.log('[SSE] *** USING DIRECT PARSING VERSION 2.0 ***');
+        console.log('[SSE] 🎯 Processing HTML import (NEW):', designName, 'RequestID:', requestId);
         updateSSEStatus(`🎨 Processing: ${designName}`, 'info');
+        
+        // IMMEDIATELY notify main code that SSE is processing this timestamp
+        parent.postMessage({
+            pluginMessage: { 
+                type: 'sse-processing-timestamp',
+                timestamp: data.timestamp,
+                requestId: requestId
+            }
+        }, '*');
         
         // DIRECT PROCESSING: Parse HTML and send structure directly
         try {
