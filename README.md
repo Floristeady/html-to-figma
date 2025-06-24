@@ -46,7 +46,7 @@ node start-servers.js
   "mcp.servers": {
     "figma-html-bridge": {
       "command": "node",
-      "args": ["mcp-server.js"],
+      "args": ["/path/to/your/html-to-figma/mcp-server.js"],
       "cwd": "/path/to/your/html-to-figma"
     }
   }
@@ -149,7 +149,6 @@ node start-servers.js
 ## 📚 Documentation
 
 - [Project Status](./context/PROJECT_STATUS.md) - Current features and completion status
-- [Development Guide](./context/DEVELOPMENT.md) - Detailed development setup
 - [AI Model Instructions](./context/AI_MODEL_INSTRUCTIONS.md) - Instructions for AI assistants
 - [Executive Summary](./context/EXECUTIVE_SUMMARY.md) - High-level project overview
 
@@ -182,4 +181,4 @@ MIT License - see LICENSE file for details.
 ---
 
 **Status**: ✅ Fully functional with 100% MCP integration  
-**Last Updated**: June 18, 2025 
+**Last Updated**: June 24, 2025 
