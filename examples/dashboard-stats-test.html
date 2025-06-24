@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test 🏗️</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .actions {
+            padding: 20px;
+        }
+        
+        .actions h2 {
+            margin-bottom: 16px;
+            color: #374151;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .statistics {
+            padding: 20px;
+            background: #f9fafb;
+        }
+        
+        .statistics h2 {
+            margin-bottom: 20px;
+            color: #374151;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1f2937;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        /* Pseudo-elements for icons */
+        .stat-item.users .stat-number::before {
+            content: "👥";
+            display: block;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-item.revenue .stat-number::before {
+            content: "💰";
+            display: block;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-item.growth .stat-number::before {
+            content: "📈";
+            display: block;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .recent-activity {
+            padding: 20px;
+        }
+        
+        .recent-activity h2 {
+            margin-bottom: 16px;
+            color: #374151;
+        }
+        
+        .activity-item {
+            background: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .activity-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .activity-description {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .bottom-nav {
+            background: #374151;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-around;
+        }
+        
+        .nav-item {
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .nav-item.active {
+            color: #3b82f6;
+        }
+        
+        .nav-item::before {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item.home::before { content: "🏠"; }
+        .nav-item.search::before { content: "🔍"; }
+        .nav-item.favorites::before { content: "⭐"; }
+        .nav-item.profile::before { content: "👤"; }
+        .nav-item.settings::before { content: "⚙️"; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Dashboard Test 🏗️</h1>
+            <p>Testing Navigation Layout</p>
+        </div>
+        
+        <div class="actions">
+            <h2>Actions</h2>
+            <div class="button-group">
+                <button class="btn-primary">Primary Action</button>
+                <button class="btn-secondary">Secondary</button>
+            </div>
+        </div>
+        
+        <div class="statistics">
+            <h2>Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item users">
+                    <span class="stat-number">1.2K</span>
+                    <div class="stat-label">Users</div>
+                </div>
+                <div class="stat-item revenue">
+                    <span class="stat-number">$45K</span>
+                    <div class="stat-label">Revenue</div>
+                </div>
+                <div class="stat-item growth">
+                    <span class="stat-number">12%</span>
+                    <div class="stat-label">Growth</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="recent-activity">
+            <h2>Recent Activity</h2>
+            
+            <div class="activity-item">
+                <div class="activity-title">New Feature Released</div>
+                <div class="activity-description">We've launched a new analytics dashboard with improved performance and better user experience.</div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-title">System Update</div>
+                <div class="activity-description">All systems have been updated to the latest version. No action required from users.</div>
+            </div>
+        </div>
+        
+        <div class="bottom-nav">
+            <a href="#" class="nav-item home active">Home</a>
+            <a href="#" class="nav-item search">Search</a>
+            <a href="#" class="nav-item favorites">Favorites</a>
+            <a href="#" class="nav-item profile">Profile</a>
+            <a href="#" class="nav-item settings">Settings</a>
+        </div>
+    </div>
+</body>
+</html> 

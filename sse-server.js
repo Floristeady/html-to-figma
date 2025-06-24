@@ -10,12 +10,10 @@ import url from 'url';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { SERVER_CONFIG, getSSEStreamURL, getMCPTriggerURL, getHealthURL } from './config/server-config.js';
 
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Configuration
-const SSE_PORT = 3003;
 
 console.log('[SSE-SERVER] Starting dedicated SSE server for Figma plugin...');
 console.log('[SSE-SERVER] Working directory:', __dirname);
@@ -24,7 +22,7 @@ class FigmaSSEServer {
   constructor() {
     this.sseConnections = new Set();
     this.httpServer = null;
-    this.sharedDataPath = path.join(__dirname, 'mcp-shared-data.json');
+    this.sharedDataPath = path.join(__dirname, SERVER_CONFIG.SHARED_DATA_FILE);
     this.lastProcessedRequestId = null;
     
     // Watch for file changes
@@ -87,19 +85,19 @@ class FigmaSSEServer {
       }
 
       // SSE Endpoint
-      if (parsedUrl.pathname === '/mcp-stream') {
+      if (parsedUrl.pathname === SERVER_CONFIG.ENDPOINTS.SSE_STREAM) {
         this.handleSSEConnection(req, res);
         return;
       }
 
       // MCP Trigger endpoint (for MCP server notifications)
-      if (parsedUrl.pathname === '/mcp-trigger' && req.method === 'POST') {
+      if (parsedUrl.pathname === SERVER_CONFIG.ENDPOINTS.MCP_TRIGGER && req.method === 'POST') {
         this.handleMCPTrigger(req, res);
         return;
       }
 
       // Status endpoint
-      if (parsedUrl.pathname === '/mcp-status') {
+      if (parsedUrl.pathname === SERVER_CONFIG.ENDPOINTS.HEALTH) {
         res.writeHead(200, {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -107,7 +105,7 @@ class FigmaSSEServer {
         res.end(JSON.stringify({
           status: 'running',
           activeConnections: this.sseConnections.size,
-          sseEndpoint: `http://localhost:${SSE_PORT}/mcp-stream`,
+          sseEndpoint: getSSEStreamURL(),
           version: '2.1.0-dedicated',
           timestamp: new Date().toISOString()
         }));
@@ -115,7 +113,7 @@ class FigmaSSEServer {
       }
 
       // Test broadcast endpoint
-      if (parsedUrl.pathname === '/test-broadcast') {
+      if (parsedUrl.pathname === SERVER_CONFIG.ENDPOINTS.TEST_BROADCAST) {
         const testMessage = {
           type: 'test-message',
           message: 'SSE server test broadcast',
@@ -141,10 +139,10 @@ class FigmaSSEServer {
     });
 
     // Start the server
-    this.httpServer.listen(SSE_PORT, () => {
-      console.log(`[SSE-SERVER] Server listening on port ${SSE_PORT}`);
-      console.log(`[SSE-SERVER] SSE endpoint: http://localhost:${SSE_PORT}/mcp-stream`);
-      console.log(`[SSE-SERVER] Status endpoint: http://localhost:${SSE_PORT}/mcp-status`);
+    this.httpServer.listen(SERVER_CONFIG.PORT, () => {
+      console.log(`[SSE-SERVER] Server listening on port ${SERVER_CONFIG.PORT}`);
+      console.log(`[SSE-SERVER] SSE endpoint: ${getSSEStreamURL()}`);
+      console.log(`[SSE-SERVER] Status endpoint: ${getHealthURL()}`);
     });
   }
 
@@ -179,7 +177,7 @@ class FigmaSSEServer {
           timestamp: new Date().toISOString()
         });
       }
-    }, 30000); // Every 30 seconds
+    }, SERVER_CONFIG.TIMEOUTS.HEARTBEAT);
 
     // Handle connection close
     req.on('close', () => {

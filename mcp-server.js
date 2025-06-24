@@ -11,6 +11,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { SERVER_CONFIG, getMCPTriggerURL } from './config/server-config.js';
 
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,7 +33,7 @@ class FigmaMCPServer {
     );
 
     // Shared data file for communication with SSE server
-    this.sharedDataPath = path.join(__dirname, 'mcp-shared-data.json');
+    this.sharedDataPath = path.join(__dirname, SERVER_CONFIG.SHARED_DATA_FILE);
     this.setupToolHandlers();
   }
 
@@ -162,9 +163,9 @@ class FigmaMCPServer {
       
       const postData = JSON.stringify(data);
       const options = {
-        hostname: 'localhost',
-        port: 3003,
-        path: '/mcp-trigger',
+        hostname: SERVER_CONFIG.HOST,
+        port: SERVER_CONFIG.PORT,
+        path: SERVER_CONFIG.ENDPOINTS.MCP_TRIGGER,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

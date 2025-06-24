@@ -1,6 +1,6 @@
 # AI Model Instructions
 
-**Last Updated**: June 18, 2025
+**Last Updated**: June 24, 2025
 
 ## 🎯 Project Overview
 
@@ -33,7 +33,7 @@ node start-servers.js
   "mcp.servers": {
     "figma-html-bridge": {
       "command": "node",
-      "args": ["mcp-server.js"],
+      "args": ["/path/to/html-to-figma/mcp-server.js"],
       "cwd": "/path/to/html-to-figma"
     }
   }

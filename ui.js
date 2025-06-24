@@ -1,5 +1,20 @@
 "use strict";
 
+// ==========================================
+// CONFIGURATION - Should match PluginConfig in code.ts
+// ==========================================
+var UI_CONFIG = {
+    SSE_BASE_URL: 'http://localhost:3003',
+    SSE_ENDPOINT: '/mcp-stream',
+    MAX_RECONNECT_ATTEMPTS: 5,
+    RECONNECT_DELAY: 3000 // 3 seconds
+};
+
+// Helper function to get SSE URL
+function getSSEUrl() {
+    return UI_CONFIG.SSE_BASE_URL + UI_CONFIG.SSE_ENDPOINT;
+}
+
 // Global variables
 var currentHTML = '';
 var currentMCPName = '';
@@ -8,8 +23,8 @@ var currentMCPName = '';
 var eventSource = null;
 var sseConnected = false;
 var sseReconnectAttempts = 0;
-var maxReconnectAttempts = 5;
-var sseReconnectDelay = 3000; // 3 seconds
+var maxReconnectAttempts = UI_CONFIG.MAX_RECONNECT_ATTEMPTS;
+var sseReconnectDelay = UI_CONFIG.RECONNECT_DELAY;
 
 // Deduplication tracking
 var processedRequests = new Set();
@@ -19,14 +34,18 @@ var processedRequests = new Set();
 // ===============================================
 
 function startSSEConnection() {
-    console.log('[SSE] Starting SSE connection...');
+    const sseUrl = getSSEUrl();
+    console.log('[SSE] Starting SSE connection to:', sseUrl);
     
     if (eventSource) {
+        console.log('[SSE] Closing existing connection...');
         eventSource.close();
     }
     
     try {
-        eventSource = new EventSource('http://localhost:3003/mcp-stream');
+        // Use centralized configuration
+        eventSource = new EventSource(sseUrl);
+        console.log('[SSE] EventSource created successfully');
         
         eventSource.onopen = function(event) {
             console.log('[SSE] Connection opened');
@@ -285,25 +304,14 @@ window.onmessage = (event) => {
         alert(event.data.pluginMessage.message);
     }
     
-    // Handle SSE control messages
-    else if (type === 'start-sse') {
-        console.log('[UI] Received start-sse message');
+    // Handle SSE control messages (unified)
+    else if (type === 'start-sse' || type === 'start-sse-connection') {
+        console.log('[UI] Starting SSE connection...', type);
         startSSEConnection();
     }
     
-    else if (type === 'stop-sse') {
-        console.log('[UI] Received stop-sse message');
-        stopSSEConnection();
-    }
-    
-    // Handle SSE connection control from the plugin
-    else if (type === 'start-sse-connection') {
-        console.log('[UI] Received start-sse-connection message');
-        startSSEConnection();
-    }
-    
-    else if (type === 'stop-sse-connection') {
-        console.log('[UI] Received stop-sse-connection message');
+    else if (type === 'stop-sse' || type === 'stop-sse-connection') {
+        console.log('[UI] Stopping SSE connection...', type);
         stopSSEConnection();
     }
 };

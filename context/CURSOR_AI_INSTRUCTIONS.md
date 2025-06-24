@@ -1,6 +1,6 @@
 # Cursor AI Instructions
 
-**Last Updated**: June 18, 2025  
+**Last Updated**: June 24, 2025  
 **Status**: ✅ **FULLY OPERATIONAL MCP INTEGRATION**
 
 ## 🎯 Overview
@@ -42,7 +42,7 @@ node start-servers.js
 3. Select `manifest.json` from the project directory
 4. Plugin should show **🟢 Connected**
 
-### 4. Configure Cursor MCP (Required)
+### 4. Configure Cursor MCP Tool (Required)
 Add this to your Cursor settings and restart Cursor:
 
 ```json
@@ -50,7 +50,7 @@ Add this to your Cursor settings and restart Cursor:
   "mcp.servers": {
     "figma-html-bridge": {
       "command": "node",
-      "args": ["mcp-server.js"],
+      "args": ["/Users/yourusername/path/to/html-to-figma/mcp-server.js"],
       "cwd": "/Users/yourusername/path/to/html-to-figma"
     }
   }
