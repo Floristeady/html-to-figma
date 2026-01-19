@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Sound & Guidance Company - Index 3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* HEADER */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #000;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav-menu a {
+            color: #000;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-menu a:hover {
+            color: #666;
+        }
+        
+        /* TYPOGRAPHY */
+        h1, h2 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            line-height: 1.2;
+        }
+        
+        h2 {
+            font-size: 2.5rem;
+            line-height: 1.3;
+        }
+        
+        h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #000;
+            color: #fff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* HERO BANNER */
+        .hero-banner {
+            height: 100vh;
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            margin-bottom: 80px;
+        }
+        
+        .hero-banner::before {
+            content: "[Hero Background Image Placeholder]";
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+        
+        .hero-content h1 {
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .hero-content p {
+            font-size: 1.3rem;
+            margin: 20px auto;
+            max-width: 700px;
+        }
+
+        .hero-tagline {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #f0f0f0;
+            margin: 25px auto;
+            max-width: 700px;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 20px auto 40px auto;
+            max-width: 700px;
+        }
+
+        /* APP STORE BADGES */
+        .app-badges {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .app-badge {
+            background: #000;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s ease;
+        }
+
+        .app-badge:hover {
+            transform: translateY(-2px);
+        }
+
+        .app-badge i {
+            font-size: 1.2rem;
+        }
+        
+        /* ASYMMETRIC GRID LAYOUTS */
+        .section {
+            padding: 100px 0;
+        }
+        
+                 /* VISION - 4 CARDS GRID */
+         .vision-container {
+             display: grid;
+             grid-template-columns: 1.3fr 2.7fr;
+             gap: 60px;
+             margin: 60px 0;
+         }
+         
+         .vision-grid {
+             display: grid;
+             grid-template-columns: repeat(2, 1fr);
+             gap: 30px;
+         }
+         
+         .vision-card {
+             background: #f8f8f8;
+             padding: 30px;
+             border-radius: 20px;
+             text-align: center;
+             min-height: 200px;
+         }
+         
+         .vision-card .icon {
+             width: 60px;
+             height: 60px;
+             background: #e5e5e5;
+             border-radius: 15px;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             margin: 0 auto 15px auto;
+         }
+         
+         .vision-card .icon i {
+             font-size: 1.5rem;
+             color: #000;
+         }
+         
+         .vision-card h3 {
+             font-size: 1.1rem;
+             margin-bottom: 10px;
+         }
+         
+         .vision-card p {
+             color: #666;
+             font-size: 0.85rem;
+             margin: 0;
+             line-height: 1.4;
+         }
+        
+        /* HOW IT WORKS - ASYMMETRIC */
+        .how-it-works-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+        
+        .how-content {
+            background: #f8f8f8;
+            padding: 40px;
+            border-radius: 20px;
+        }
+        
+        .how-visual {
+            background: #000;
+            height: 350px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            position: relative;
+        }
+        
+        .how-visual::before {
+            content: "[Audio Demo Placeholder]";
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .feature-list {
+            list-style: none;
+            margin: 30px 0;
+        }
+        
+        .feature-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-item:hover {
+            background: rgba(0,0,0,0.02);
+            padding-left: 10px;
+        }
+        
+        .feature-item::before {
+            content: "→";
+            margin-right: 10px;
+            color: #ccc;
+        }
+        
+        /* TECHNOLOGY - DARK BACKGROUND */
+        .tech-section {
+            background: #2a2a2a;
+            color: white;
+            padding: 120px 0;
+        }
+        
+        .tech-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        
+        .tech-content h2,
+        .tech-content h3 {
+            color: white;
+        }
+
+        .tech-section .feature-item {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .tech-section .feature-item::before {
+            color: rgba(255,255,255,0.4);
+        }
+        
+        .tech-visual {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        
+        .tech-visual .ms-logo {
+            width: 120px;
+            height: 120px;
+            background: #fff;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px auto;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .tech-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        /* VIDEOS - HORIZONTAL CAROUSEL */
+        .videos-section {
+            padding: 100px 0;
+            background: #f8f8f8;
+        }
+        
+        .videos-intro {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+                 .videos-carousel {
+             display: grid;
+             grid-template-columns: repeat(3, 1fr);
+             gap: 30px;
+             padding: 20px 0;
+         }
+         
+         .video-card {
+             background: white;
+             border-radius: 20px;
+             overflow: hidden;
+         }
+        
+        .video-placeholder {
+            width: 100%;
+            height: 250px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .video-info {
+            padding: 30px;
+        }
+        
+        .video-info h3 {
+            margin-bottom: 10px;
+        }
+        
+        .video-location {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        /* PARTNERSHIPS */
+        .partnerships-section {
+            padding: 100px 0;
+        }
+        
+        .partnerships-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: start;
+        }
+        
+                 .partnership-card {
+             background: #f8f8f8;
+             padding: 30px;
+             border-radius: 20px;
+             margin-bottom: 20px;
+         }
+        
+        .partnership-card::before {
+            content: "→";
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        
+        /* TEAM - PHOTO GRID */
+        .team-section {
+            padding: 100px 0;
+        }
+        
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+        }
+        
+        .team-card {
+            display: flex;
+            gap: 30px;
+            background: #f8f8f8;
+            padding: 30px;
+            border-radius: 20px;
+        }
+        
+        .team-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: #e5e5e5;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .team-info h3 {
+            margin-bottom: 5px;
+        }
+        
+        .team-role {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        .team-bio {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        /* CONTACT - DARK LAYOUT */
+        .contact-section {
+            background: #000;
+            color: white;
+            padding: 100px 0;
+        }
+        
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        
+        .contact-content h2 {
+            color: white;
+        }
+        
+        .contact-cta {
+            text-align: right;
+        }
+        
+        .contact-footer {
+            margin-top: 60px;
+            padding-top: 40px;
+            border-top: 1px solid #333;
+            text-align: left;
+        }
+        
+        .contact-footer p {
+            color: #999;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* DISCLAIMER */
+        .disclaimer-section {
+            background: #191919;
+            padding: 40px 0;
+            border-top: 1px solid #555;
+        }
+
+        .disclaimer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .disclaimer-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .disclaimer-content p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+
+        .disclaimer-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Add top padding to sections to account for fixed header */
+        .section {
+            scroll-margin-top: 80px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+    <div class="header-content">
+        <a href="#" class="logo">SSGC</a>
+        <nav>
+            <ul class="nav-menu">
+                <li><a href="#vision">About</a></li>
+                <li><a href="#technology">Technology</a></li>
+                <li><a href="#videos">Applications</a></li>
+                <li><a href="#partnerships">Get Involved</a></li>
+                <li><a href="#team">Team</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<!-- HERO BANNER -->
+<section class="hero-banner">
+         <div class="hero-content">
+         <h1>Spatial Sound &<br>Guidance Company</h1>
+         <p class="hero-tagline">Using audio wayfinding to connect people and places</p>
+         <p class="hero-description">Revolutionise how people interact with their environment through spatial sound and guidance technology.</p>
+         
+         <div class="app-badges">
+             <a href="#" class="app-badge">
+                 <i class="fab fa-google-play"></i>
+                 Google Play
+             </a>
+             <a href="#" class="app-badge">
+                 <i class="fab fa-apple"></i>
+                 App Store
+             </a>
+         </div>
+         
+         <a href="#vision" class="btn">Explore Our Vision</a>
+     </div>
+</section>
+
+ <!-- VISION SECTION -->
+ <section id="vision" class="section">
+     <div class="container">
+         <div class="vision-container">
+             <div>
+                 <h2>From Heads-Down to Heads-Up</h2>
+                 <p style="font-size: 1.2rem; color: #666; margin-bottom: 30px;">Changing how people understand and relate to physical surroundings</p>
+                 <p style="font-size: 1.1rem; margin: 0; line-height: 1.6;"><strong>Moving from smartphone screen mode to engaged and oriented mode.</strong> Our vision is to help change the way people understand and relate to their physical surroundings. From a 'heads-down' smartphone screen mode, to a 'heads-up' engaged and oriented mode.</p>
+             </div>
+             
+             <div class="vision-grid">
+                 <div class="vision-card">
+                     <div class="icon">
+                         <i class="fas fa-eye"></i>
+                     </div>
+                     <h3>Transform Interaction</h3>
+                     <p>Transform interaction from 'heads-down' to 'heads-up' engagement with your environment</p>
+                 </div>
+                 
+                 <div class="vision-card">
+                     <div class="icon">
+                         <i class="fas fa-layer-group"></i>
+                     </div>
+                     <h3>Digital Layers</h3>
+                     <p>Add layers of digital information to locations for richer context</p>
+                 </div>
+                 
+                 <div class="vision-card">
+                     <div class="icon">
+                         <i class="fas fa-star"></i>
+                     </div>
+                     <h3>Rich Experiences</h3>
+                     <p>Create richer, more engaging experiences with places around you</p>
+                 </div>
+                 
+                 <div class="vision-card">
+                     <div class="icon">
+                         <i class="fas fa-compass"></i>
+                     </div>
+                     <h3>Stay Oriented</h3>
+                     <p>Help people stay aware, engaged and oriented to their surroundings</p>
+                 </div>
+             </div>
+         </div>
+     </div>
+ </section>
+
+ <!-- HOW IT WORKS SECTION -->
+ <section id="how-it-works" class="section">
+     <div class="container">
+         <div class="how-it-works-grid">
+             <div class="how-content">
+                 <h2>Audio Augmented Navigation</h2>
+                 <h3>Works with your existing mobile device and headphones</h3>
+                 <p>Ambient cues replace turn-by-turn directions.</p>
+                
+                <ul class="feature-list">
+                    <li class="feature-item">Audio augments places with spatially aware navigation</li>
+                    <li class="feature-item">Ambient cues call out nearby roads and landmarks</li>
+                    <li class="feature-item">Audio beacons guide you toward destinations</li>
+                    <li class="feature-item">Helps build mental maps of the environment</li>
+                </ul>
+                
+                <p style="margin-top: 30px;">Using your existing mobile and headphones, we use audio to augment places with spatially aware navigation and information.</p>
+            </div>
+            
+            <div>
+                <div class="how-visual">
+                    <i class="fas fa-headphones" style="font-size: 4rem;"></i>
+                </div>
+                <div class="app-badges" style="margin-top: 20px;">
+                    <a href="#" class="app-badge">
+                        <i class="fab fa-google-play"></i>
+                        Google Play
+                    </a>
+                    <a href="#" class="app-badge">
+                        <i class="fab fa-apple"></i>
+                        App Store
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TECHNOLOGY SECTION -->
+<section id="technology" class="tech-section">
+    <div class="container">
+        <div class="tech-grid">
+            <div class="tech-content">
+                <h2>Built on Microsoft Soundscape Technology</h2>
+                <h3 style="color: rgba(255,255,255,0.8);">10 years of research into 3D spatial audio cues</h3>
+                
+                <ul class="feature-list" style="color: rgba(255,255,255,0.9);">
+                    <li class="feature-item">Originally developed to help people with low vision</li>
+                    <li class="feature-item">Rich 3D spatial audio for navigation assistance</li>
+                    <li class="feature-item">Accessibility technology brought to mainstream</li>
+                    <li class="feature-item">Led by the original Microsoft project team</li>
+                </ul>
+                
+                <p style="margin-top: 30px; color: rgba(255,255,255,0.8);">Soundscape was a 10-year research project undertaken by Microsoft, set up to investigate how rich 3D spatial audio cues can help people with low vision gain more mobility independence.</p>
+            </div>
+            
+            <div class="tech-visual">
+                <div class="ms-logo">MSFT</div>
+                <div class="tech-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">10</div>
+                        <div class="stat-label">Years Research</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">3D</div>
+                        <div class="stat-label">Spatial Audio</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- VIDEOS SECTION -->
+<section id="videos" class="videos-section">
+    <div class="container">
+        <div class="videos-intro">
+            <h2>Real-World Testing and Deployment</h2>
+            <p style="font-size: 1.3rem; font-weight: 500; margin-bottom: 20px;">Soundscape technology has been deployed in proof-of-concept trials during its design and development.</p>
+            <p>These deployments demonstrate the technology's versatility across different transportation modes and environments.</p>
+        </div>
+        
+        <div class="videos-carousel">
+            <div class="video-card">
+                <div class="video-placeholder">▶ VIDEO 1</div>
+                <div class="video-info">
+                    <h3>Commuter Train Route</h3>
+                    <p class="video-location">Reading to London</p>
+                    <p>Testing spatial audio navigation on public transportation, providing contextual information about stations and connections.</p>
+                </div>
+            </div>
+            
+            <div class="video-card">
+                <div class="video-placeholder">▶ VIDEO 2</div>
+                <div class="video-info">
+                    <h3>Walking Tour</h3>
+                    <p class="video-location">Southwark, London</p>
+                    <p>Demonstrating pedestrian navigation through historic areas, highlighting landmarks and points of interest.</p>
+                </div>
+            </div>
+            
+            <div class="video-card">
+                <div class="video-placeholder">▶ VIDEO 3</div>
+                <div class="video-info">
+                    <h3>Community Trial</h3>
+                    <p class="video-location">St. Albans</p>
+                    <p>Community-driven pilot integrating crowd-sourced local information from residents.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PARTNERSHIPS SECTION -->
+<section id="partnerships" class="partnerships-section">
+    <div class="container">
+        <div class="partnerships-grid">
+            <div>
+                <h2>How to Get Involved</h2>
+                <h3 style="color: #666; font-weight: 500;">Developing pilots with organizations seeking innovative interaction methods.</h3>
+                <p>Multiple application areas for forward-thinking partners.</p>
+                <a href="#contact" class="btn" style="margin-top: 20px;">Start a Conversation</a>
+            </div>
+            
+            <div>
+                <div class="partnership-card">
+                    Local Authorities encouraging walking and cycling initiatives
+                </div>
+                <div class="partnership-card">
+                    Business improvement organizations boosting district engagement
+                </div>
+                <div class="partnership-card">
+                    Large businesses enhancing onboarding and wayfinding experiences
+                </div>
+                <div class="partnership-card">
+                    Organizations serving stakeholders, colleagues, and customers
+                </div>
+                
+                <p style="margin-top: 30px;">Right now, we are developing pilots with organisations that want to provide more innovative ways for people to interact with the places that they visit.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TEAM SECTION -->
+<section id="team" class="team-section">
+    <div class="container">
+        <h2>Who is Behind Spatial Sound & Guidance?</h2>
+        <p style="margin-bottom: 60px;">The company has four co-founders, including from the original Microsoft research team and experts from the urban planning and digital places industry.</p>
+        
+        <div class="team-grid">
+            <div class="team-card">
+                <div class="team-photo">[Photo SL]</div>
+                <div class="team-info">
+                    <h3>Stephen Lorimer</h3>
+                    <p class="team-role">Chief Executive Officer</p>
+                    <p class="team-bio">Steve is Chief Executive Officer for SSGC and is a well-known expert in UK and European urban and climate planning. This is his second start-up and prior to that developed the Clean Energy Cities programme at the Centre for Net Zero. Prior to that Steve was at GDS (Government Digital Service) and before that at Greater London Authority where he was Smart London Strategy and Delivery Officer. Steve holds a Doctorate from University College London, in Energy and built environment.</p>
+                </div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-photo">[Photo LC]</div>
+                <div class="team-info">
+                    <h3>Linda Chandler</h3>
+                    <p class="team-role">Chief Digital Officer</p>
+                    <p class="team-bio">Linda is Chief Digital Officer for SSGC and most recently was Chief Digital Officer at Olympia UK. Prior to this she was the Smart Cities lead for Microsoft UK and APAC, and Chief Information Officer for the London Development Agency in the run up to the London Olympics. As a digital places expert, Linda speaks regularly at industry events on applying innovative technology to smart cities and the built environment. She is a BRE (Building Research Establishment) Trustee.</p>
+                </div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-photo">[Photo JC]</div>
+                <div class="team-info">
+                    <h3>Jarnail Chudge</h3>
+                    <p class="team-role">Chief Product Officer</p>
+                    <p class="team-bio">Jarnail is Chief Product Officer for SSGC and was the founder of Microsoft Soundscape and led the development of the Soundscape Community app based on the open-source release of the technology. Jarnail was with Microsoft for 22 years, holding positions in Microsoft Research and AI, and as a Solution Architect. He is an Honorary Professor of Practice (Computer Science, specialising in AI in Accessibility & Digital Accessibility Policy), at University College London, UK.</p>
+                </div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-photo">[Photo PJ]</div>
+                <div class="team-info">
+                    <h3>Phillip Joe</h3>
+                    <p class="team-role">Chief Operations and Design Officer</p>
+                    <p class="team-bio">Phillip is Chief Operations and Design Officer for SSGC and most recently Director of Strategy and operations for Experience design at Lloyds Banking Group, and prior to that was at Microsoft where he was the global User experience architect for Microsoft Consulting. Prior to Microsoft he established and ran the Interaction design discipline at IDEO London, a product development consultancy. He is a coach on the Innovation RCA (Royal College of Art, London) start-up programme.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CONTACT SECTION -->
+<section id="contact" class="contact-section">
+    <div class="container">
+        <div class="contact-grid">
+            <div class="contact-content">
+                <h2>Ready to Discuss Working Together?</h2>
+                <h3 style="color: #ccc; font-weight: 500;">Contact us to explore opportunities</h3>
+                <p style="color: #ccc;">Let's discuss what we can do for your organization</p>
+            </div>
+            
+            <div class="contact-cta">
+                <a href="mailto:enquiries@ssgc.io" class="btn" style="background: #fff; color: #000;">enquiries@ssgc.io</a>
+            </div>
+        </div>
+        
+        <div class="contact-footer">
+            <p>Spatial Sound and Guidance Company Ltd is registered at 37 Warren Street, London, W1T 6AD, England. Company registration number 16501708.</p>
+        </div>
+    </div>
+</section>
+
+<!-- DISCLAIMER SECTION -->
+<section class="disclaimer-section">
+    <div class="disclaimer-content">
+        <h4>Important Safety and Usage Disclaimer</h4>
+        <p>This prototype product is designed to enhance spatial awareness and assist navigation through immersive auditory cues. However, it should not be relied upon as the sole means of orientation or wayfinding. Environmental hazards, unexpected obstacles, or dynamic conditions may not be fully conveyed through sound cues alone. Users are responsible for ensuring safe and informed use in accordance with personal needs and situational context.</p>
+        
+        <p>The mapping data incorporated into the SSGC program is captured from a third-party program, and therefore, there may be limitations with the accuracy of the information presented and the user is responsible for their actions and their own safety and well-being.</p>
+        
+        <p>By using this product, you acknowledge that reliance on auditory cues alone may increase risk in certain situations, and that the developers disclaim liability for accidents or injuries arising from such use.</p>
+    </div>
+</section>
+
+</body>
+</html> 

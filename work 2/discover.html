@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover - LightEn Digital Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Fixed Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">LightEn</div>
+        <nav class="sidebar-nav">
+            <a href="discover.html" class="active">Discover</a>
+            <a href="my-collections.html">My Collections</a>
+            <a href="#">My Bookmarks</a>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <!-- Content -->
+        <div class="content discover-content">
+            
+            <!-- Hero Section -->
+            <section class="hero-section">
+                <h1 class="hero-title">What would you like to explore?</h1>
+                <form class="hero-search" action="search-results-v1.html" method="get">
+                    <input type="text" class="hero-search-input" name="q" placeholder="Ask the librarian anything...">
+                    <button type="submit" class="hero-search-btn">Seek</button>
+                </form>
+                <p class="hero-subtitle">Thousands of books on consciousness, spirituality, and ancient knowledge</p>
+            </section>
+
+            <!-- Bento Box Layout -->
+            <div class="bento-grid">
+                
+                <!-- Featured Theme - Large with Books -->
+                <div class="bento-item bento-large featured-theme">
+                    <div class="theme-badge">FEATURED THEME</div>
+                    <div class="theme-content">
+                        <h2 class="theme-title">Consciousness & The Mind</h2>
+                        <p class="theme-description">Explore how ancient spiritual traditions understood consciousness and the nature of mind. From Vedantic philosophy to Buddhist psychology, discover timeless insights into human awareness and the quest for self-knowledge.</p>
+                        <div class="theme-meta">
+                            <span>187 books</span>
+                            <span>•</span>
+                            <span>342 passages</span>
+                        </div>
+                        
+                        <!-- Theme Books -->
+                        <div class="theme-books">
+                            <div class="theme-book-item">
+                                <div class="theme-book-cover"></div>
+                                <div class="theme-book-info">
+                                    <div class="theme-book-title">The Foundations of Buddhism</div>
+                                    <div class="theme-book-author">Rupert Gethin</div>
+                                </div>
+                            </div>
+                            <div class="theme-book-item">
+                                <div class="theme-book-cover"></div>
+                                <div class="theme-book-info">
+                                    <div class="theme-book-title">The Principal Upanishads</div>
+                                    <div class="theme-book-author">S. Radhakrishnan</div>
+                                </div>
+                            </div>
+                            <div class="theme-book-item">
+                                <div class="theme-book-cover"></div>
+                                <div class="theme-book-info">
+                                    <div class="theme-book-title">The Ancient Wisdom</div>
+                                    <div class="theme-book-author">Annie Besant</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quote of the Day -->
+                <div class="bento-item bento-half quote-card">
+                    <div class="quote-badge">QUOTE OF THE DAY</div>
+                    <div class="quote-image-placeholder"></div>
+                    <blockquote class="quote-text">
+                        "The practice of meditation represents a systematic method of mental discipline aimed at achieving liberation through direct experience of ultimate reality."
+                    </blockquote>
+                    <p class="quote-source">The Philosophy of the Upanishads · Paul Deussen</p>
+                </div>
+
+                <!-- Book of the Week -->
+                <div class="bento-item bento-half book-week-card">
+                    <div class="book-badge">BOOK OF THE WEEK</div>
+                    <div class="book-featured-cover"></div>
+                    <h4 class="book-featured-title">The Secret Doctrine</h4>
+                    <p class="book-featured-author">H.P. Blavatsky</p>
+                    <p class="book-featured-snippet">Foundational text of modern Theosophy, synthesis of science, religion, and philosophy.</p>
+                </div>
+
+                <!-- Featured Authors - Small -->
+                <div class="bento-item bento-small authors-spotlight">
+                    <div class="section-header-small">
+                        <h3>Featured Authors</h3>
+                    </div>
+                    <div class="authors-grid-compact">
+                        <div class="author-column">
+                            <div class="author-avatar-compact">HB</div>
+                            <div class="author-name-compact">H.P. Blavatsky</div>
+                            <div class="author-famous-book">The Secret Doctrine</div>
+                        </div>
+                        <div class="author-column">
+                            <div class="author-avatar-compact">AB</div>
+                            <div class="author-name-compact">Annie Besant</div>
+                            <div class="author-famous-book">The Ancient Wisdom</div>
+                        </div>
+                        <div class="author-column">
+                            <div class="author-avatar-compact">SR</div>
+                            <div class="author-name-compact">S. Radhakrishnan</div>
+                            <div class="author-famous-book">The Principal Upanishads</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Popular Themes Section (Full Width) -->
+            <section class="section popular-themes-section">
+                <div class="section-header">
+                    <h2 class="section-title">Popular Themes</h2>
+                </div>
+                
+                <div class="themes-horizontal">
+                    <a href="#" class="theme-card-horizontal">
+                        <span class="theme-card-count">187</span>
+                        <span class="theme-card-name">Consciousness Studies</span>
+                    </a>
+                    <a href="#" class="theme-card-horizontal">
+                        <span class="theme-card-count">234</span>
+                        <span class="theme-card-name">Buddhist Philosophy</span>
+                    </a>
+                    <a href="#" class="theme-card-horizontal">
+                        <span class="theme-card-count">143</span>
+                        <span class="theme-card-name">Vedanta</span>
+                    </a>
+                    <a href="#" class="theme-card-horizontal">
+                        <span class="theme-card-count">128</span>
+                        <span class="theme-card-name">Theosophy</span>
+                    </a>
+                    <a href="#" class="theme-card-horizontal">
+                        <span class="theme-card-count">112</span>
+                        <span class="theme-card-name">Mysticism</span>
+                    </a>
+                    <a href="#" class="theme-card-horizontal">
+                        <span class="theme-card-count">156</span>
+                        <span class="theme-card-name">Meditation Practices</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Recommended Books Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Recommended Books</h2>
+                    <a href="#" class="view-all-link">VIEW ALL →</a>
+                </div>
+                
+                <div class="books-scroll">
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">The Secret Doctrine</div>
+                            <div class="book-author">H.P. Blavatsky</div>
+                        </div>
+                    </div>
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">The Principal Upanishads</div>
+                            <div class="book-author">S. Radhakrishnan</div>
+                        </div>
+                    </div>
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">Buddhist Meditation</div>
+                            <div class="book-author">Henepola Gunaratana</div>
+                        </div>
+                    </div>
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">The Foundations of Buddhism</div>
+                            <div class="book-author">Rupert Gethin</div>
+                        </div>
+                    </div>
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">Yoga Sutras of Patanjali</div>
+                            <div class="book-author">Edwin F. Bryant</div>
+                        </div>
+                    </div>
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">The Path of Purification</div>
+                            <div class="book-author">Buddhaghosa</div>
+                        </div>
+                    </div>
+                    <div class="book-item">
+                        <div class="book-cover"></div>
+                        <div class="book-info">
+                            <div class="book-title">The Ancient Wisdom</div>
+                            <div class="book-author">Annie Besant</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Additions -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Additions</h2>
+                    <a href="#" class="view-all-link">VIEW ALL →</a>
+                </div>
+                
+                <div class="recent-grid">
+                    <div class="recent-card">
+                        <div class="recent-cover"></div>
+                        <div class="recent-info">
+                            <h4 class="recent-title">The Voice of the Silence</h4>
+                            <p class="recent-author">H.P. Blavatsky</p>
+                            <p class="recent-description">Mystical text on spiritual development, translated from Eastern sources</p>
+                            <span class="recent-badge">NEW</span>
+                        </div>
+                    </div>
+                    <div class="recent-card">
+                        <div class="recent-cover"></div>
+                        <div class="recent-info">
+                            <h4 class="recent-title">Isis Unveiled</h4>
+                            <p class="recent-author">H.P. Blavatsky</p>
+                            <p class="recent-description">Master-key to ancient and modern science and theology</p>
+                            <span class="recent-badge">NEW</span>
+                        </div>
+                    </div>
+                    <div class="recent-card">
+                        <div class="recent-cover"></div>
+                        <div class="recent-info">
+                            <h4 class="recent-title">The Yoga Sutras of Patanjali</h4>
+                            <p class="recent-author">Edwin F. Bryant</p>
+                            <p class="recent-description">Translation and commentary on the foundational text of Yoga philosophy</p>
+                            <span class="recent-badge">NEW</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+</body>
+</html>
+

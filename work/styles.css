@@ -1,0 +1,2769 @@
+/* ========================================
+   EXPLORATION-02: THE HALL
+   Integrated Bento Grid Layout
+   Visual styles from Exploration-01
+   ======================================== */
+
+/* ===== RESET & BASE ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #f8f8f8;
+    color: #2a2a2a;
+    line-height: 1.6;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* ===== SIDEBAR (Same as Exploration-01) ===== */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 240px;
+    height: 100vh;
+    background: white;
+    border-right: 1px solid #ebebeb;
+    padding: 32px;
+    z-index: 100;
+}
+
+.logo {
+    font-family: 'Lora', serif;
+    font-size: 30px;
+    font-weight: 500;
+    color: #1f3d58;
+    margin-bottom: 72px;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.sidebar-nav a {
+    color: #9a9a9a;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+    letter-spacing: 0.2px;
+}
+
+.sidebar-nav a.active {
+    color: #1f3d58;
+}
+
+.sidebar-nav a:hover {
+    color: #1f3d58;
+}
+
+/* Page Dots Navigation */
+.page-dots {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.page-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d0d0d0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.page-dot:hover {
+    background: #a0a0a0;
+}
+
+.page-dot.active {
+    background: #1f3d58;
+    width: 10px;
+    height: 10px;
+}
+
+/* ===== MAIN LAYOUT ===== */
+.main-wrapper {
+    margin-left: 240px;
+    min-height: 100vh;
+}
+
+.content {
+    padding: 0;
+}
+
+.hall-content,
+.results-content {
+    background: #f8f8f8;
+}
+
+/* ========================================
+   THE HALL GRID
+   Structure: Left column + Center (2 large) + Right column + Bottom row
+   ======================================== */
+
+/* Hall Grid - Original symmetric layout for the-hall-1.html */
+.hall-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(6, minmax(140px, auto));
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+    grid-template-areas:
+        "quote quote quote search search search search search search author author author"
+        "quote quote quote search search search search search search author author author"
+        "newarr newarr newarr theme theme theme theme theme theme bookweek bookweek bookweek"
+        "newarr newarr newarr theme theme theme theme theme theme bookweek bookweek bookweek"
+        "recommended recommended recommended popular popular popular popular popular popular quoteexp quoteexp quoteexp"
+        "recommended recommended recommended popular popular popular popular popular popular quoteexp quoteexp quoteexp";
+}
+
+/* Hall Grid - Asymmetric Layout for the-hall-2.html */
+.hall-grid-asymmetric {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: auto auto auto auto auto auto;
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+    grid-template-areas:
+        "quote quote quote search search search search search search bookweek bookweek bookweek"
+        "newarr newarr newarr search search search search search search author author author"
+        "newarr newarr newarr recommended recommended recommended recommended recommended recommended author author author"
+        "newarr newarr newarr theme theme theme theme theme theme theme theme theme"
+        "newarr newarr newarr theme theme theme theme theme theme theme theme theme"
+        "quoteexp quoteexp quoteexp popular popular popular popular popular popular popular popular popular";
+}
+
+/* Grid Area Assignments */
+.bento-quote {
+    grid-area: quote;
+}
+
+.search-zone {
+    grid-area: search;
+}
+
+.bento-author {
+    grid-area: author;
+}
+
+.bento-new-arrival {
+    grid-area: newarr;
+}
+
+.bento-featured-theme-full {
+    grid-area: theme;
+}
+
+.bento-book-week {
+    grid-area: bookweek;
+}
+
+.bento-books-double {
+    grid-area: recommended;
+}
+
+.bento-books-horizontal {
+    grid-area: recommended;
+}
+
+.bento-theme-wide {
+    grid-area: popular;
+}
+
+.bento-quote-expanded {
+    grid-area: quoteexp;
+}
+
+.bento-recommended-books-horizontal {
+    grid-area: recommendedbooks;
+    padding: 28px;
+}
+
+/* ========================================
+   HALL GRID TOP NAV (the-hall-4.html)
+   ======================================== */
+.hall-grid-top-nav {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: auto auto auto auto auto auto;
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+    grid-template-areas:
+        "quote quote quote search search search search search search bookweek bookweek bookweek"
+        "newarr newarr newarr search search search search search search author author author"
+        "newarr newarr newarr recommended recommended recommended recommended recommended recommended author author author"
+        "newarr newarr newarr theme theme theme theme theme theme theme theme theme"
+        "newarr newarr newarr theme theme theme theme theme theme theme theme theme"
+        "recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks recommendedbooks";
+}
+
+/* Grid assignments for top-nav layout */
+.hall-grid-top-nav .bento-quote { grid-area: quote; }
+.hall-grid-top-nav .search-zone { grid-area: search; }
+.hall-grid-top-nav .bento-author { grid-area: author; }
+.hall-grid-top-nav .bento-new-arrival { grid-area: newarr; }
+.hall-grid-top-nav .bento-book-week { grid-area: bookweek; }
+.hall-grid-top-nav .bento-books-double { grid-area: recommended; }
+.hall-grid-top-nav .bento-featured-theme-full { grid-area: theme; }
+.hall-grid-top-nav .bento-recommended-books-horizontal-full { grid-area: recommendedbooks; }
+
+.bento-recommended-books-horizontal .books-scroll {
+    margin-top: 16px;
+}
+
+/* ========================================
+   FEATURED BOOKS - FULL WIDTH (Search Results 4)
+   ======================================== */
+
+.bento-featured-books-full {
+    padding: 28px;
+}
+
+.featured-books-grid-full {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    margin-top: 20px;
+}
+
+.featured-book-full {
+    display: flex;
+    flex-direction: column;
+}
+
+.featured-book-cover-full {
+    width: 100%;
+    height: 260px;
+    background: #4a7c9e;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+    cursor: pointer;
+    margin-bottom: 14px;
+}
+
+.featured-book-cover-full:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.featured-book-title-full {
+    font-family: 'Lora', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.featured-book-author-full {
+    font-size: 14px;
+    color: #666666;
+}
+
+/* ========================================
+   SEARCH RESULTS V2 - ROTATED LAYOUT
+   ======================================== */
+
+.search-results-grid-v2 {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: auto auto auto auto;
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+    grid-template-areas:
+        "keyauthor keyauthor keyauthor passage passage passage passage chapter chapter chapter featbooks featbooks"
+        "keyauthor keyauthor keyauthor passage passage passage passage chapter chapter chapter featbooks featbooks"
+        "moreauth moreauth moreauth libresults libresults libresults libresults libresults libresults libresults featbooks featbooks"
+        "morebooks morebooks morebooks morebooks morebooks morebooks morebooks morepass morepass morepass otherrec otherrec";
+}
+
+/* Grid Area Assignments for Search Results V2 */
+.search-results-grid-v2 .search-results-center-top {
+    grid-area: libresults;
+}
+
+.search-results-grid-v2 .search-results-featured-books {
+    grid-area: featbooks;
+}
+
+.search-results-grid-v2 .search-results-key-author {
+    grid-area: keyauthor;
+}
+
+.search-results-grid-v2 .search-results-more-authors {
+    grid-area: moreauth;
+}
+
+.search-results-grid-v2 .search-results-passage {
+    grid-area: passage;
+}
+
+.search-results-grid-v2 .search-results-chapter {
+    grid-area: chapter;
+}
+
+/* Reduce spacing for V2 layout */
+.search-results-grid-v2 .search-results-passage {
+    padding: 20px;
+}
+
+.search-results-grid-v2 .search-results-chapter {
+    padding: 20px;
+}
+
+.search-results-grid-v2 .highlight-passage-text {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.search-results-grid-v2 .chapter-excerpt {
+    margin-bottom: 8px;
+}
+
+/* Key Author Simple - Without Avatar */
+.bento-key-author-simple {
+    padding: 20px;
+}
+
+.bento-key-author-simple .key-author-name {
+    margin-bottom: 6px;
+}
+
+.bento-key-author-simple .key-author-bio {
+    margin-bottom: 12px;
+}
+
+/* Key Author Compact Version (search-results-3) */
+.bento-key-author-compact {
+    padding: 16px;
+}
+
+.bento-key-author-compact .key-author-name {
+    margin-bottom: 4px;
+    font-size: 18px;
+}
+
+.bento-key-author-compact .key-author-specialty {
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.bento-key-author-compact .key-author-bio {
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.bento-key-author-compact .key-author-books-list {
+    margin-top: 10px;
+}
+
+.bento-key-author-compact .key-author-book-link {
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.search-results-grid-v2 .search-results-more-books {
+    grid-area: morebooks;
+}
+
+.search-results-grid-v2 .search-results-more-passages {
+    grid-area: morepass;
+}
+
+.search-results-grid-v2 .search-results-other-rec {
+    grid-area: otherrec;
+}
+
+/* Featured Books - Vertical Stack */
+.bento-featured-books-vertical {
+    padding: 20px;
+}
+
+.featured-books-vertical-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.featured-book-vertical-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.featured-book-vertical-cover {
+    width: 70px;
+    height: 100px;
+    background: #4a7c9e;
+    border-radius: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.featured-book-vertical-info {
+    flex: 1;
+}
+
+.featured-book-vertical-title {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.featured-book-vertical-author {
+    font-size: 13px;
+    color: #666666;
+}
+
+/* Old column styles - deprecated */
+.hall-center-col {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Right Column */
+.hall-right-col {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Bottom Row - 3 items with custom widths */
+.hall-bottom-row {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 24px;
+}
+
+/* ========================================
+   SEARCH ZONE (No box, just textarea)
+   ======================================== */
+
+.search-zone {
+    padding: 20px 36px 24px;
+    background: #ebebeb;
+    border-radius: 16px;
+    text-align: left;
+}
+
+.search-zone-title {
+    font-family: 'Lora', serif;
+    font-size: 36px;
+    font-weight: 500;
+    color: #1f3d58;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.search-zone-subtitle {
+    color: #666666;
+    font-size: 14px;
+    margin-bottom: 32px;
+}
+
+.search-zone-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.search-zone-textarea {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    font-family: 'Inter', sans-serif;
+    resize: none;
+    line-height: 1.6;
+    color: #2a2a2a;
+}
+
+.search-zone-textarea:focus {
+    outline: none;
+}
+
+.search-zone-textarea::placeholder {
+    color: #bbbbbb;
+}
+
+.search-zone-submit {
+    align-self: flex-start;
+    padding: 12px 32px;
+    background: #1f3d58;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-zone-submit:hover {
+    background: #163249;
+}
+
+/* ========================================
+   BENTO ITEMS (Base styles)
+   ======================================== */
+
+.bento-item {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.bento-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Badges */
+.item-badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #a8834d;
+    margin-bottom: 20px;
+}
+
+.item-badge-small {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #a8834d;
+    margin-bottom: 12px;
+}
+
+/* ========================================
+   QUOTE OF THE DAY
+   ======================================== */
+
+.bento-quote {
+    padding: 20px;
+    padding-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.quote-image-horizontal {
+    width: 100%;
+    height: 60px;
+    background: #d4c4a8;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.quote-image-placeholder {
+    width: 100%;
+    height: 120px;
+    background: #d4c4a8;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.quote-text {
+    font-family: 'Lora', serif;
+    font-size: 16px;
+    line-height: 1.6;
+    font-style: italic;
+    color: #2a2a2a;
+    margin-bottom: 18px;
+}
+
+.quote-source {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 16px;
+    border-top: 1px solid #ebebeb;
+    transition: opacity 0.2s;
+}
+
+.quote-source:hover {
+    opacity: 0.7;
+}
+
+.source-book {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1f3d58;
+}
+
+.source-author {
+    font-size: 13px;
+    color: #666666;
+}
+
+/* ========================================
+   FEATURED AUTHOR
+   ======================================== */
+
+.bento-author {
+    text-align: left;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.author-avatar-large {
+    display: none;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+}
+
+.author-name-large {
+    font-family: 'Lora', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 8px;
+}
+
+.author-count {
+    font-size: 14px;
+    color: #666666;
+    margin-bottom: 16px;
+}
+
+.featured-author-books {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.featured-author-book {
+    font-size: 13px;
+    color: #2a2a2a;
+    line-height: 1.4;
+    margin: 0;
+    font-weight: 500;
+    text-align: left;
+}
+
+/* ========================================
+   FEATURED THEME - Full Width (no split)
+   ======================================== */
+
+.bento-featured-theme-full {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+}
+
+.featured-title {
+    font-family: 'Lora', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.featured-description {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #666666;
+    margin-bottom: 14px;
+}
+
+.featured-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    color: #888888;
+    margin-bottom: 24px;
+}
+
+.featured-books-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 16px;
+}
+
+/* Responsive: 4 libros en horizontal para pantallas grandes */
+@media (min-width: 1400px) {
+    .featured-books-list {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+}
+
+/* ========================================
+   HALL GRID COMPACT (The Hall 3)
+   Without bottom row (no Popular Theme, no Wisdom)
+   ======================================== */
+
+.hall-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+    grid-template-areas:
+        "quote quote quote search search search search search search bookweek bookweek bookweek"
+        "newarr newarr newarr search search search search search search author author author"
+        "newarr newarr newarr recommended recommended recommended recommended recommended recommended author author author"
+        "newarr newarr newarr theme theme theme theme theme theme theme theme theme"
+        "newarr newarr newarr theme theme theme theme theme theme theme theme theme";
+}
+
+/* ========================================
+   TOP HEADER NAVIGATION (The Hall 4)
+   ======================================== */
+
+.top-nav-layout {
+    padding: 0;
+    margin: 0;
+}
+
+.top-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background: white;
+    border-bottom: 1px solid #ebebeb;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.header-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 16px 40px;
+    max-width: 100%;
+    height: 100%;
+}
+
+.top-header .logo {
+    font-family: 'Lora', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-right: auto;
+    margin-bottom: 0;
+}
+
+.top-nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 32px;
+    align-items: center;
+}
+
+.top-nav a {
+    font-size: 15px;
+    font-weight: 500;
+    color: #666666;
+    text-decoration: none;
+    transition: color 0.2s;
+    padding: 4px 0;
+}
+
+.top-nav a:hover {
+    color: #1f3d58;
+}
+
+.top-nav a.active {
+    color: #1f3d58;
+    border-bottom: 2px solid #1f3d58;
+}
+
+.main-wrapper-top-nav {
+    padding-top: 70px;
+}
+
+.featured-book-item {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.featured-book-cover {
+    width: 46px;
+    height: 62px;
+    background: #8b7355;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.featured-book-info {
+    flex: 1;
+}
+
+.featured-book-title {
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 3px;
+    line-height: 1.3;
+}
+
+.featured-book-author {
+    font-size: 13px;
+    color: #666666;
+    margin-bottom: 2px;
+}
+
+.featured-book-meta {
+    font-size: 12px;
+    color: #999999;
+}
+
+/* Featured Books Horizontal (for Search Results) */
+.featured-books-horizontal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: auto;
+}
+
+.featured-book-h-item {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.featured-book-h-cover {
+    width: 100%;
+    height: 100px;
+    background: #8b7355;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.featured-book-h-title {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.featured-book-h-author {
+    font-size: 12px;
+    color: #666666;
+    margin-bottom: 3px;
+}
+
+.featured-book-h-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Featured Passage - Right Side (Vertical) */
+.bento-featured-passage {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+}
+
+.passage-thumb-image {
+    width: 100%;
+    height: 100px;
+    background: #b8a485;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.passage-text {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    line-height: 1.65;
+    font-style: italic;
+    color: #2a2a2a;
+    margin-bottom: auto;
+}
+
+.passage-book-link {
+    padding-top: 20px;
+    border-top: 1px solid #ebebeb;
+    transition: opacity 0.2s;
+}
+
+.passage-book-link:hover {
+    opacity: 0.7;
+}
+
+.passage-book-title {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-bottom: 4px;
+}
+
+.passage-book-author {
+    font-size: 13px;
+    color: #666666;
+    margin-bottom: 3px;
+}
+
+.passage-book-meta {
+    font-size: 12px;
+    color: #999999;
+}
+
+/* ========================================
+   BOOK OF THE WEEK
+   ======================================== */
+
+.bento-book-week {
+    display: flex;
+    flex-direction: column;
+}
+
+.book-week-content {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-start;
+    margin-top: 16px;
+}
+
+.book-week-cover {
+    width: 100px;
+    height: 160px;
+    background: #8b7355;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.book-week-info {
+    flex: 1;
+}
+
+.book-week-title {
+    font-family: 'Lora', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 6px;
+}
+
+.book-week-author {
+    font-size: 13px;
+    color: #666666;
+    margin-bottom: 8px;
+}
+
+.book-week-snippet {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #888888;
+}
+
+/* ========================================
+   NEW ARRIVAL
+   ======================================== */
+
+.bento-new-arrival {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.new-arrival-cover {
+    width: 100%;
+    height: 280px;
+    background: #4a7c9e;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.new-arrival-title {
+    font-family: 'Lora', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 6px;
+}
+
+.new-arrival-author {
+    font-size: 13px;
+    color: #666666;
+    margin-bottom: 12px;
+}
+
+.new-arrival-synopsis {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #888888;
+    margin-top: 12px;
+}
+
+/* ========================================
+   BOTTOM ROW ITEMS - Optimized for space
+   ======================================== */
+
+/* Buddhist Philosophy - Wide with description + books */
+.bento-theme-wide {
+    padding: 28px;
+}
+
+.theme-wide-content {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 24px;
+    height: 100%;
+}
+
+.theme-wide-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.theme-wide-title {
+    font-family: 'Lora', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 10px;
+    line-height: 1.2;
+}
+
+.theme-wide-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #666666;
+}
+
+.theme-wide-right {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.theme-book-detail {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.theme-book-mini-cover {
+    width: 32px;
+    height: 44px;
+    background: #8b7355;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.theme-book-mini-info {
+    flex: 1;
+}
+
+.theme-book-mini-info h6 {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 2px;
+    line-height: 1.3;
+}
+
+.mini-author {
+    font-size: 11px;
+    color: #666666;
+    margin-bottom: 1px;
+}
+
+.mini-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Recommended Books - 2 books stacked */
+.bento-books-double {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.double-book-item {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.double-book-cover {
+    width: 44px;
+    height: 60px;
+    background: #8b7355;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.double-book-info {
+    flex: 1;
+}
+
+.double-book-title {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.double-book-author {
+    font-size: 12px;
+    color: #666666;
+    margin-bottom: 3px;
+}
+
+.double-book-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Horizontal Books Layout */
+.bento-books-horizontal {
+    padding: 20px;
+}
+
+.horizontal-books-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.horizontal-book-item {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.horizontal-book-cover {
+    width: 110px;
+    height: 160px;
+    background: #8b7355;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.horizontal-book-info {
+    flex: 1;
+}
+
+.horizontal-book-title {
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #2a2a2a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.horizontal-book-author {
+    font-size: 12px;
+    color: #666666;
+    margin-bottom: 4px;
+}
+
+.horizontal-book-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* ========================================
+   SEARCH RESULTS - ASYMMETRIC GRID
+   ======================================== */
+
+.search-results-grid-asymmetric {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: auto auto auto auto;
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+    grid-template-areas:
+        "keyauthor keyauthor keyauthor libresults libresults libresults libresults libresults libresults passage passage passage"
+        "keyauthor keyauthor keyauthor featbooks featbooks featbooks featbooks featbooks featbooks passage passage passage"
+        "moreauth moreauth moreauth featbooks featbooks featbooks featbooks featbooks featbooks chapter chapter chapter"
+        "morebooks morebooks morebooks morebooks morebooks morebooks morebooks morepass morepass morepass otherrec otherrec";
+}
+
+/* Grid Area Assignments for Search Results */
+.search-results-center-top {
+    grid-area: libresults;
+}
+
+.search-results-featured-books {
+    grid-area: featbooks;
+}
+
+.search-results-key-author {
+    grid-area: keyauthor;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.search-results-more-authors {
+    grid-area: moreauth;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.search-results-passage {
+    grid-area: passage;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.search-results-chapter {
+    grid-area: chapter;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.search-results-more-books {
+    grid-area: morebooks;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.search-results-more-passages {
+    grid-area: morepass;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.search-results-other-rec {
+    grid-area: otherrec;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+/* Quote Expanded with Book Info */
+.bento-quote-expanded {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+}
+
+.quote-expanded-text {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    line-height: 1.7;
+    font-style: italic;
+    color: #2a2a2a;
+    margin-bottom: auto;
+    flex: 1;
+}
+
+.quote-expanded-source {
+    padding-top: 16px;
+    border-top: 1px solid #ebebeb;
+    transition: opacity 0.2s;
+}
+
+.quote-expanded-source:hover {
+    opacity: 0.7;
+}
+
+.quote-book-title {
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-bottom: 4px;
+}
+
+.quote-book-author {
+    font-size: 12px;
+    color: #666666;
+    margin-bottom: 2px;
+}
+
+.quote-book-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* ========================================
+   SEARCH RESULTS PAGE
+   ======================================== */
+
+/* Results Grid - Similar to Hall Grid but with results display */
+.results-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: auto auto;
+    gap: 24px;
+    padding: 24px;
+    min-height: 100vh;
+    align-content: start;
+}
+
+/* Left Column */
+.results-left-col {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Center Column */
+.results-center-col {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Right Column */
+.results-right-col {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Bottom Row - Single horizontal row */
+.results-bottom-row {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr;
+    gap: 24px;
+}
+
+/* Bottom Row Extended - More modules */
+.results-bottom-extended {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 24px;
+}
+
+/* Results Split Row - Same width as Featured Books */
+.results-split-row {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr;
+    gap: 24px;
+}
+
+/* Results Display - Open (no background, editable) */
+.results-display-open {
+    padding: 24px 0;
+    text-align: left;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+}
+
+.results-count-open {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: #999999;
+    margin-bottom: 20px;
+}
+
+.results-query-form {
+    margin-bottom: 16px;
+}
+
+.results-query-input {
+    width: 100%;
+    padding: 0;
+    border: none;
+    border-bottom: 2px solid #e0e0e0;
+    background: transparent;
+    font-family: 'Lora', serif;
+    font-size: 26px;
+    line-height: 1.5;
+    color: #2a2a2a;
+    font-weight: 500;
+    resize: none;
+    transition: border-color 0.3s;
+}
+
+.results-query-input:focus {
+    outline: none;
+    border-bottom-color: #a8834d;
+}
+
+.results-feedback-open {
+    font-size: 13px;
+    color: #999999;
+}
+
+/* Related Themes */
+.bento-related-themes {
+    padding: 24px;
+}
+
+.related-themes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.related-theme-tag {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #f8f8f8;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #666666;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.related-theme-tag:hover {
+    background: #1f3d58;
+    color: white;
+}
+
+/* Compact Center Split for Search Results */
+.center-split-compact {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr;
+    gap: 24px;
+}
+
+/* Featured Books (Top Result) - Vertical Covers */
+.bento-top-books {
+    padding: 28px;
+}
+
+.top-books-grid-vertical {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-top: 12px;
+}
+
+.top-book-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.top-book-cover-v {
+    width: 100%;
+    height: 200px;
+    background: #4a7c9e;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.top-book-title-v {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.top-book-author-v {
+    font-size: 12px;
+    color: #666666;
+}
+
+/* Highlighted Passage - With vertical image */
+.bento-highlight-passage {
+    padding: 24px;
+}
+
+.highlight-passage-content {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.highlight-passage-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.highlight-passage-image {
+    width: 80px;
+    height: 160px;
+    background: #b8a485;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.highlight-passage-text {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    line-height: 1.65;
+    font-style: italic;
+    color: #2a2a2a;
+    margin-bottom: auto;
+}
+
+.highlight-passage-source {
+    padding-top: 16px;
+    border-top: 1px solid #ebebeb;
+    margin-top: 16px;
+    transition: opacity 0.2s;
+}
+
+.highlight-passage-source:hover {
+    opacity: 0.7;
+}
+
+.highlight-book-title {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-bottom: 4px;
+}
+
+.highlight-book-author {
+    font-size: 12px;
+    color: #666666;
+    margin-bottom: 2px;
+}
+
+.highlight-book-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Key Author */
+.bento-key-author {
+    padding: 24px;
+    text-align: left;
+}
+
+.key-author-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: #1f3d58;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.key-author-name {
+    font-family: 'Lora', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 6px;
+}
+
+.key-author-specialty {
+    font-size: 12px;
+    color: #a8834d;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.key-author-books {
+    font-size: 12px;
+    color: #999999;
+    margin-bottom: 12px;
+}
+
+.key-author-bio {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #666666;
+}
+
+/* More Authors */
+.bento-more-authors {
+    padding: 20px;
+}
+
+.more-authors-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.author-mini {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.author-mini-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #1f3d58;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.author-mini-info {
+    flex: 1;
+}
+
+.author-mini-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #2a2a2a;
+    margin-bottom: 2px;
+}
+
+.author-mini-count {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Chapter */
+.bento-chapter {
+    padding: 24px;
+}
+
+.chapter-content {
+    margin-top: 12px;
+}
+
+.chapter-title {
+    font-family: 'Lora', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 10px;
+    line-height: 1.3;
+}
+
+.chapter-book {
+    font-size: 13px;
+    color: #1f3d58;
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.chapter-author {
+    font-size: 12px;
+    color: #666666;
+    margin-bottom: 12px;
+}
+
+.chapter-excerpt {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #666666;
+    margin-bottom: 12px;
+}
+
+.chapter-meta {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Page - Text focused */
+.bento-page {
+    padding: 24px;
+}
+
+.page-title {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 8px;
+}
+
+.page-book {
+    font-size: 12px;
+    color: #1f3d58;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.page-author {
+    font-size: 11px;
+    color: #666666;
+    margin-bottom: 14px;
+}
+
+.page-excerpt {
+    font-size: 13px;
+    line-height: 1.6;
+    font-style: italic;
+    color: #666666;
+}
+
+/* More Books (Bottom) */
+.bento-more-books {
+    padding: 24px;
+}
+
+.more-books-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.more-book-item {
+    display: flex;
+    gap: 12px;
+}
+
+.more-book-cover {
+    width: 36px;
+    height: 50px;
+    background: #8b7355;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.more-book-info {
+    flex: 1;
+}
+
+.more-book-title {
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 3px;
+    line-height: 1.3;
+}
+
+.more-book-author {
+    font-size: 11px;
+    color: #666666;
+    margin-bottom: 2px;
+}
+
+.more-book-pages {
+    font-size: 10px;
+    color: #999999;
+}
+
+/* More Passages */
+.bento-more-passages {
+    padding: 24px;
+}
+
+.passages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.passage-mini {
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.passage-mini:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.passage-mini-text {
+    font-size: 13px;
+    line-height: 1.6;
+    font-style: italic;
+    color: #666666;
+    margin-bottom: 8px;
+}
+
+.passage-mini-source {
+    font-size: 11px;
+    color: #999999;
+}
+
+/* Other Recommendations */
+.bento-other-recommendations {
+    padding: 20px;
+    text-align: center;
+}
+
+.other-rec-cover {
+    width: 70px;
+    height: 95px;
+    background: #8b7355;
+    border-radius: 6px;
+    margin: 0 auto 12px;
+}
+
+.other-rec-title {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.other-rec-author {
+    font-size: 11px;
+    color: #666666;
+    margin-bottom: 3px;
+}
+
+.other-rec-pages {
+    font-size: 10px;
+    color: #999999;
+}
+
+/* Responsive for Results */
+@media (max-width: 1400px) {
+    .results-grid {
+        grid-template-columns: 240px 1fr 240px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .results-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+    
+    .results-left-col,
+    .results-center-col,
+    .results-right-col {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    
+    .results-bottom-row {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .results-grid {
+        padding: 16px;
+        gap: 16px;
+    }
+    
+    .results-display {
+        padding: 32px 24px;
+    }
+    
+    .results-query {
+        font-size: 20px;
+    }
+}
+
+/* ========================================
+   SEARCH RESULTS CENTERED LAYOUT
+   ======================================== */
+
+.results-centered-content {
+    background: #f8f8f8;
+}
+
+.results-centered-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-rows: auto;
+    gap: 24px;
+    padding: 24px;
+    min-height: 100vh;
+    align-content: start;
+}
+
+/* Left Column - 2 vertical modules */
+.results-centered-left {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Center Column - Featured Books + Library Results */
+.results-centered-middle {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    align-items: center;
+}
+
+/* Right Column - 2 vertical modules */
+.results-centered-right {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Featured Books Centered */
+.bento-top-books-centered {
+    padding: 28px;
+    width: 100%;
+    max-width: 800px;
+}
+
+/* Library Results Centered */
+.results-display-centered {
+    padding: 40px 48px;
+    text-align: left;
+    background: #ececec;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 280px;
+}
+
+/* Responsive for Centered Layout */
+@media (max-width: 1400px) {
+    .results-centered-grid {
+        grid-template-columns: 240px 1fr 240px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .results-centered-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .results-centered-left,
+    .results-centered-middle,
+    .results-centered-right {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .results-centered-grid {
+        padding: 16px;
+        gap: 16px;
+    }
+}
+
+/* ========================================
+   BELOW THE FOLD SECTIONS (From Exploration-01)
+   ======================================== */
+
+.section {
+    padding: 60px 72px 40px;
+}
+
+.popular-themes-section {
+    background: white;
+    padding: 48px 72px;
+    margin-top: 48px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.section-title {
+    font-family: 'Lora', serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: #2a2a2a;
+}
+
+.view-all-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f3d58;
+    letter-spacing: 0.5px;
+    transition: opacity 0.2s;
+}
+
+.view-all-link:hover {
+    opacity: 0.7;
+}
+
+/* Popular Themes Horizontal */
+.themes-horizontal {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    scrollbar-width: thin;
+}
+
+.theme-card-horizontal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 36px;
+    background: #f8f8f8;
+    border-radius: 12px;
+    min-width: 180px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.theme-card-horizontal:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.theme-card-count {
+    font-size: 36px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-bottom: 8px;
+}
+
+.theme-card-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2a2a2a;
+    text-align: center;
+}
+
+/* Books Scroll */
+.books-scroll {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    scrollbar-width: thin;
+}
+
+.book-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.book-item:hover {
+    transform: translateY(-4px);
+}
+
+.book-cover {
+    width: 160px;
+    height: 220px;
+    background: #8b7355;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.book-info {
+    flex: 1;
+}
+
+.book-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #2a2a2a;
+    line-height: 1.3;
+}
+
+.book-author {
+    font-size: 12px;
+    color: #666666;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1400px) {
+    .hall-grid {
+        grid-template-columns: 240px 1fr 240px;
+    }
+    
+    .search-zone {
+        padding: 60px 40px;
+    }
+    
+    .search-zone-title {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .hall-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+    
+    .hall-left-col,
+    .hall-center-col,
+    .hall-right-col {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    
+    .center-split {
+        grid-template-columns: 1fr;
+    }
+    
+    .hall-bottom-row {
+        grid-column: 1;
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .bento-theme-wide {
+        grid-column: 1 / -1;
+    }
+    
+    .theme-wide-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 80px;
+        padding: 24px 12px;
+    }
+    
+    .logo {
+        font-size: 20px;
+        text-align: center;
+    }
+    
+    .sidebar-nav a {
+        font-size: 0;
+        text-align: center;
+    }
+    
+    .main-wrapper {
+        margin-left: 80px;
+    }
+    
+    .hall-grid {
+        padding: 16px;
+        gap: 16px;
+    }
+    
+    .search-zone {
+        padding: 24px 20px 32px;
+    }
+    
+    .search-zone-title {
+        font-size: 28px;
+    }
+    
+    .center-split {
+        grid-template-columns: 1fr;
+    }
+    
+    .hall-bottom-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .bento-theme-wide {
+        grid-column: 1;
+    }
+    
+    .theme-wide-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .section {
+        padding: 40px 24px;
+    }
+    
+    .popular-themes-section {
+        padding: 32px 24px;
+    }
+}
+
+/* ========================================
+   SEARCH RESULTS EXTENDED - Additional Styles
+   ======================================== */
+
+/* Key Author Extended with Books */
+.bento-key-author-extended {
+    padding: 24px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+}
+
+.key-author-books-vertical {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.key-author-book-v {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.key-author-book-cover-v {
+    width: 100%;
+    height: 140px;
+    background: #5a7ba6;
+    border-radius: 6px;
+    transition: transform 0.2s;
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+
+.key-author-book-cover-v:hover {
+    transform: scale(1.05);
+}
+
+.key-author-book-v-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2a2a2a;
+    line-height: 1.3;
+    margin: 0 0 4px 0;
+}
+
+.key-author-book-v-pages {
+    font-size: 11px;
+    color: #666666;
+    margin: 0;
+}
+
+/* Key Author Books Horizontal - 2 books */
+.key-author-books-horizontal {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.key-author-book-h {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.key-author-book-cover-h {
+    width: 50px;
+    height: 70px;
+    background: #5a7ba6;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.key-author-book-cover-h:hover {
+    transform: scale(1.05);
+}
+
+.key-author-book-h-info {
+    flex: 1;
+}
+
+.key-author-book-h-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    line-height: 1.3;
+    margin: 0 0 4px 0;
+}
+
+.key-author-book-h-pages {
+    font-size: 11px;
+    color: #666666;
+    margin: 0;
+}
+
+/* More Books Horizontal - 2 books compact */
+.bento-more-books-horizontal {
+    padding: 24px;
+}
+
+.more-books-h-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.more-book-h-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.more-book-h-cover {
+    width: 60px;
+    height: 80px;
+    background: #8b7355;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.more-book-h-info {
+    flex: 1;
+}
+
+.more-book-h-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    line-height: 1.3;
+    margin: 0 0 4px 0;
+}
+
+.more-book-h-author {
+    font-size: 11px;
+    color: #666666;
+    margin: 0;
+}
+
+/* Book Recommendations Row - Full Width (outside grid) */
+.results-book-recommendations {
+    background: white;
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin: 20px;
+}
+
+.book-recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.book-rec-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.book-rec-item:hover {
+    transform: translateY(-4px);
+}
+
+.book-rec-cover {
+    width: 100%;
+    height: 160px;
+    background: #5a7ba6;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.book-rec-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.book-rec-author {
+    font-size: 11px;
+    color: #666666;
+    margin: 0;
+}
+
+@media (max-width: 1400px) {
+    .book-recommendations-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (max-width: 1024px) {
+    .book-recommendations-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Centered Page - More vertical and separated Featured Books */
+.top-books-grid-vertical-centered {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.top-book-vertical-c {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.top-book-cover-vc {
+    width: 100%;
+    height: 220px;
+    background: #4a7c9e;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.top-book-title-vc {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.top-book-author-vc {
+    font-size: 12px;
+    color: #666666;
+}
+
+/* Key Author Horizontal Layout for Centered Page */
+.bento-key-author-horizontal {
+    padding: 24px;
+    text-align: left;
+}
+
+.key-author-h-layout {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.key-author-h-left {
+    flex-shrink: 0;
+}
+
+.key-author-h-right {
+    flex: 1;
+}
+
+.bento-key-author-horizontal .key-author-name {
+    margin-top: 0;
+}
+
+.key-author-books-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.key-author-book-link {
+    font-size: 13px;
+    color: #2a2a2a;
+    line-height: 1.4;
+    margin: 0;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.key-author-book-link:hover {
+    color: #1f3d58;
+}
+
+/* ========================================
+   FILTER TABS (from Exploration-01)
+   ======================================== */
+
+.filter-tabs-container {
+    padding: 32px 20px 0 20px;
+    margin-left: 0;
+}
+
+.results-centered-content .filter-tabs-container {
+    margin-left: 0;
+    padding-left: 20px;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid #ebebeb;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #5a5a5a;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.filter-tab:hover {
+    border-color: #d8d8d8;
+    background: #fafafa;
+}
+
+.filter-tab.active {
+    background: #1f3d58;
+    border-color: #1f3d58;
+    color: white;
+}
+
+.tab-count {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* ========================================
+   ALL RESULTS - CLASSIC VIEW
+   ======================================== */
+
+.all-results-content {
+    background: #f8f8f8;
+    padding-bottom: 60px;
+}
+
+.all-results-query {
+    padding: 0 20px 32px 20px;
+}
+
+.results-count {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #999999;
+    margin-bottom: 12px;
+}
+
+.results-query-text {
+    font-size: 22px;
+    font-weight: 500;
+    color: #2a2a2a;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Classic Results Grid - Books Only */
+.classic-results-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 0 20px;
+}
+
+.book-result-item {
+    display: flex;
+    gap: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.book-result-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #e0e0e0;
+    transform: translateY(-2px);
+}
+
+.book-result-cover {
+    width: 80px;
+    height: 110px;
+    background: #4a7c9e;
+    border-radius: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.book-result-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.book-result-title {
+    font-family: 'Lora', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f3d58;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.book-result-author {
+    font-size: 14px;
+    color: #666666;
+    margin-bottom: 10px;
+}
+
+.book-result-description {
+    font-size: 14px;
+    color: #5a5a5a;
+    line-height: 1.6;
+    margin-bottom: 10px;
+    flex: 1;
+}
+
+.book-result-meta {
+    font-size: 12px;
+    color: #999999;
+}
+
+/* Load More */
+.load-more-container {
+    text-align: center;
+    margin-top: 40px;
+    padding: 0 20px;
+}
+
+.load-more-btn {
+    background: #1f3d58;
+    color: white;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.load-more-btn:hover {
+    background: #2a4d6f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(31, 61, 88, 0.3);
+}
+
+.results-showing {
+    font-size: 13px;
+    color: #999999;
+    margin-top: 12px;
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+    .classic-results-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .result-item {
+        flex-direction: column;
+    }
+    
+    .result-icon {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .all-results-content {
+        padding: 0 40px 60px 40px;
+    }
+    
+    .filter-tabs-container {
+        padding: 32px 0 0 0;
+    }
+    
+    .all-results-query {
+        padding: 0 0 32px 0;
+    }
+    
+    .classic-results-grid {
+        padding: 0;
+    }
+    
+    .load-more-container {
+        padding: 0;
+    }
+}
