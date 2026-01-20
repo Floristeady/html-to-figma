@@ -1,133 +1,9 @@
 "use strict";
 /// <reference types="@figma/plugin-typings" />
-// ==========================================
-// CONFIGURATION NAMESPACE
-// ==========================================
-var PluginConfig;
-(function (PluginConfig) {
-    PluginConfig.SERVER = {
-        BASE_URL: 'http://localhost:3003',
-        ENDPOINTS: {
-            SSE_STREAM: '/mcp-stream',
-            MCP_TRIGGER: '/mcp-trigger',
-            SHARED_DATA: './mcp-shared-data.json'
-        },
-        TIMEOUTS: {
-            HEARTBEAT: 30000,
-            CONNECTION: 2000,
-            RETRY: 5000
-        }
-    };
-    // Helper methods for URL construction
-    PluginConfig.getSSEEndpoint = () => {
-        return `${PluginConfig.SERVER.BASE_URL}${PluginConfig.SERVER.ENDPOINTS.SSE_STREAM}`;
-    };
-    PluginConfig.getMCPTriggerEndpoint = () => {
-        return `${PluginConfig.SERVER.BASE_URL}${PluginConfig.SERVER.ENDPOINTS.MCP_TRIGGER}`;
-    };
-    PluginConfig.getSharedDataPath = () => {
-        return PluginConfig.SERVER.ENDPOINTS.SHARED_DATA;
-    };
-    // UI/UX Configuration
-    PluginConfig.UI = {
-        PLUGIN_SIZE: { width: 360, height: 500 },
-        SPACING: {
-            SMALL: 8,
-            MEDIUM: 12,
-            LARGE: 16,
-            XLARGE: 24
-        },
-        COLORS: {
-            PRIMARY: '#9747FF',
-            BORDER: '#E6E6E6',
-            TEXT: '#1A1A1A',
-            BACKGROUND: '#FFFFFF',
-            LIGHT_GRAY: '#F8F8F8',
-            DISABLED: '#ccc'
-        },
-        FONTS: {
-            PRIMARY: 'Inter',
-            MONO: 'Monaco'
-        }
-    };
-    // Figma Node Defaults - CRITICAL for parsing logic
-    PluginConfig.FIGMA_DEFAULTS = {
-        MIN_SIZES: {
-            width: 20,
-            height: 20
-        },
-        DEFAULT_SIZES: {
-            frame_width: 200,
-            button_min_width: 120
-        },
-        TEXT_CALCULATIONS: {
-            char_width: 8,
-            min_width_factor: 1.2
-        }
-    };
-    // CSS Configuration - CRITICAL for parsing logic
-    PluginConfig.CSS_CONFIG = {
-        UNSUPPORTED_PROPERTIES: [
-            'animation', 'animation-name', 'animation-duration', 'animation-timing-function',
-            'animation-delay', 'animation-iteration-count', 'animation-direction',
-            'animation-fill-mode', 'animation-play-state', 'transition', 'transition-property',
-            'transition-duration', 'transition-timing-function', 'transition-delay', 'transform'
-        ],
-        SUPPORTED_CONTENT: {
-            // Original format with double quotes
-            '"📚"': '📚', '"💬"': '💬', '"🏛️"': '🏛️', '"⚽"': '⚽', '"🏠"': '🏠', '"👥"': '👥',
-            '"📈"': '📈', '"📖"': '📖', '"★"': '★', '"•"': '•', '"→"': '→', '"←"': '←',
-            '"▼"': '▼', '"▲"': '▲', '"✓"': '✓', '"✗"': '✗', '"💡"': '💡', '"🎯"': '🎯',
-            '"📅"': '📅', '"🕐"': '🕐', '"⏱️"': '⏱️', '"📊"': '📊', '"📝"': '📝',
-            '"🏟️"': '🏟️', '"📍"': '📍', '"🏢"': '🏢', '""': '',
-            // Additional format without extra quotes for CSS content property
-            '📚': '📚', '💬': '💬', '🏛️': '🏛️', '⚽': '⚽', '🏠': '🏠', '👥': '👥',
-            '📈': '📈', '📖': '📖', '★': '★', '•': '•', '→': '→', '←': '←',
-            '▼': '▼', '▲': '▲', '✓': '✓', '✗': '✗', '💡': '💡', '🎯': '🎯',
-            '📅': '📅', '🕐': '🕐', '⏱️': '⏱️', '📊': '📊', '📝': '📝',
-            '🏟️': '🏟️', '📍': '📍', '🏢': '🏢', '💰': '💰', '🔍': '🔍', '⭐': '⭐',
-            '👤': '👤', '⚙️': '⚙️'
-        }
-    };
-    // Connection & Retry Configuration - CRITICAL for reliability
-    PluginConfig.CONNECTION_CONFIG = {
-        MAX_RECONNECT_ATTEMPTS: 5,
-        RECONNECT_DELAY: 3000, // 3 seconds
-        HEARTBEAT_INTERVAL: 30000, // 30 seconds
-        CONNECTION_TIMEOUT: 2000 // 2 seconds
-    };
-    // Error Handling & Logging Configuration
-    PluginConfig.ERROR_CONFIG = {
-        MESSAGES: {
-            EMPTY_HTML: 'Please paste some HTML code first.',
-            CONNECTION_LOST: 'Connection lost. Attempting to reconnect...',
-            PARSING_ERROR: 'Error parsing HTML. Please check your code.',
-            CONVERSION_FAILED: 'Conversion failed. Please try again.'
-        },
-        LOGGING: {
-            DETAILED_LOGS_DEFAULT: true,
-            PREFIX: {
-                SSE: '[SSE]',
-                MCP: '[MCP]',
-                HTML: '[HTML]',
-                DEDUP: '[DEDUP]'
-            }
-        }
-    };
-})(PluginConfig || (PluginConfig = {}));
 const html = `<html>
 <head>
   <title>HTML to Figma</title>
   <style>
-    :root {
-      --primary-color: #9747FF;
-      --border-color: #E6E6E6;
-      --text-color: #1A1A1A;
-      --background-color: #FFFFFF;
-      --light-gray: #F8F8F8;
-      --disabled-color: #ccc;
-    }
-
     * {
       margin: 0;
       padding: 0;
@@ -180,8 +56,8 @@ const html = `<html>
     }
     
     .tab.active {
-      background: var(--background-color);
-      border-color: var(--primary-color);
+      background: #FFFFFF;
+      border-color: #9747FF;
       opacity: 1;
     }
     
@@ -266,7 +142,7 @@ const html = `<html>
     }
     
     input:checked + .slider {
-      background-color: var(--primary-color);
+      background-color: #9747FF;
     }
     
     input:checked + .slider:before {
@@ -305,7 +181,7 @@ const html = `<html>
     }
     
     .textarea:focus {
-      border-color: var(--primary-color);
+      border-color: #9747FF;
     }
     
     .textarea::placeholder {
@@ -318,7 +194,7 @@ const html = `<html>
     .button {
       width: 100%;
       height: 36px;
-      background: var(--primary-color);
+      background: #9747FF;
       color: white;
       border: none;
       border-radius: 6px;
@@ -425,20 +301,21 @@ const html = `<html>
     }
 
     .button.secondary {
-      background: #6c757d;
-      color: white;
+      background: transparent;
+      color: #888;
       font-size: 12px;
       padding: 6px 12px;
-      border: none;
+      border: 1px solid #ccc;
       border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all 0.2s;
       width: auto;
       height: auto;
     }
 
     .button.secondary:hover {
-      background: #5a6268;
+      border-color: #999;
+      color: #666;
     }
 
     .button.tertiary {
@@ -525,16 +402,94 @@ const html = `<html>
       color: #e83e8c;
     }
 
+    /* Floating Minimize Button - Always in same position */
+    .minimize-btn {
+      position: fixed;
+      top: 6px;
+      right: 6px;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: #F0F0F0;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #666;
+      transition: background 0.15s ease, color 0.15s ease;
+      z-index: 1000;
+    }
+
+    .minimize-btn:hover {
+      background: #E0E0E0;
+      color: #1A1A1A;
+    }
+
+    /* Minimized state */
+    .minimized-bar {
+      display: none;
+      padding: 6px 12px;
+      padding-right: 32px;
+      background: #FFFFFF;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+    }
+
+    .minimized-bar .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #dc3545;
+      flex-shrink: 0;
+    }
+
+    .minimized-bar .status-dot.connected {
+      background: #28a745;
+    }
+
+    .minimized-bar .status-text {
+      font-size: 12px;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    body.minimized .minimized-bar {
+      display: flex;
+    }
+
+    body.minimized .plugin-content {
+      display: none;
+    }
+
+    body.minimized {
+      padding: 0;
+      height: auto;
+      overflow: hidden;
+    }
 
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="subtitle">Convert HTML to Figma designs instantly</div>
+  <!-- Floating Minimize Button (visible when expanded) -->
+  <button class="minimize-btn" id="minimize-btn" title="Minimize">−</button>
+
+  <!-- Minimized state bar (hidden by default) -->
+  <div class="minimized-bar">
+    <span class="status-dot" id="minimized-status-dot"></span>
+    <span class="status-text" id="minimized-status-text">Disconnected</span>
   </div>
-  
-  <!-- Tabs -->
-  <div class="tab-container">
+
+  <!-- Main Content -->
+  <div class="plugin-content" id="plugin-content">
+    <div class="header">
+      <div class="subtitle">Convert HTML to Figma designs instantly</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-container">
     <button class="tab active" data-tab="mcp">MCP Bridge</button>
     <button class="tab" data-tab="paste">Paste HTML</button>
   </div>
@@ -542,8 +497,7 @@ const html = `<html>
   <!-- MCP Bridge Tab Content -->
   <div class="tab-content active" id="mcp-tab">
     <div class="description-text">
-      Connect with Cursor AI tools to send HTML directly to Figma.<br>
-      <small>1. Enable MCP Bridge below 2. Use Cursor MCP tools 3. See instant results in Figma</small>
+      Connect with AI tools via MCP to send HTML directly to Figma.
     </div>
     
     <!-- MAIN CONTROL -->
@@ -572,8 +526,8 @@ const html = `<html>
     
     <!-- ACTIONS -->
     <div class="action-buttons">
-      <button id="test-broadcast-btn" class="button secondary">🔗 Test Connection</button>
-      <button id="advanced-btn" class="button secondary">🔧 Advanced</button>
+      <button id="test-broadcast-btn" class="button secondary">Test Connection</button>
+      <button id="advanced-btn" class="button secondary">Advanced</button>
     </div>
     
     <!-- ADVANCED SETTINGS PANEL (Hidden by default) -->
@@ -592,7 +546,7 @@ const html = `<html>
         <label class="setting-label">Connection Info</label>
         <div class="info-row">
           <span>Endpoint:</span>
-          <code id="endpoint-display">localhost:3003/mcp-stream</code>
+          <code>localhost:3003/mcp-stream</code>
         </div>
         <div class="info-row">
           <span>Status:</span>
@@ -617,96 +571,11 @@ const html = `<html>
     <button id="send-btn" class="button">Convert to Figma</button>
   </div>
 
+  </div><!-- End plugin-content -->
+
 <script>
-// ==========================================
-// UI CONFIGURATION - Synchronized with PluginConfig
-// ⚠️  IMPORTANT: Keep this synchronized with PluginConfig namespace above!
-// ==========================================
-var UI_CONFIG = {
-  SERVER: {
-    BASE_URL: 'http://localhost:3003',
-    ENDPOINTS: {
-      SSE_STREAM: '/mcp-stream',
-      MCP_TRIGGER: '/mcp-trigger',
-      SHARED_DATA: './mcp-shared-data.json'
-    },
-    TIMEOUTS: {
-      HEARTBEAT: 30000,
-      CONNECTION: 2000,
-      RETRY: 5000
-    }
-  },
-  COLORS: {
-    PRIMARY: '#9747FF',
-    BORDER: '#E6E6E6',
-    TEXT: '#1A1A1A',
-    BACKGROUND: '#FFFFFF',
-    LIGHT_GRAY: '#F8F8F8',
-    DISABLED: '#ccc'
-  },
-  CSS_CONFIG: {
-    UNSUPPORTED_PROPERTIES: [
-      'animation', 'animation-name', 'animation-duration', 'animation-timing-function',
-      'animation-delay', 'animation-iteration-count', 'animation-direction',
-      'animation-fill-mode', 'animation-play-state', 'transition', 'transition-property',
-      'transition-duration', 'transition-timing-function', 'transition-delay', 'transform'
-    ],
-    SUPPORTED_CONTENT: {
-      // Original format with double quotes
-      '"📚"': '📚', '"💬"': '💬', '"🏛️"': '🏛️', '"⚽"': '⚽', '"🏠"': '🏠', '"👥"': '👥',
-      '"📈"': '📈', '"📖"': '📖', '"★"': '★', '"•"': '•', '"→"': '→', '"←"': '←',
-      '"▼"': '▼', '"▲"': '▲', '"✓"': '✓', '"✗"': '✗', '"💡"': '💡', '"🎯"': '🎯',
-      '"📅"': '📅', '"🕐"': '🕐', '"⏱️"': '⏱️', '"📊"': '📊', '"📝"': '📝',
-      '"🏟️"': '🏟️', '"📍"': '📍', '"🏢"': '🏢', '""': '',
-      // Additional format without extra quotes for CSS content property
-      '📚': '📚', '💬': '💬', '🏛️': '🏛️', '⚽': '⚽', '🏠': '🏠', '👥': '👥',
-      '📈': '📈', '📖': '📖', '★': '★', '•': '•', '→': '→', '←': '←',
-      '▼': '▼', '▲': '▲', '✓': '✓', '✗': '✗', '💡': '💡', '🎯': '🎯',
-      '📅': '📅', '🕐': '🕐', '⏱️': '⏱️', '📊': '📊', '📝': '📝',
-      '🏟️': '🏟️', '📍': '📍', '🏢': '🏢', '💰': '💰', '🔍': '🔍', '⭐': '⭐', 
-      '👤': '👤', '⚙️': '⚙️'
-    }
-  },
-  CONNECTION_CONFIG: {
-    MAX_RECONNECT_ATTEMPTS: 5,
-    RECONNECT_DELAY: 3000, // 3 seconds
-    HEARTBEAT_INTERVAL: 30000, // 30 seconds  
-    CONNECTION_TIMEOUT: 2000 // 2 seconds
-  },
-  ERROR_CONFIG: {
-    MESSAGES: {
-      EMPTY_HTML: 'Please paste some HTML code first.',
-      CONNECTION_LOST: 'Connection lost. Attempting to reconnect...',
-      PARSING_ERROR: 'Error parsing HTML. Please check your code.',
-      CONVERSION_FAILED: 'Conversion failed. Please try again.'
-    },
-    LOGGING: {
-      DETAILED_LOGS_DEFAULT: true,
-      PREFIX: {
-        SSE: '[SSE]',
-        MCP: '[MCP]',
-        HTML: '[HTML]',
-        DEDUP: '[DEDUP]'
-      }
-    }
-  }
-};
-
-// Helper functions for UI configuration access
-function getSSEEndpoint() {
-  return UI_CONFIG.SERVER.BASE_URL + UI_CONFIG.SERVER.ENDPOINTS.SSE_STREAM;
-}
-
-function getMCPTriggerEndpoint() {
-  return UI_CONFIG.SERVER.BASE_URL + UI_CONFIG.SERVER.ENDPOINTS.MCP_TRIGGER;
-}
-
-function getSharedDataPath() {
-  return UI_CONFIG.SERVER.ENDPOINTS.SHARED_DATA;
-}
-
-// Global variable to control detailed logging - Use centralized config
-var detailedLogsEnabled = UI_CONFIG.ERROR_CONFIG?.LOGGING?.DETAILED_LOGS_DEFAULT || true;
+// Global variable to control detailed logging
+var detailedLogsEnabled = true;
 
 // Function for conditional debugging logs
 function debugLog(...args) {
@@ -715,15 +584,16 @@ function debugLog(...args) {
   }
 }
 
-// CSS Configuration - Use centralized config from PluginConfig
-var UNSUPPORTED_CSS_PROPERTIES = UI_CONFIG.CSS_CONFIG?.UNSUPPORTED_PROPERTIES || [
+// Essential CSS properties that Figma doesn't support
+var UNSUPPORTED_CSS_PROPERTIES = [
   'animation', 'animation-name', 'animation-duration', 'animation-timing-function',
   'animation-delay', 'animation-iteration-count', 'animation-direction',
   'animation-fill-mode', 'animation-play-state', 'transition', 'transition-property',
   'transition-duration', 'transition-timing-function', 'transition-delay', 'transform'
 ];
 
-var SUPPORTED_CONTENT = UI_CONFIG.CSS_CONFIG?.SUPPORTED_CONTENT || {
+// Supported content for pseudo-elements
+var SUPPORTED_CONTENT = {
   '"📚"': '📚', '"💬"': '💬', '"🏛️"': '🏛️', '"⚽"': '⚽', '"🏠"': '🏠', '"👥"': '👥',
   '"📈"': '📈', '"📖"': '📖', '"★"': '★', '"•"': '•', '"→"': '→', '"←"': '←',
   '"▼"': '▼', '"▲"': '▲', '"✓"': '✓', '"✗"': '✗', '"💡"': '💡', '"🎯"': '🎯',
@@ -801,10 +671,10 @@ document.getElementById('advanced-btn').addEventListener('click', function() {
   var panel = document.getElementById('advanced-panel');
   if (panel.style.display === 'none') {
     panel.style.display = 'block';
-    this.textContent = '🔼 Hide Advanced';
+    this.textContent = 'Hide Advanced';
   } else {
     panel.style.display = 'none';
-    this.textContent = '🔧 Advanced';
+    this.textContent = 'Advanced';
   }
 });
 
@@ -834,34 +704,53 @@ document.getElementById('test-broadcast-btn').addEventListener('click', function
   }, 1000);
 });
 
+// Minimize/Expand functionality
+var isMinimized = false;
+var isConnected = false;
 
-
-// Initialize UI with configuration values
-function initializeUI() {
-  // Update CSS variables with configuration values
-  updateCSSVariables();
-  
-  // Update endpoint display with current configuration
-  var endpointDisplay = document.getElementById('endpoint-display');
-  if (endpointDisplay) {
-    // Use UI configuration function
-    endpointDisplay.textContent = getSSEEndpoint().replace('http://', '');
+function updateMinimizedStatus() {
+  var dot = document.getElementById('minimized-status-dot');
+  var text = document.getElementById('minimized-status-text');
+  if (dot && text) {
+    if (isConnected) {
+      dot.classList.add('connected');
+      text.textContent = 'Connected';
+    } else {
+      dot.classList.remove('connected');
+      text.textContent = 'Disconnected';
+    }
   }
 }
 
-// Function to update CSS variables from UI_CONFIG
-function updateCSSVariables() {
-  var root = document.documentElement;
-  root.style.setProperty('--primary-color', UI_CONFIG.COLORS.PRIMARY);
-  root.style.setProperty('--border-color', UI_CONFIG.COLORS.BORDER);
-  root.style.setProperty('--text-color', UI_CONFIG.COLORS.TEXT);
-  root.style.setProperty('--background-color', UI_CONFIG.COLORS.BACKGROUND);
-  root.style.setProperty('--light-gray', UI_CONFIG.COLORS.LIGHT_GRAY);
-  root.style.setProperty('--disabled-color', UI_CONFIG.COLORS.DISABLED);
-}
+document.getElementById('minimize-btn').addEventListener('click', function() {
+  isMinimized = !isMinimized;
+  var btn = document.getElementById('minimize-btn');
 
-// Initialize UI when script loads
-initializeUI();
+  if (isMinimized) {
+    document.body.classList.add('minimized');
+    btn.textContent = '+';
+    btn.title = 'Expand';
+    updateMinimizedStatus();
+    // Send message to resize plugin window
+    parent.postMessage({
+      pluginMessage: {
+        type: 'resize-plugin',
+        minimized: true
+      }
+    }, '*');
+  } else {
+    document.body.classList.remove('minimized');
+    btn.textContent = '−';
+    btn.title = 'Minimize';
+    // Send message to restore plugin window
+    parent.postMessage({
+      pluginMessage: {
+        type: 'resize-plugin',
+        minimized: false
+      }
+    }, '*');
+  }
+});
 
 // Helper functions for new UI elements
 function updateConnectionStatus(status) {
@@ -872,11 +761,15 @@ function updateConnectionStatus(status) {
 function updateSSEStatus(text, status) {
   var indicator = document.getElementById('sse-indicator');
   var statusText = document.getElementById('sse-status-text');
-  
+
+  // Update global connection state
+  isConnected = (status === 'connected');
+  updateMinimizedStatus();
+
   if (statusText) {
     statusText.textContent = text;
   }
-  
+
   if (indicator) {
     switch(status) {
       case 'connected':
@@ -984,13 +877,8 @@ function extractCSS(htmlStr) {
           var declarations = rule.substring(braceIdx + 1).trim();
           
           if (selector && declarations) {
-            // CRITICAL: Handle pseudo-elements FIRST (highest priority)
-            if (selector.includes('::before') || selector.includes('::after')) {
-              cssRules[selector] = parseInlineStyles(declarations);
-              // Pseudo-element parsed successfully
-            }
             // Handle class selectors (simple and nested)
-            else if (selector.charAt(0) === '.') {
+            if (selector.charAt(0) === '.') {
               cssRules[selector] = parseInlineStyles(declarations);
             }
             // Handle nested selectors like ".card .badge" or ".form-section h2"
@@ -1022,39 +910,6 @@ function simpleParseHTML(htmlStr) {
     var styles = {};
     var className = element.getAttribute('class');
     
-    // NUEVO: Heredar text-align del elemento padre ANTES de aplicar estilos propios
-    var parent = element.parentElement;
-    while (parent && parent.tagName !== 'BODY') {
-      var parentStyles = {};
-      var parentClassName = parent.getAttribute('class');
-      
-      // Obtener estilos del padre desde CSS classes
-      if (parentClassName) {
-        var parentClasses = parentClassName.split(' ');
-        for (var pc = 0; pc < parentClasses.length; pc++) {
-          var parentCls = parentClasses[pc].trim();
-          if (parentCls && cssRules['.' + parentCls]) {
-            parentStyles = Object.assign(parentStyles, cssRules['.' + parentCls]);
-          }
-        }
-      }
-      
-      // Obtener estilos inline del padre
-      var parentInlineStyle = parent.getAttribute('style');
-      if (parentInlineStyle) {
-        var parentInlineStyles = parseInlineStyles(parentInlineStyle);
-        parentStyles = Object.assign(parentStyles, parentInlineStyles);
-      }
-      
-      // Heredar text-align si el padre lo tiene y el elemento actual no lo tiene definido
-      if (parentStyles['text-align'] && !styles['text-align']) {
-        styles['text-align'] = parentStyles['text-align'];
-        debugLog('🎯 CSS INHERITANCE: Element "' + element.tagName + '" with class "' + className + '" inherited text-align: ' + parentStyles['text-align'] + ' from parent "' + parent.tagName + '"');
-      }
-      
-      parent = parent.parentElement;
-    }
-    
     if (className) {
       var classes = className.split(' ');
   
@@ -1069,71 +924,6 @@ function simpleParseHTML(htmlStr) {
       var combinedSelector = '.' + classes.join('.');
       if (cssRules[combinedSelector]) {
         styles = Object.assign(styles, cssRules[combinedSelector]);
-      }
-      
-      // Check for pseudo-elements like ".nav-item.home::before"
-      for (var i = 0; i < classes.length; i++) {
-        var cls = classes[i].trim();
-        if (cls) {
-          var pseudoBeforeSelector = '.' + classes.join('.') + '::before';
-          var pseudoAfterSelector = '.' + classes.join('.') + '::after';
-          
-          if (cssRules[pseudoBeforeSelector]) {
-            styles = Object.assign(styles, cssRules[pseudoBeforeSelector]);
-          }
-          if (cssRules[pseudoAfterSelector]) {
-            styles = Object.assign(styles, cssRules[pseudoAfterSelector]);
-          }
-        }
-      }
-      
-      // NEW: Check for complex pseudo-element selectors with parent classes
-      // Example: ".stat-item.users .stat-number::before" where element has class "stat-number"
-      // and parent has classes "stat-item users"
-      if (className) {
-        var currentClasses = className.split(' ');
-        var parent = element.parentElement;
-        
-        while (parent && parent.tagName !== 'BODY') {
-          var parentClasses = parent.getAttribute('class');
-          if (parentClasses) {
-            var parentClassList = parentClasses.split(' ');
-            
-            // Check for each current class with parent combinations
-            for (var c = 0; c < currentClasses.length; c++) {
-              var currentClass = currentClasses[c].trim();
-              if (currentClass) {
-                // Check for patterns like ".stat-item.users .stat-number::before"
-                var complexBeforeSelector = '.' + parentClassList.join('.') + ' .' + currentClass + '::before';
-                var complexAfterSelector = '.' + parentClassList.join('.') + ' .' + currentClass + '::after';
-                
-                if (cssRules[complexBeforeSelector]) {
-                  styles = Object.assign(styles, cssRules[complexBeforeSelector]);
-                }
-                if (cssRules[complexAfterSelector]) {
-                  styles = Object.assign(styles, cssRules[complexAfterSelector]);
-                }
-                
-                // Also check individual parent class patterns
-                for (var p = 0; p < parentClassList.length; p++) {
-                  var parentClass = parentClassList[p].trim();
-                  if (parentClass) {
-                    var simpleBeforeSelector = '.' + parentClass + ' .' + currentClass + '::before';
-                    var simpleAfterSelector = '.' + parentClass + ' .' + currentClass + '::after';
-                    
-                    if (cssRules[simpleBeforeSelector]) {
-                      styles = Object.assign(styles, cssRules[simpleBeforeSelector]);
-                    }
-                    if (cssRules[simpleAfterSelector]) {
-                      styles = Object.assign(styles, cssRules[simpleAfterSelector]);
-                    }
-                  }
-                }
-              }
-            }
-          }
-          parent = parent.parentElement;
-        }
       }
     }
     
@@ -1177,13 +967,6 @@ function simpleParseHTML(htmlStr) {
     if (node.nodeType === 1) {
       var tag = node.tagName.toLowerCase();
       var styles = getElementStyles(node);
-      
-      // Add className to styles for later reference
-      var className = node.getAttribute('class');
-      if (className) {
-        styles.className = className;
-      }
-      
       var text = '';
       var children = [];
 
@@ -1232,7 +1015,7 @@ function simpleParseHTML(htmlStr) {
 document.getElementById('send-btn').onclick = function() {
   var htmlValue = document.getElementById('html-input').value;
   if (!htmlValue.trim()) {
-    alert(UI_CONFIG.ERROR_CONFIG?.MESSAGES?.EMPTY_HTML || 'Please paste some HTML code first.');
+    alert('Please paste some HTML code first.');
     return;
   }
   
@@ -1320,7 +1103,7 @@ window.addEventListener('message', function(event) {
       }
     } else if (msg.type === 'request-file-mcp-data') {
       // Handle file system reading for MCP data
-      fetch(getSharedDataPath())
+      fetch('./mcp-shared-data.json')
         .then(response => response.ok ? response.json() : Promise.reject('Not found'))
         .then(data => {
           parent.postMessage({
@@ -1340,9 +1123,9 @@ window.addEventListener('message', function(event) {
         });
     } else if (msg.type === 'delete-file-mcp-data') {
       // Handle cleanup request
-      fetch(getSharedDataPath(), { method: 'DELETE' })
-        .then(() => debugLog('MCP file cleanup completed'))
-        .catch(() => debugLog('MCP file cleanup attempted'));
+      fetch('./mcp-shared-data.json', { method: 'DELETE' })
+        .then(() => console.log('MCP file cleanup completed'))
+        .catch(() => console.log('MCP file cleanup attempted'));
     }
   }
 });
@@ -1354,8 +1137,8 @@ window.addEventListener('message', function(event) {
 var eventSource = null;
 var sseConnected = false;
 var sseReconnectAttempts = 0;
-var maxReconnectAttempts = UI_CONFIG.CONNECTION_CONFIG?.MAX_RECONNECT_ATTEMPTS || 5;
-var sseReconnectDelay = UI_CONFIG.CONNECTION_CONFIG?.RECONNECT_DELAY || 3000;
+var maxReconnectAttempts = 5;
+var sseReconnectDelay = 3000;
 
 function startRealSSEConnection() {
           debugLog('[SSE] Starting real SSE connection...');
@@ -1365,8 +1148,7 @@ function startRealSSEConnection() {
   }
   
   try {
-            // Use UI configuration function
-            eventSource = new EventSource(getSSEEndpoint());
+            eventSource = new EventSource('http://localhost:3003/mcp-stream');
     
     eventSource.onopen = function(event) {
       debugLog('[SSE] Connection opened successfully');
@@ -1546,7 +1328,7 @@ window.addEventListener('message', function(event) {
 </script>
 </body>
 </html>`;
-figma.showUI(html, { width: PluginConfig.UI.PLUGIN_SIZE.width, height: PluginConfig.UI.PLUGIN_SIZE.height });
+figma.showUI(html, { width: 360, height: 500 });
 function hexToRgb(color) {
     // First handle CSS color keywords
     const colorKeywords = {
@@ -1875,8 +1657,10 @@ function applyStylesToFrame(frame, styles) {
         let targetWidth = parseSize(styles.width);
         if (targetWidth && targetWidth > 0) {
             frame.resize(targetWidth, frame.height);
+            frame.setPluginData('hasExplicitWidth', 'true');
         }
         else if (styles.width === '100%') {
+            frame.setPluginData('hasExplicitWidth', 'true');
             // Para elementos de ancho completo, aplicar lógica especial
             if (frame.parent && frame.parent.type === 'FRAME') {
                 const parentFrame = frame.parent;
@@ -2009,15 +1793,15 @@ function applyStylesToFrame(frame, styles) {
     else if (styles['justify-content'] === 'space-between') {
         frame.primaryAxisAlignItems = 'SPACE_BETWEEN';
         // SMART: Solo si frame actual es muy pequeño para space-between
-        if (frame.layoutMode === 'HORIZONTAL' && !styles.width && frame.width < PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.frame_width) {
-            frame.minWidth = Math.max(frame.width * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.min_width_factor, PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.frame_width); // Dinámico basado en contenido
+        if (frame.layoutMode === 'HORIZONTAL' && !styles.width && frame.width < 200) {
+            frame.minWidth = Math.max(frame.width * 1.5, 200); // Dinámico basado en contenido
         }
     }
     else if (styles['justify-content'] === 'space-around') {
         frame.primaryAxisAlignItems = 'SPACE_BETWEEN'; // Fallback
         // SMART: También para space-around
-        if (frame.layoutMode === 'HORIZONTAL' && !styles.width && frame.width < PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.frame_width) {
-            frame.minWidth = Math.max(frame.width * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.min_width_factor, PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.frame_width);
+        if (frame.layoutMode === 'HORIZONTAL' && !styles.width && frame.width < 200) {
+            frame.minWidth = Math.max(frame.width * 1.5, 200);
         }
     }
     else if (styles['justify-content'] === 'flex-start') {
@@ -2196,11 +1980,11 @@ async function calculateContentSize(children) {
             }
             else if (child.tagName === 'p' || child.tagName === 'span') {
                 totalHeight += 30;
-                maxWidth = Math.max(maxWidth, Math.min(child.text.length * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.char_width, 300));
+                maxWidth = Math.max(maxWidth, child.text.length * 10);
             }
             else if (child.tagName === 'button' || child.tagName === 'input') {
                 totalHeight += 50;
-                maxWidth = Math.max(maxWidth, Math.max(PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.frame_width, child.text.length * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.char_width));
+                maxWidth = Math.max(maxWidth, Math.max(200, child.text.length * 12));
             }
             else if (child.tagName === 'ul' || child.tagName === 'ol') {
                 totalHeight += child.children.length * 25 + 10;
@@ -2228,7 +2012,7 @@ async function calculateContentSize(children) {
             }
         }
     }
-    return { width: Math.max(maxWidth, PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.frame_width), height: Math.max(totalHeight, 50) };
+    return { width: Math.max(maxWidth, 200), height: Math.max(totalHeight, 50) };
 }
 // Helper function to parse number of columns from grid-template-columns
 function parseGridColumns(gridTemplate) {
@@ -2245,28 +2029,19 @@ function parseGridColumns(gridTemplate) {
 }
 // Grid layout genérico para N columnas
 async function createGridLayout(children, parentFrame, columns, gap, inheritedStyles) {
-    // Creating grid layout
-    var _a, _b, _c, _d;
     for (let i = 0; i < children.length; i += columns) {
         const rowFrame = figma.createFrame();
-        rowFrame.name = `Grid Row ${Math.floor(i / columns) + 1}`;
+        rowFrame.name = `Grid Row (${columns} cols)`;
         rowFrame.fills = [];
         rowFrame.layoutMode = 'HORIZONTAL';
         rowFrame.primaryAxisSizingMode = 'AUTO';
         rowFrame.counterAxisSizingMode = 'AUTO';
         rowFrame.itemSpacing = gap;
-        rowFrame.setPluginData('isGridRow', 'true');
-        // INHERIT text-align from parent grid container
-        if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
-            rowFrame.primaryAxisAlignItems = 'CENTER';
-            rowFrame.counterAxisAlignItems = 'CENTER';
-            rowFrame.setPluginData('textAlign', 'center');
-            debugLog(`🎯 GRID ROW INHERITED CENTER: Row ${Math.floor(i / columns) + 1} inheriting text-align from grid parent`);
-        }
         parentFrame.appendChild(rowFrame);
         if (parentFrame.layoutMode !== 'NONE') {
             try {
                 rowFrame.layoutSizingHorizontal = 'FILL';
+                rowFrame.setPluginData('hasExplicitWidth', 'true');
             }
             catch (error) {
                 rowFrame.resize(Math.max(400, rowFrame.width), rowFrame.height);
@@ -2274,33 +2049,25 @@ async function createGridLayout(children, parentFrame, columns, gap, inheritedSt
         }
         for (let j = 0; j < columns; j++) {
             if (children[i + j]) {
-                const childItem = children[i + j];
-                debugLog(`📦 Grid item ${i + j + 1}:`, {
-                    text: ((_a = childItem.text) === null || _a === void 0 ? void 0 : _a.substring(0, 50)) || 'no direct text',
-                    children: ((_b = childItem.children) === null || _b === void 0 ? void 0 : _b.length) || 0,
-                    hasTextChildren: ((_c = childItem.children) === null || _c === void 0 ? void 0 : _c.some((c) => { var _a; return (_a = c.text) === null || _a === void 0 ? void 0 : _a.trim(); })) || false
-                });
-                // CRITICAL FIX: Check if THIS grid item has text-align: center
-                if (((_d = childItem.styles) === null || _d === void 0 ? void 0 : _d['text-align']) === 'center') {
-                    rowFrame.setPluginData('textAlign', 'center');
-                    rowFrame.primaryAxisAlignItems = 'CENTER';
-                    rowFrame.counterAxisAlignItems = 'CENTER';
-                    debugLog(`🎯 GRID ITEM CENTER: Grid item ${i + j + 1} has text-align center, applying to row`);
-                }
-                await createFigmaNodesFromStructure([childItem], rowFrame, 0, 0, inheritedStyles);
+                // Grid items have constrained width (FILL layout)
+                const gridInheritedStyles = Object.assign(Object.assign({}, inheritedStyles), { '_hasConstrainedWidth': true });
+                await createFigmaNodesFromStructure([children[i + j]], rowFrame, 0, 0, gridInheritedStyles);
             }
         }
         // Hacer que los items llenen el espacio de la fila
         for (let k = 0; k < rowFrame.children.length; k++) {
             try {
-                rowFrame.children[k].layoutGrow = 1;
+                const child = rowFrame.children[k];
+                child.layoutGrow = 1;
+                child.layoutSizingHorizontal = 'FILL';
+                child.setPluginData('hasExplicitWidth', 'true');
             }
             catch (error) { }
         }
     }
 }
 async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0, startY = 0, inheritedStyles) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55;
     debugLog('[NODE CREATION] Starting createFigmaNodesFromStructure');
     debugLog('[NODE CREATION] Structure:', structure);
     debugLog('[NODE CREATION] ParentFrame:', (parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) || 'none');
@@ -2321,19 +2088,18 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             const nodeStyles = Object.assign(Object.assign({}, inheritedStyles), node.styles);
             node.styles = nodeStyles;
             if (['div', 'section', 'article', 'nav', 'header', 'footer', 'main'].includes(node.tagName)) {
-                debugLog(`🏗️ PROCESSING DIV/CONTAINER: ${node.tagName} with className "${(_c = node.styles) === null || _c === void 0 ? void 0 : _c.className}" hasText: ${!!node.text}`);
                 const frame = figma.createFrame();
                 frame.name = node.tagName.toUpperCase() + ' Frame';
                 // LAYOUT MODE: Aplicar display CSS directamente PRIMERO
                 let layoutMode = 'VERTICAL';
-                if (((_d = node.styles) === null || _d === void 0 ? void 0 : _d.display) === 'flex') {
+                if (((_c = node.styles) === null || _c === void 0 ? void 0 : _c.display) === 'flex') {
                     // Flex direction: row = HORIZONTAL, column = VERTICAL
-                    layoutMode = ((_e = node.styles) === null || _e === void 0 ? void 0 : _e['flex-direction']) === 'column' ? 'VERTICAL' : 'HORIZONTAL';
+                    layoutMode = ((_d = node.styles) === null || _d === void 0 ? void 0 : _d['flex-direction']) === 'column' ? 'VERTICAL' : 'HORIZONTAL';
                     // Debug flexbox layout
-                    if (((_f = node.styles) === null || _f === void 0 ? void 0 : _f.className) === 'dashboard') {
+                    if (((_e = node.styles) === null || _e === void 0 ? void 0 : _e.className) === 'dashboard') {
                     }
                 }
-                else if (((_g = node.styles) === null || _g === void 0 ? void 0 : _g.display) === 'grid') {
+                else if (((_f = node.styles) === null || _f === void 0 ? void 0 : _f.display) === 'grid') {
                     // Keep vertical layout for grid - we'll handle 2x2 layout in child processing
                     layoutMode = 'VERTICAL';
                 }
@@ -2345,45 +2111,37 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 frame.layoutSizingVertical = 'HUG';
                 frame.layoutSizingHorizontal = 'HUG';
                 // Dimensiones mínimas para evitar colapso pero respetando CSS
-                frame.minHeight = PluginConfig.FIGMA_DEFAULTS.MIN_SIZES.height;
-                frame.minWidth = PluginConfig.FIGMA_DEFAULTS.MIN_SIZES.width; // Much smaller minimum to not interfere with explicit CSS dimensions
+                frame.minHeight = 20;
+                frame.minWidth = 20; // Much smaller minimum to not interfere with explicit CSS dimensions
                 // Apply CSS styles BEFORE setting flex properties
                 if (node.styles) {
                     applyStylesToFrame(frame, node.styles);
                 }
                 // Debug only detail-label and detail-value containers
-                if (((_h = node.styles) === null || _h === void 0 ? void 0 : _h.className) === 'detail-label' || ((_j = node.styles) === null || _j === void 0 ? void 0 : _j.className) === 'detail-value') {
+                if (((_g = node.styles) === null || _g === void 0 ? void 0 : _g.className) === 'detail-label' || ((_h = node.styles) === null || _h === void 0 ? void 0 : _h.className) === 'detail-value') {
                 }
                 // INHERIT text-align from parent for DIV containers too
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
-                    // Apply centering to this container as well
-                    if (frame.layoutMode === 'VERTICAL') {
-                        frame.primaryAxisAlignItems = 'CENTER';
-                        frame.counterAxisAlignItems = 'CENTER';
+                    // If parent container has text-align center and this container doesn't have its own text-align
+                    if (!((_j = node.styles) === null || _j === void 0 ? void 0 : _j['text-align'])) {
+                        // Apply centering to this container as well
+                        if (frame.layoutMode === 'VERTICAL') {
+                            frame.primaryAxisAlignItems = 'CENTER';
+                            frame.counterAxisAlignItems = 'CENTER';
+                        }
+                        else if (frame.layoutMode === 'HORIZONTAL') {
+                            frame.counterAxisAlignItems = 'CENTER';
+                            frame.primaryAxisAlignItems = 'CENTER';
+                        }
+                        // Also mark this frame as having centered text for its children
+                        frame.setPluginData('textAlign', 'center');
+                        // Log only detail-related inheritance
+                        if ((_l = (_k = node.styles) === null || _k === void 0 ? void 0 : _k.className) === null || _l === void 0 ? void 0 : _l.includes('detail')) {
+                        }
                     }
-                    else if (frame.layoutMode === 'HORIZONTAL') {
-                        frame.counterAxisAlignItems = 'CENTER';
-                        frame.primaryAxisAlignItems = 'CENTER';
-                    }
-                    // Also mark this frame as having centered text for its children
-                    frame.setPluginData('textAlign', 'center');
-                    debugLog(`🎯 DIV INHERITED CENTER: ${node.tagName} with className "${(_k = node.styles) === null || _k === void 0 ? void 0 : _k.className}" inherited text-align from parent`);
-                }
-                // ALSO inherit if THIS element has text-align: center
-                if (((_l = node.styles) === null || _l === void 0 ? void 0 : _l['text-align']) === 'center') {
-                    if (frame.layoutMode === 'VERTICAL') {
-                        frame.primaryAxisAlignItems = 'CENTER';
-                        frame.counterAxisAlignItems = 'CENTER';
-                    }
-                    else if (frame.layoutMode === 'HORIZONTAL') {
-                        frame.counterAxisAlignItems = 'CENTER';
-                        frame.primaryAxisAlignItems = 'CENTER';
-                    }
-                    frame.setPluginData('textAlign', 'center');
-                    debugLog(`🎯 DIV OWN CENTER: ${node.tagName} with className "${(_m = node.styles) === null || _m === void 0 ? void 0 : _m.className}" has its own text-align center`);
                 }
                 // CRITICAL: After applying styles, ensure containers can still grow vertically
-                if (((_o = node.styles) === null || _o === void 0 ? void 0 : _o['max-width']) && !((_p = node.styles) === null || _p === void 0 ? void 0 : _p.height)) {
+                if (((_m = node.styles) === null || _m === void 0 ? void 0 : _m['max-width']) && !((_o = node.styles) === null || _o === void 0 ? void 0 : _o.height)) {
                     // For containers with max-width but no explicit height, allow vertical growth
                     frame.layoutSizingVertical = 'HUG';
                 }
@@ -2396,7 +2154,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Remove hardcoded backgrounds - let CSS handle all styling
                 if (!hasBackground && !isInsideGradientContainer) {
                     // Check if element has CSS background that should be applied
-                    const cssBackgroundColor = ((_q = node.styles) === null || _q === void 0 ? void 0 : _q['background-color']) || ((_r = node.styles) === null || _r === void 0 ? void 0 : _r['background']);
+                    const cssBackgroundColor = ((_p = node.styles) === null || _p === void 0 ? void 0 : _p['background-color']) || ((_q = node.styles) === null || _q === void 0 ? void 0 : _q['background']);
                     if (cssBackgroundColor && cssBackgroundColor !== 'transparent') {
                         const bgColor = hexToRgb(cssBackgroundColor);
                         if (bgColor) {
@@ -2410,19 +2168,19 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 // Padding ONLY from CSS - no hardcoded defaults
                 const defaultPadding = 0; // No default padding - respect CSS only
-                const cssTopPadding = parseSize((_s = node.styles) === null || _s === void 0 ? void 0 : _s['padding-top']) || parseSize((_t = node.styles) === null || _t === void 0 ? void 0 : _t.padding) || defaultPadding;
-                const cssRightPadding = parseSize((_u = node.styles) === null || _u === void 0 ? void 0 : _u['padding-right']) || parseSize((_v = node.styles) === null || _v === void 0 ? void 0 : _v.padding) || defaultPadding;
-                const cssBottomPadding = parseSize((_w = node.styles) === null || _w === void 0 ? void 0 : _w['padding-bottom']) || parseSize((_x = node.styles) === null || _x === void 0 ? void 0 : _x.padding) || defaultPadding;
-                const cssLeftPadding = parseSize((_y = node.styles) === null || _y === void 0 ? void 0 : _y['padding-left']) || parseSize((_z = node.styles) === null || _z === void 0 ? void 0 : _z.padding) || defaultPadding;
+                const cssTopPadding = parseSize((_r = node.styles) === null || _r === void 0 ? void 0 : _r['padding-top']) || parseSize((_s = node.styles) === null || _s === void 0 ? void 0 : _s.padding) || defaultPadding;
+                const cssRightPadding = parseSize((_t = node.styles) === null || _t === void 0 ? void 0 : _t['padding-right']) || parseSize((_u = node.styles) === null || _u === void 0 ? void 0 : _u.padding) || defaultPadding;
+                const cssBottomPadding = parseSize((_v = node.styles) === null || _v === void 0 ? void 0 : _v['padding-bottom']) || parseSize((_w = node.styles) === null || _w === void 0 ? void 0 : _w.padding) || defaultPadding;
+                const cssLeftPadding = parseSize((_x = node.styles) === null || _x === void 0 ? void 0 : _x['padding-left']) || parseSize((_y = node.styles) === null || _y === void 0 ? void 0 : _y.padding) || defaultPadding;
                 frame.paddingTop = cssTopPadding;
                 frame.paddingRight = cssRightPadding;
                 frame.paddingBottom = cssBottomPadding;
                 frame.paddingLeft = cssLeftPadding;
                 // Set spacing: usar CSS gap o default más generoso
-                const gap = parseSize((_0 = node.styles) === null || _0 === void 0 ? void 0 : _0.gap) || (layoutMode === 'HORIZONTAL' ? 16 : 12);
+                const gap = parseSize((_z = node.styles) === null || _z === void 0 ? void 0 : _z.gap) || (layoutMode === 'HORIZONTAL' ? 16 : 12);
                 frame.itemSpacing = gap;
                 // Store gap for grid layout
-                if (((_1 = node.styles) === null || _1 === void 0 ? void 0 : _1.display) === 'grid') {
+                if (((_0 = node.styles) === null || _0 === void 0 ? void 0 : _0.display) === 'grid') {
                     frame.setPluginData('gridGap', gap.toString());
                 }
                 // Only set position if there's no parent (root elements)
@@ -2435,12 +2193,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     parentFrame.appendChild(frame);
                 }
                 // Apply full width AFTER appendChild (proper timing) - BUT NOT for elements with explicit dimensions
-                const hasExplicitDimensions = ((_2 = node.styles) === null || _2 === void 0 ? void 0 : _2.width) || ((_3 = node.styles) === null || _3 === void 0 ? void 0 : _3.height);
+                const hasExplicitDimensions = ((_1 = node.styles) === null || _1 === void 0 ? void 0 : _1.width) || ((_2 = node.styles) === null || _2 === void 0 ? void 0 : _2.height);
                 if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
                     try {
                         frame.layoutSizingHorizontal = 'FILL';
                         // Maintain vertical HUG for containers to grow with content
-                        if (!((_4 = node.styles) === null || _4 === void 0 ? void 0 : _4.height)) {
+                        if (!((_3 = node.styles) === null || _3 === void 0 ? void 0 : _3.height)) {
                             frame.layoutSizingVertical = 'HUG';
                         }
                     }
@@ -2453,22 +2211,22 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     // Only resize if needed, don't force arbitrary widths
                     frame.resize(Math.max(frame.width, 300), frame.height);
                     // Allow vertical growth for containers
-                    if (!((_5 = node.styles) === null || _5 === void 0 ? void 0 : _5.height)) {
+                    if (!((_4 = node.styles) === null || _4 === void 0 ? void 0 : _4.height)) {
                         frame.layoutSizingVertical = 'HUG';
                     }
                 }
                 else if (hasExplicitDimensions) {
                 }
                 // Handle flex child height separately for ALL elements (including those with explicit width like sidebar)
-                if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !((_6 = node.styles) === null || _6 === void 0 ? void 0 : _6.height)) {
+                if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !((_5 = node.styles) === null || _5 === void 0 ? void 0 : _5.height)) {
                     try {
                         frame.layoutSizingVertical = 'FILL';
                         // Debug height filling for sidebar
-                        if (((_7 = node.styles) === null || _7 === void 0 ? void 0 : _7.className) === 'sidebar') {
+                        if (((_6 = node.styles) === null || _6 === void 0 ? void 0 : _6.className) === 'sidebar') {
                         }
                     }
                     catch (error) {
-                        console.error('Height fill error for', ((_8 = node.styles) === null || _8 === void 0 ? void 0 : _8.className) || 'element', error);
+                        console.error('Height fill error for', ((_7 = node.styles) === null || _7 === void 0 ? void 0 : _7.className) || 'element', error);
                     }
                 }
                 // Apply centering for elements marked with margin: 0 auto
@@ -2478,89 +2236,43 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // Pass styles that should be inherited by children
+                // CRITICAL: Track if we're inside a width-constrained container
+                const thisHasWidth = Boolean((_8 = node.styles) === null || _8 === void 0 ? void 0 : _8.width);
+                const parentHadWidth = (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_hasConstrainedWidth']) === true;
                 const inheritableStyles = Object.assign(Object.assign({}, inheritedStyles), { 
+                    // CRITICAL: Propagate width constraint to all descendants
+                    '_hasConstrainedWidth': thisHasWidth || parentHadWidth, 
                     // Solo heredar color si el hijo no tiene uno propio
                     color: ((_9 = node.styles) === null || _9 === void 0 ? void 0 : _9.color) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles.color), 'font-family': ((_10 = node.styles) === null || _10 === void 0 ? void 0 : _10['font-family']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-family']), 'font-size': ((_11 = node.styles) === null || _11 === void 0 ? void 0 : _11['font-size']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-size']), 'line-height': ((_12 = node.styles) === null || _12 === void 0 ? void 0 : _12['line-height']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['line-height']), 
                     // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
-                    // Only pass parent background info for container detection, not for inheritance
                     'parent-has-gradient': (((_13 = node.styles) === null || _13 === void 0 ? void 0 : _13['background']) && node.styles['background'].includes('linear-gradient')) ||
                         (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-has-gradient']), 
                     // Pass parent class name to help with styling decisions
                     'parent-class': ((_14 = node.styles) === null || _14 === void 0 ? void 0 : _14.className) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-class']) });
-                // Handle text content with pseudo-elements
-                const hasContent = node.text && node.text.trim();
-                const hasPseudoContent = node.styles && node.styles.content &&
-                    PluginConfig.CSS_CONFIG.SUPPORTED_CONTENT.hasOwnProperty(node.styles.content);
-                // DEBUG: Log pseudo-element detection
-                if (node.styles && node.styles.content) {
-                    // Check for pseudo-elements
-                }
-                if (hasContent || hasPseudoContent) {
+                // Create text node if there's direct text content
+                if (node.text && node.text.trim()) {
                     await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-                    // Combine text and pseudo-content into a single string
-                    let finalText = '';
-                    const supportedContent = PluginConfig.CSS_CONFIG.SUPPORTED_CONTENT;
-                    const pseudoText = hasPseudoContent ? (supportedContent[node.styles.content] || '') : '';
-                    const mainText = hasContent ? node.text.trim() : '';
-                    // DEBUG: Log text combination process
-                    // Combine pseudo and main text
-                    // For ::before pseudo-elements, put emoji first, then space, then text
-                    if (hasPseudoContent && pseudoText) {
-                        if (mainText) {
-                            finalText = pseudoText + ' ' + mainText;
-                        }
-                        else {
-                            finalText = pseudoText;
-                        }
-                    }
-                    else {
-                        finalText = mainText;
-                    }
-                    if (finalText) {
-                        // Create text node with combined content
-                        const textNode = figma.createText();
-                        textNode.characters = finalText;
-                        textNode.name = hasPseudoContent ? 'Text with Pseudo-Element' : 'DIV Text';
-                        // Apply inherited styles and specific text styles
-                        applyStylesToText(textNode, Object.assign(Object.assign({}, inheritableStyles), node.styles));
-                        frame.appendChild(textNode);
-                        debugLog(`TEXT APPENDED: "${finalText}" added to frame "${frame.name}" (${frame.width}x${frame.height})`);
-                        // Check if we're in a grid context
-                        const isInGrid = frame.getPluginData('isGridRow') === 'true' ||
-                            (frame.parent && ((_16 = (_15 = frame.parent).getPluginData) === null || _16 === void 0 ? void 0 : _16.call(_15, 'isGridRow')) === 'true');
-                        debugLog(`TEXT POSITIONING: "${finalText}" | Frame: ${frame.name} | IsGrid: ${isInGrid} | FrameLayout: ${frame.layoutMode} | FrameSize: ${frame.width}x${frame.height}`);
-                        // IMPORTANTE: Los títulos (h1-h6) siempre usan auto-sizing, no aplicar lógica de cálculo
-                        if (node.tagName.startsWith('h')) {
-                            // Los títulos deben usar auto-sizing para evitar cortes
-                            textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
-                            debugLog(`DIV HEADING AUTO-SIZE: "${textNode.characters}" using auto-sizing to prevent truncation`);
-                        }
-                        else if (isInGrid) {
-                            textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
-                        }
-                        else if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
-                            const availableWidth = frame.width - frame.paddingLeft - frame.paddingRight;
-                            const estimatedTextWidth = textNode.characters.length * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.char_width;
-                            const maxWidth = Math.min(availableWidth > 0 ? availableWidth : 300, 600);
-                            const textWidth = Math.min(Math.max(estimatedTextWidth, 100), maxWidth);
-                            debugLog(`DIV TEXT SIZING: estimatedWidth=${estimatedTextWidth}, maxWidth=${maxWidth}, textWidth=${textWidth}, frameWidth=${frame.width}, padding=${frame.paddingLeft}+${frame.paddingRight}`);
-                            textNode.resize(textWidth, textNode.height);
-                            textNode.textAutoResize = 'HEIGHT';
-                        }
-                        else {
-                            debugLog(`DIV TEXT AUTO: Using auto-sizing for non-layout frame`);
-                            textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
-                        }
+                    const textNode = figma.createText();
+                    textNode.characters = node.text.trim();
+                    textNode.name = 'DIV Text';
+                    // Apply inherited styles and specific text styles
+                    applyStylesToText(textNode, Object.assign(Object.assign({}, inheritableStyles), node.styles));
+                    frame.appendChild(textNode);
+                    // FIXED: Set appropriate width for text wrapping in auto-layout
+                    if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
+                        const maxWidth = Math.min(frame.width - frame.paddingLeft - frame.paddingRight, 800);
+                        const textWidth = Math.max(maxWidth > 0 ? maxWidth : 400, 200);
+                        textNode.resize(textWidth, textNode.height);
+                        textNode.textAutoResize = 'HEIGHT';
                     }
                 }
                 // Process children if they exist
                 if (node.children && node.children.length > 0) {
                     // Manejo de grid genérico
-                    if (((_17 = node.styles) === null || _17 === void 0 ? void 0 : _17.display) === 'grid') {
-                        const gridTemplateColumns = (_18 = node.styles) === null || _18 === void 0 ? void 0 : _18['grid-template-columns'];
+                    if (((_15 = node.styles) === null || _15 === void 0 ? void 0 : _15.display) === 'grid') {
+                        const gridTemplateColumns = (_16 = node.styles) === null || _16 === void 0 ? void 0 : _16['grid-template-columns'];
                         const columns = parseGridColumns(gridTemplateColumns);
-                        const gap = parseSize((_19 = node.styles) === null || _19 === void 0 ? void 0 : _19.gap) || parseSize((parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('gridGap')) || '') || 12;
-                        // Process grid layout
+                        const gap = parseSize((_17 = node.styles) === null || _17 === void 0 ? void 0 : _17.gap) || parseSize((parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('gridGap')) || '') || 12;
                         // Si no se pudieron parsear columnas, usar fallback
                         const finalColumns = columns > 0 ? columns : 2;
                         await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
@@ -2570,7 +2282,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // Apply flex grow after appendChild for proper timing
-                if ((((_20 = node.styles) === null || _20 === void 0 ? void 0 : _20.flex) === '1' || ((_21 = node.styles) === null || _21 === void 0 ? void 0 : _21['flex-grow']) === '1') && parentFrame) {
+                if ((((_18 = node.styles) === null || _18 === void 0 ? void 0 : _18.flex) === '1' || ((_19 = node.styles) === null || _19 === void 0 ? void 0 : _19['flex-grow']) === '1') && parentFrame) {
                     if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
                         try {
                             frame.layoutGrow = 1;
@@ -2617,37 +2329,37 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             }
             else if (['input', 'textarea', 'select'].includes(node.tagName)) {
                 // Calcular alto y ancho
-                let inputWidth = parseSize((_22 = node.styles) === null || _22 === void 0 ? void 0 : _22.width);
+                let inputWidth = parseSize((_20 = node.styles) === null || _20 === void 0 ? void 0 : _20.width);
                 const inputHeight = node.tagName === 'textarea' ?
-                    (parseSize((_23 = node.attributes) === null || _23 === void 0 ? void 0 : _23.rows) || 3) * 20 + 20 :
-                    parseSize((_24 = node.styles) === null || _24 === void 0 ? void 0 : _24.height) || 40;
+                    (parseSize((_21 = node.attributes) === null || _21 === void 0 ? void 0 : _21.rows) || 3) * 20 + 20 :
+                    parseSize((_22 = node.styles) === null || _22 === void 0 ? void 0 : _22.height) || 40;
                 const input = figma.createFrame();
                 // Fondo y borde: usar CSS si está, si no, fallback blanco/gris
                 let bgColor = { r: 1, g: 1, b: 1 };
-                if (((_25 = node.styles) === null || _25 === void 0 ? void 0 : _25['background']) && node.styles['background'] !== 'transparent') {
+                if (((_23 = node.styles) === null || _23 === void 0 ? void 0 : _23['background']) && node.styles['background'] !== 'transparent') {
                     const bgParsed = hexToRgb(node.styles['background']);
                     if (bgParsed)
                         bgColor = bgParsed;
                 }
-                else if (((_26 = node.styles) === null || _26 === void 0 ? void 0 : _26['background-color']) && node.styles['background-color'] !== 'transparent') {
+                else if (((_24 = node.styles) === null || _24 === void 0 ? void 0 : _24['background-color']) && node.styles['background-color'] !== 'transparent') {
                     const bgParsed = hexToRgb(node.styles['background-color']);
                     if (bgParsed)
                         bgColor = bgParsed;
                 }
                 input.fills = [{ type: 'SOLID', color: bgColor }];
                 let borderColor = { r: 0.8, g: 0.8, b: 0.8 };
-                if (((_27 = node.styles) === null || _27 === void 0 ? void 0 : _27['border']) || ((_28 = node.styles) === null || _28 === void 0 ? void 0 : _28['border-color'])) {
+                if (((_25 = node.styles) === null || _25 === void 0 ? void 0 : _25['border']) || ((_26 = node.styles) === null || _26 === void 0 ? void 0 : _26['border-color'])) {
                     const borderParsed = hexToRgb(node.styles['border-color'] || extractBorderColor(node.styles['border']));
                     if (borderParsed)
                         borderColor = borderParsed;
                 }
                 input.strokes = [{ type: 'SOLID', color: borderColor }];
-                input.strokeWeight = parseSize((_29 = node.styles) === null || _29 === void 0 ? void 0 : _29['border-width']) || 1;
-                input.cornerRadius = parseSize((_30 = node.styles) === null || _30 === void 0 ? void 0 : _30['border-radius']) || 4;
+                input.strokeWeight = parseSize((_27 = node.styles) === null || _27 === void 0 ? void 0 : _27['border-width']) || 1;
+                input.cornerRadius = parseSize((_28 = node.styles) === null || _28 === void 0 ? void 0 : _28['border-radius']) || 4;
                 input.name = node.tagName.toUpperCase();
                 input.layoutMode = 'HORIZONTAL';
                 // Solo centrar si el CSS lo especifica (no hardcodear centrado)
-                if (((_31 = node.styles) === null || _31 === void 0 ? void 0 : _31['text-align']) === 'center') {
+                if (((_29 = node.styles) === null || _29 === void 0 ? void 0 : _29['text-align']) === 'center') {
                     input.primaryAxisAlignItems = 'CENTER'; // Horizontal center
                     input.counterAxisAlignItems = 'CENTER'; // Vertical center
                 }
@@ -2655,13 +2367,13 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     input.primaryAxisAlignItems = 'MIN'; // Alineado a la izquierda horizontalmente (eje principal)
                     input.counterAxisAlignItems = 'CENTER'; // Centrado verticalmente (eje perpendicular)
                 }
-                input.paddingLeft = parseSize((_32 = node.styles) === null || _32 === void 0 ? void 0 : _32['padding-left']) || 12;
-                input.paddingRight = parseSize((_33 = node.styles) === null || _33 === void 0 ? void 0 : _33['padding-right']) || 12;
+                input.paddingLeft = parseSize((_30 = node.styles) === null || _30 === void 0 ? void 0 : _30['padding-left']) || 12;
+                input.paddingRight = parseSize((_31 = node.styles) === null || _31 === void 0 ? void 0 : _31['padding-right']) || 12;
                 // Detectar si el parent es auto-layout
                 const parentIsAutoLayout = parentFrame && parentFrame.type === 'FRAME' && parentFrame.layoutMode && parentFrame.layoutMode !== 'NONE';
                 // Soporte width: 100% (FILL) si el CSS lo pide y el parent es auto-layout
                 let useFill = false;
-                if (((_34 = node.styles) === null || _34 === void 0 ? void 0 : _34.width) === '100%') {
+                if (((_32 = node.styles) === null || _32 === void 0 ? void 0 : _32.width) === '100%') {
                     if (parentIsAutoLayout) {
                         useFill = true;
                         // NO setear FILL aquí - lo haremos después de appendChild
@@ -2683,17 +2395,17 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Add placeholder or value text
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const inputText = figma.createText();
-                const displayText = ((_35 = node.attributes) === null || _35 === void 0 ? void 0 : _35.value) || ((_36 = node.attributes) === null || _36 === void 0 ? void 0 : _36.placeholder) ||
+                const displayText = ((_33 = node.attributes) === null || _33 === void 0 ? void 0 : _33.value) || ((_34 = node.attributes) === null || _34 === void 0 ? void 0 : _34.placeholder) ||
                     (node.tagName === 'select' ? 'Select option ▼' : 'Input field');
                 inputText.characters = displayText;
                 // Color de texto: usar CSS si está, si no, gris claro para placeholder
                 let textColor = { r: 0.2, g: 0.2, b: 0.2 };
-                if ((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37.color) {
+                if ((_35 = node.styles) === null || _35 === void 0 ? void 0 : _35.color) {
                     const colorParsed = hexToRgb(node.styles.color);
                     if (colorParsed)
                         textColor = colorParsed;
                 }
-                else if (!((_38 = node.attributes) === null || _38 === void 0 ? void 0 : _38.value)) {
+                else if (!((_36 = node.attributes) === null || _36 === void 0 ? void 0 : _36.value)) {
                     textColor = { r: 0.6, g: 0.6, b: 0.6 };
                 }
                 inputText.fills = [{ type: 'SOLID', color: textColor }];
@@ -2723,7 +2435,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'table') {
-                const tableWidth = parseSize((_39 = node.styles) === null || _39 === void 0 ? void 0 : _39.width) || 500; // Increased default width
+                const tableWidth = parseSize((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37.width) || 500; // Increased default width
                 let tableHeight = 60; // Base height for header
                 // Calculate table height based on rows
                 const bodyRows = node.children.filter((c) => c.tagName === 'tbody' || c.tagName === 'tr');
@@ -2837,12 +2549,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Check if parent has text-align center and inherit it
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                     // If parent container has text-align center, apply it to this text
-                    if (!((_40 = node.styles) === null || _40 === void 0 ? void 0 : _40['text-align'])) {
+                    if (!((_38 = node.styles) === null || _38 === void 0 ? void 0 : _38['text-align'])) {
                         cellText.textAlignHorizontal = 'CENTER';
                     }
                 }
                 // Special debug for detail elements
-                if ((_42 = (_41 = node.styles) === null || _41 === void 0 ? void 0 : _41.className) === null || _42 === void 0 ? void 0 : _42.includes('detail')) {
+                if ((_40 = (_39 = node.styles) === null || _39 === void 0 ? void 0 : _39.className) === null || _40 === void 0 ? void 0 : _40.includes('detail')) {
                 }
                 if (!parentFrame) {
                     cell.x = startX;
@@ -2854,8 +2566,8 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'button') {
-                const buttonWidth = parseSize((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43.width) || Math.max(PluginConfig.FIGMA_DEFAULTS.DEFAULT_SIZES.button_min_width, node.text.length * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.char_width);
-                const buttonHeight = parseSize((_44 = node.styles) === null || _44 === void 0 ? void 0 : _44.height) || 50; // Aumentado de 40 a 50
+                const buttonWidth = parseSize((_41 = node.styles) === null || _41 === void 0 ? void 0 : _41.width) || Math.max(120, node.text.length * 12);
+                const buttonHeight = parseSize((_42 = node.styles) === null || _42 === void 0 ? void 0 : _42.height) || 50; // Aumentado de 40 a 50
                 const frame = figma.createFrame();
                 frame.resize(buttonWidth, buttonHeight);
                 frame.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.5, b: 1 } }];
@@ -2894,12 +2606,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'img') {
-                const width = parseSize((_45 = node.styles) === null || _45 === void 0 ? void 0 : _45.width) || 200;
-                const height = parseSize((_46 = node.styles) === null || _46 === void 0 ? void 0 : _46.height) || 150;
+                const width = parseSize((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43.width) || 200;
+                const height = parseSize((_44 = node.styles) === null || _44 === void 0 ? void 0 : _44.height) || 150;
                 const frame = figma.createFrame();
                 frame.resize(width, height);
                 frame.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
-                frame.name = 'Image: ' + (((_47 = node.attributes) === null || _47 === void 0 ? void 0 : _47.alt) || 'Unnamed');
+                frame.name = 'Image: ' + (((_45 = node.attributes) === null || _45 === void 0 ? void 0 : _45.alt) || 'Unnamed');
                 // Center the placeholder text
                 frame.layoutMode = 'HORIZONTAL';
                 frame.primaryAxisAlignItems = 'CENTER';
@@ -2907,7 +2619,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Add placeholder text
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const placeholderText = figma.createText();
-                placeholderText.characters = ((_48 = node.attributes) === null || _48 === void 0 ? void 0 : _48.alt) || 'Image';
+                placeholderText.characters = ((_46 = node.attributes) === null || _46 === void 0 ? void 0 : _46.alt) || 'Image';
                 placeholderText.fills = [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }];
                 frame.appendChild(placeholderText);
                 if (!parentFrame) {
@@ -2946,76 +2658,10 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 await createFigmaNodesFromStructure(node.children, listFrame, 0, 0, inheritedStyles);
             }
-            else if (node.tagName === 'a' && ((_49 = node.styles) === null || _49 === void 0 ? void 0 : _49.display) === 'flex') {
-                // Handle flex anchor elements (like nav-items) as frames
-                const linkFrame = figma.createFrame();
-                linkFrame.name = 'LINK Frame';
-                // Set layout mode based on flex-direction
-                if (((_50 = node.styles) === null || _50 === void 0 ? void 0 : _50['flex-direction']) === 'column') {
-                    linkFrame.layoutMode = 'VERTICAL';
-                }
-                else {
-                    linkFrame.layoutMode = 'HORIZONTAL';
-                }
-                linkFrame.primaryAxisSizingMode = 'AUTO';
-                linkFrame.counterAxisSizingMode = 'AUTO';
-                linkFrame.primaryAxisAlignItems = 'CENTER';
-                linkFrame.counterAxisAlignItems = 'CENTER';
-                // Apply frame styles
-                if (node.styles) {
-                    applyStylesToFrame(linkFrame, node.styles);
-                }
-                // Handle text content with pseudo-elements (same logic as div)
-                const hasContent = node.text && node.text.trim();
-                const hasPseudoContent = node.styles && node.styles.content &&
-                    PluginConfig.CSS_CONFIG.SUPPORTED_CONTENT.hasOwnProperty(node.styles.content);
-                if (hasContent || hasPseudoContent) {
-                    await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-                    // Combine text and pseudo-content into a single string
-                    let finalText = '';
-                    const supportedContent = PluginConfig.CSS_CONFIG.SUPPORTED_CONTENT;
-                    const pseudoText = hasPseudoContent ? (supportedContent[node.styles.content] || '') : '';
-                    const mainText = hasContent ? node.text.trim() : '';
-                    // For ::before pseudo-elements, put emoji first, then space, then text
-                    if (hasPseudoContent && pseudoText) {
-                        if (mainText) {
-                            finalText = pseudoText + ' ' + mainText;
-                        }
-                        else {
-                            finalText = pseudoText;
-                        }
-                    }
-                    else {
-                        finalText = mainText;
-                    }
-                    if (finalText) {
-                        const textNode = figma.createText();
-                        textNode.characters = finalText;
-                        textNode.name = 'LINK Text';
-                        // Apply text styles with link color
-                        const combinedStyles = Object.assign({}, node.styles);
-                        if (!combinedStyles.color) {
-                            // Default link color if no color specified
-                            combinedStyles.color = '#4299e1';
-                        }
-                        applyStylesToText(textNode, combinedStyles);
-                        linkFrame.appendChild(textNode);
-                        textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
-                    }
-                }
-                if (!parentFrame) {
-                    linkFrame.x = startX;
-                    linkFrame.y = startY;
-                    figma.currentPage.appendChild(linkFrame);
-                }
-                else {
-                    parentFrame.appendChild(linkFrame);
-                }
-            }
             else if (node.tagName === 'li') {
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const text = figma.createText();
-                const parentList = ((_51 = parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) === null || _51 === void 0 ? void 0 : _51.includes('OL')) ? 'OL' : 'UL';
+                const parentList = ((_47 = parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) === null || _47 === void 0 ? void 0 : _47.includes('OL')) ? 'OL' : 'UL';
                 const bullet = parentList === 'OL' ? '1. ' : '• ';
                 text.characters = bullet + (node.text || 'List item');
                 text.name = 'List Item';
@@ -3026,12 +2672,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Check if parent has text-align center and inherit it
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                     // If parent container has text-align center, apply it to this text
-                    if (!((_52 = node.styles) === null || _52 === void 0 ? void 0 : _52['text-align'])) {
+                    if (!((_48 = node.styles) === null || _48 === void 0 ? void 0 : _48['text-align'])) {
                         text.textAlignHorizontal = 'CENTER';
                     }
                 }
                 // Special debug for detail elements
-                if ((_54 = (_53 = node.styles) === null || _53 === void 0 ? void 0 : _53.className) === null || _54 === void 0 ? void 0 : _54.includes('detail')) {
+                if ((_50 = (_49 = node.styles) === null || _49 === void 0 ? void 0 : _49.className) === null || _50 === void 0 ? void 0 : _50.includes('detail')) {
                 }
                 if (!parentFrame) {
                     text.x = startX;
@@ -3042,21 +2688,14 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     parentFrame.appendChild(text);
                 }
             }
-            else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'label'].includes(node.tagName) ||
-                (node.tagName === 'a' && ((_55 = node.styles) === null || _55 === void 0 ? void 0 : _55.display) !== 'flex')) {
-                debugLog(`🎯 PROCESSING TEXT ELEMENT: ${node.tagName} with text "${node.text}" in parent "${parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name}"`);
-                // Check for pseudo-elements on text elements (especially spans)
-                const hasPseudoContent = node.styles && node.styles.content &&
-                    PluginConfig.CSS_CONFIG.SUPPORTED_CONTENT.hasOwnProperty(node.styles.content);
-                // Check for pseudo-elements on text elements
-                // Special handling for span elements with backgrounds (like badges) OR pseudo-elements
-                const hasBackground = ((_56 = node.styles) === null || _56 === void 0 ? void 0 : _56['background']) || ((_57 = node.styles) === null || _57 === void 0 ? void 0 : _57['background-color']);
+            else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'label'].includes(node.tagName)) {
+                // Special handling for span elements with backgrounds (like badges)
+                const hasBackground = ((_51 = node.styles) === null || _51 === void 0 ? void 0 : _51['background']) || ((_52 = node.styles) === null || _52 === void 0 ? void 0 : _52['background-color']);
                 const isSpanWithBackground = node.tagName === 'span' && hasBackground && hasBackground !== 'transparent';
-                const isSpanWithPseudo = node.tagName === 'span' && hasPseudoContent;
-                if (isSpanWithBackground || isSpanWithPseudo) {
-                    // Create span with background/pseudo as FrameNode
+                if (isSpanWithBackground) {
+                    // Create span with background as FrameNode (like a badge)
                     const spanFrame = figma.createFrame();
-                    spanFrame.name = isSpanWithPseudo ? 'SPAN with Pseudo' : 'BADGE Frame';
+                    spanFrame.name = 'BADGE Frame';
                     spanFrame.layoutMode = 'HORIZONTAL';
                     spanFrame.primaryAxisSizingMode = 'AUTO';
                     spanFrame.counterAxisSizingMode = 'AUTO';
@@ -3066,47 +2705,16 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     if (node.styles) {
                         applyStylesToFrame(spanFrame, node.styles);
                     }
-                    // Handle text content with pseudo-elements (similar to DIV logic)
+                    // Create text inside the frame
                     await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                     const text = figma.createText();
-                    let finalText = '';
-                    const supportedContent = PluginConfig.CSS_CONFIG.SUPPORTED_CONTENT;
-                    const pseudoText = hasPseudoContent ? (supportedContent[node.styles.content] || '') : '';
-                    const mainText = node.text ? node.text.trim() : '';
-                    // Combine pseudo and main text
-                    // For ::before pseudo-elements, put emoji first, then space, then text
-                    if (hasPseudoContent && pseudoText) {
-                        if (mainText) {
-                            finalText = pseudoText + ' ' + mainText;
-                        }
-                        else {
-                            finalText = pseudoText;
-                        }
-                    }
-                    else {
-                        finalText = mainText || 'Badge text';
-                    }
-                    text.characters = finalText;
-                    text.name = isSpanWithPseudo ? 'SPAN Text with Pseudo' : 'BADGE Text';
-                    // Set text content
+                    text.characters = node.text || 'Badge text';
+                    text.name = 'BADGE Text';
                     // Apply text styles
                     if (node.styles) {
                         applyStylesToText(text, node.styles);
                     }
-                    // CRITICAL: Check text-align for spans with pseudo-elements too
-                    debugLog(`🔍 CHECKING TEXT ALIGN (SPAN PSEUDO): "${text.characters}" | Parent: ${parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name} | textAlign: ${parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('textAlign')}`);
-                    // First check if THIS element has its own text-align
-                    if (((_58 = node.styles) === null || _58 === void 0 ? void 0 : _58['text-align']) === 'center') {
-                        text.textAlignHorizontal = 'CENTER';
-                        debugLog(`🎯 TEXT CENTER APPLIED (SPAN OWN): "${text.characters}" has its own text-align center`);
-                    }
-                    else if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
-                        // Only inherit from parent if element doesn't have its own text-align
-                        text.textAlignHorizontal = 'CENTER';
-                        debugLog(`🎯 TEXT CENTER APPLIED (SPAN INHERITED): "${text.characters}" inherited from "${parentFrame.name}"`);
-                    }
                     spanFrame.appendChild(text);
-                    debugLog(`SPAN APPENDED: "${finalText}" added to span frame "${spanFrame.name}" (${spanFrame.width}x${spanFrame.height})`);
                     if (!parentFrame) {
                         spanFrame.x = startX;
                         spanFrame.y = startY;
@@ -3127,8 +2735,6 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                         const level = parseInt(node.tagName.charAt(1));
                         const headingSizes = { 1: 36, 2: 28, 3: 22, 4: 20, 5: 18, 6: 16 }; // Todas aumentadas
                         text.fontSize = headingSizes[level] || 16;
-                        // IMPORTANTE: Los títulos siempre deben usar auto-sizing para evitar cortes
-                        text.textAutoResize = 'WIDTH_AND_HEIGHT';
                         // NO aplicar lineHeight aquí - dejar que applyStylesToText lo maneje
                     }
                     else if (node.tagName === 'p') {
@@ -3144,19 +2750,14 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                         applyStylesToText(text, node.styles);
                     }
                     // Check if parent has text-align center and inherit it
-                    debugLog(`🔍 CHECKING TEXT ALIGN: "${text.characters}" | Parent: ${parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name} | textAlign: ${parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('textAlign')}`);
-                    // First check if THIS element has its own text-align
-                    if (((_59 = node.styles) === null || _59 === void 0 ? void 0 : _59['text-align']) === 'center') {
-                        text.textAlignHorizontal = 'CENTER';
-                        debugLog(`🎯 TEXT CENTER APPLIED (OWN): "${text.characters}" has its own text-align center`);
-                    }
-                    else if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
-                        // Only inherit from parent if element doesn't have its own text-align
-                        text.textAlignHorizontal = 'CENTER';
-                        debugLog(`🎯 TEXT CENTER APPLIED (INHERITED): "${text.characters}" inherited from "${parentFrame.name}"`);
+                    if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
+                        // If parent container has text-align center, apply it to this text
+                        if (!((_53 = node.styles) === null || _53 === void 0 ? void 0 : _53['text-align'])) {
+                            text.textAlignHorizontal = 'CENTER';
+                        }
                     }
                     // Special debug for detail elements
-                    if ((_61 = (_60 = node.styles) === null || _60 === void 0 ? void 0 : _60.className) === null || _61 === void 0 ? void 0 : _61.includes('detail')) {
+                    if ((_55 = (_54 = node.styles) === null || _54 === void 0 ? void 0 : _54.className) === null || _55 === void 0 ? void 0 : _55.includes('detail')) {
                     }
                     // Better text positioning and width
                     if (!parentFrame) {
@@ -3166,43 +2767,20 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                     else {
                         parentFrame.appendChild(text);
-                        debugLog(`REGULAR TEXT APPENDED: "${text.characters}" added to parent "${parentFrame.name}" (${parentFrame.width}x${parentFrame.height})`);
-                        // Check if we're inside a grid layout
-                        const isInGrid = parentFrame.getPluginData('isGridRow') === 'true' ||
-                            (parentFrame.parent && parentFrame.parent.getPluginData('isGridRow') === 'true');
-                        debugLog(`SPAN TEXT POSITIONING: "${text.characters}" | Parent: ${parentFrame.name} | IsGrid: ${isInGrid} | ParentLayout: ${parentFrame.layoutMode} | ParentSize: ${parentFrame.width}x${parentFrame.height}`);
-                        // IMPORTANTE: Los títulos (h1-h6) siempre usan auto-sizing, no aplicar lógica de cálculo
-                        if (node.tagName.startsWith('h')) {
-                            // Los títulos ya tienen textAutoResize = 'WIDTH_AND_HEIGHT' configurado arriba
-                            debugLog(`HEADING AUTO-SIZE: "${text.characters}" using auto-sizing to prevent truncation`);
-                        }
-                        else if (isInGrid) {
-                            // For grid elements, use auto-sizing to avoid width calculation issues
-                            text.textAutoResize = 'WIDTH_AND_HEIGHT';
-                        }
-                        else if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
-                            // Check if parent has text-align center - if so, use auto-sizing for proper centering
-                            const parentHasTextCenter = parentFrame.getPluginData('textAlign') === 'center' ||
-                                (parentFrame.parent && ((_63 = (_62 = parentFrame.parent).getPluginData) === null || _63 === void 0 ? void 0 : _63.call(_62, 'textAlign')) === 'center');
-                            if (parentHasTextCenter) {
-                                // Use auto-sizing for centered text to avoid width issues
-                                text.textAutoResize = 'WIDTH_AND_HEIGHT';
-                                debugLog(`🎯 SPAN TEXT CENTER: Using auto-sizing for centered text in "${parentFrame.name}"`);
+                        const parentHasAutoLayout = parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL';
+                        const hasConstrainedWidth = (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_hasConstrainedWidth']) === true;
+                        if (parentHasAutoLayout) {
+                            if (hasConstrainedWidth) {
+                                // Inside width-constrained container → wrap
+                                text.layoutSizingHorizontal = 'FILL';
+                                text.textAutoResize = 'HEIGHT';
                             }
                             else {
-                                // Calculate appropriate width based on parent for non-centered text
-                                const availableWidth = parentFrame.width - parentFrame.paddingLeft - parentFrame.paddingRight;
-                                const estimatedTextWidth = text.characters.length * PluginConfig.FIGMA_DEFAULTS.TEXT_CALCULATIONS.char_width;
-                                const maxWidth = Math.min(availableWidth > 0 ? availableWidth : 300, 600);
-                                const textWidth = Math.min(Math.max(estimatedTextWidth, 100), maxWidth);
-                                debugLog(`SPAN TEXT SIZING: estimatedWidth=${estimatedTextWidth}, maxWidth=${maxWidth}, textWidth=${textWidth}, parentWidth=${parentFrame.width}, padding=${parentFrame.paddingLeft}+${parentFrame.paddingRight}`);
-                                // Set text width and allow height to grow for wrapping
-                                text.resize(textWidth, text.height);
-                                text.textAutoResize = 'HEIGHT';
+                                // No width constraint → expand freely
+                                text.textAutoResize = 'WIDTH_AND_HEIGHT';
                             }
                         }
                         else {
-                            debugLog(`SPAN TEXT AUTO: Using auto-sizing for non-layout parent`);
                             text.textAutoResize = 'WIDTH_AND_HEIGHT';
                         }
                     }
@@ -3243,7 +2821,7 @@ function markRequestProcessed(requestId) {
         }
     }
     processedRequestIDs.add(requestId);
-    debugLog(`[DEDUP] Marked RequestID as processed: ${requestId}`);
+    console.log(`[DEDUP] Marked RequestID as processed: ${requestId}`);
 }
 // NEW: Use figma.clientStorage for MCP communication (replaces file system)
 async function readMCPSharedData() {
@@ -3274,7 +2852,7 @@ async function readMCPSharedData() {
         });
     }
     catch (error) {
-        debugLog('[MCP] Error reading MCP data:', error);
+        console.log('[MCP] Error reading MCP data:', error);
         return null;
     }
 }
@@ -3286,7 +2864,7 @@ async function deleteMCPSharedData() {
         return true;
     }
     catch (error) {
-        debugLog('[MCP] Could not delete MCP data:', error);
+        console.log('[MCP] Could not delete MCP data:', error);
         return false;
     }
 }
@@ -3309,14 +2887,14 @@ function startMCPMonitoring() {
         const timeSinceLastSSE = now - sseLastSuccessTimestamp;
         // Only use fallback if SSE has been silent for more than 30 seconds
         if (!sseConnected || timeSinceLastSSE > 30000) {
-            debugLog('[MCP] SSE inactive, checking fallback...');
+            console.log('[MCP] 🔄 SSE inactive, checking fallback...');
             try {
                 const mcpData = await readMCPSharedData();
                 if (mcpData) {
                     const dataTimestamp = mcpData.timestamp ? new Date(mcpData.timestamp).getTime() : 0;
                     // Only process if this data is newer than our last SSE success
                     if (dataTimestamp > sseLastSuccessTimestamp) {
-                        debugLog('[MCP] 💾 Fallback processing new data');
+                        console.log('[MCP] 💾 Fallback processing new data');
                         // Process and clean up
                         figma.ui.postMessage({
                             type: 'parse-mcp-html',
@@ -3330,14 +2908,14 @@ function startMCPMonitoring() {
                 }
             }
             catch (error) {
-                debugLog('[MCP] Fallback check failed:', error);
+                console.log('[MCP] Fallback check failed:', error);
             }
         }
         else {
             debugLog('[MCP] 🟢 SSE active, fallback not needed');
         }
     }, 15000); // Check every 15 seconds
-    console.log('[MCP] Intelligent fallback enabled (SSE-priority)');
+    console.log('[MCP] ✅ Intelligent fallback enabled (SSE-priority)');
 }
 function stopMCPMonitoring() {
     console.log('[MCP] Stopping SSE-based monitoring...');
@@ -3386,6 +2964,16 @@ figma.ui.onmessage = async (msg) => {
         testMCPConnection();
         return;
     }
+    // Handle minimize/expand resize
+    if (msg.type === 'resize-plugin') {
+        if (msg.minimized) {
+            figma.ui.resize(360, 40);
+        }
+        else {
+            figma.ui.resize(360, 500);
+        }
+        return;
+    }
     // NEW: Handle MCP data storage from external sources
     if (msg.type === 'store-mcp-data') {
         debugLog('[MCP] Storing external MCP data in clientStorage');
@@ -3429,14 +3017,14 @@ figma.ui.onmessage = async (msg) => {
         // ✅ DEDUPLICATION: Check if RequestID was already processed
         const requestId = msg.requestId || msg.timestamp || `fallback-${Date.now()}`;
         if (isRequestProcessed(requestId)) {
-            debugLog(`[DEDUP] 🚫 RequestID already processed, skipping: ${requestId}`);
+            console.log(`[DEDUP] 🚫 RequestID already processed, skipping: ${requestId}`);
             return;
         }
         // Mark as processed immediately to prevent any race conditions
         markRequestProcessed(requestId);
         // Create a main container frame for all HTML content
         const mainContainer = figma.createFrame();
-        const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'} (from Cursor)` : 'HTML Import Container';
+        const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'}` : 'HTML Import Container';
         mainContainer.name = containerName;
         mainContainer.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
         // Enable auto-layout for better organization
@@ -3459,7 +3047,7 @@ figma.ui.onmessage = async (msg) => {
         debugLog('[MAIN HANDLER] Created main container, calling createFigmaNodesFromStructure...');
         // Create all HTML content inside this container
         await createFigmaNodesFromStructure(msg.structure, mainContainer, 0, 0, undefined);
-        console.log('[HTML] Conversion completed');
+        console.log('[HTML] ✅ Conversion completed');
         // Select the created container for immediate visibility
         figma.currentPage.selection = [mainContainer];
         figma.viewport.scrollAndZoomIntoView([mainContainer]);
