@@ -1,347 +1,149 @@
-# Analisis Completo del Codigo HTML-to-Figma
+# Análisis Completo del Código HTML-to-Figma
 
-**Fecha:** 2026-01-21
+**Fecha:** 2026-01-22 (Actualizado)
 **Archivo Principal:** `src/code.ts`
 
 ---
 
 ## RESUMEN EJECUTIVO
 
-El codigo tiene **problemas fundamentales de arquitectura** que impiden una conversion correcta de HTML a Figma. Los principales son:
+~~El código tiene **problemas fundamentales de arquitectura** que impiden una conversión correcta de HTML a Figma.~~
 
-1. **Layout Mode por defecto siempre VERTICAL** - ignora como fluyen los elementos en HTML
-2. **Todos los divs fuerzan FILL width** - incorrecto para elementos inline
-3. **CSS parsing incompleto** - muchos selectores no funcionan
-4. **Herencia de estilos limitada** - solo 4 propiedades se heredan
-5. **display: inline/inline-block no existen** - todo es block
+**ACTUALIZACIÓN:** La mayoría de los problemas críticos han sido resueltos. El código ahora maneja correctamente:
+
+1. ✅ ~~Layout Mode por defecto siempre VERTICAL~~ - Ahora detecta inline/inline-block
+2. ✅ ~~Todos los divs fuerzan FILL width~~ - Respeta display inline
+3. ✅ ~~CSS parsing incompleto~~ - Mejorado significativamente
+4. ✅ ~~Herencia de estilos limitada~~ - Ahora 10+ propiedades
+5. ✅ ~~display: inline/inline-block no existen~~ - Implementado
 
 ---
 
 ## 1. PROBLEMAS DE PARSING CSS
 
-### 1.1 Orden de Especificidad CSS Incorrecto
-**Ubicacion:** `getElementStyles()` lineas 952-1007
+### 1.1 Orden de Especificidad CSS ✅ RESUELTO
+- Usa `calculateSpecificity()` para ordenar selectores correctamente
+- IDs = 100, Classes = 10, Elements = 1
 
-```javascript
-// PROBLEMA: Aplica element selectors DESPUES de class selectors
-// Segun CSS, class selectors tienen MAYOR especificidad que element selectors
+### 1.2 Selector Universal (*) ✅ RESUELTO
+- Ahora se aplica en `selectorMatches()`
 
-// Orden actual (INCORRECTO):
-1. .class selectors
-2. element selectors (th, td, body)  // <-- Esto sobreescribe .class!
-3. nested selectors
-4. inline styles
-
-// Orden correcto deberia ser:
-1. element selectors (menor especificidad)
-2. .class selectors
-3. nested selectors
-4. inline styles (mayor especificidad)
-```
-
-### 1.2 Selector Universal (*) No Se Aplica
-**Ubicacion:** `extractCSS()` linea 932-934
-
-El selector `*` se extrae pero nunca se aplica en `getElementStyles()`.
-
-```javascript
-// Se extrae:
-else if (selector === '*') {
-  cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-}
-
-// PERO nunca se usa en getElementStyles()!
-```
-
-### 1.3 Selectores Anidados Limitados
-**Ubicacion:** lineas 979-997
-
+### 1.3 Selectores Anidados Limitados ⚠️ PARCIAL
 Solo soporta:
-- `.parent .child` (primera clase de cada uno)
+- `.parent .child` (descendant)
+- `.class1.class2` (combined classes)
 
 NO soporta:
-- `.parent.modifier .child`
-- `.grandparent .parent .child`
 - `.parent > .child` (child directo)
 - `.parent + .sibling` (sibling adyacente)
-- `.parent ~ .sibling` (sibling general)
 - `:hover`, `:focus`, `:first-child`, etc.
 
 ---
 
 ## 2. PROBLEMAS DE LAYOUT MODE
 
-### 2.1 Default VERTICAL Para Todo
-**Ubicacion:** linea 2204
-
-```typescript
-let layoutMode: 'HORIZONTAL' | 'VERTICAL' = 'VERTICAL';
-```
-
-**PROBLEMA:** En HTML/CSS, el flujo default depende del tipo de elemento:
-- `display: block` -> apilan verticalmente
-- `display: inline` -> fluyen horizontalmente
-- `display: inline-block` -> fluyen horizontalmente
-- Sin display -> depende del elemento (span=inline, div=block)
-
-**SOLUCION CORRECTA:**
-```typescript
-let layoutMode: 'HORIZONTAL' | 'VERTICAL';
-const display = node.styles?.display;
-
-if (display === 'flex') {
-  layoutMode = node.styles?.['flex-direction'] === 'column' ? 'VERTICAL' : 'HORIZONTAL';
-} else if (display === 'inline-flex') {
-  layoutMode = node.styles?.['flex-direction'] === 'column' ? 'VERTICAL' : 'HORIZONTAL';
-} else if (display === 'grid') {
-  layoutMode = 'VERTICAL'; // Grid rows son verticales
-} else if (display === 'inline' || display === 'inline-block') {
-  layoutMode = 'HORIZONTAL';
-} else {
-  // Block elements apilan hijos verticalmente
-  layoutMode = 'VERTICAL';
-}
-```
-
-### 2.2 display: inline/inline-block No Implementado
-**Ubicacion:** lineas 2205-2211
-
-Solo se maneja:
-- `display: flex`
+### 2.1 Default VERTICAL Para Todo ✅ RESUELTO
+Ahora detecta:
+- `display: flex` / `inline-flex`
 - `display: grid`
+- `display: inline` / `inline-block`
 
-NO se maneja:
-- `display: inline`
-- `display: inline-block`
-- `display: inline-flex`
-- `display: none` (deberia omitir el elemento)
+### 2.2 display: inline/inline-block ✅ RESUELTO
+Implementado con `layoutMode = 'HORIZONTAL'` para elementos inline.
 
-### 2.3 flex-wrap No Implementado
-**Ubicacion:** NO EXISTE
+### 2.3 flex-wrap ✅ RESUELTO
+Usa `frame.layoutWrap = 'WRAP'` para `flex-wrap: wrap`.
 
-Si CSS tiene `flex-wrap: wrap`, los items deberian pasar a nueva linea cuando no caben. Esto requeriria crear multiples filas en Figma.
-
-### 2.4 Grid Limitado
-**Ubicacion:** `parseGridColumns()` linea 2121
-
-Solo soporta:
-- `repeat(N, 1fr)`
-- Lista de `1fr 1fr 1fr`
+### 2.4 Grid Limitado ✅ MEJORADO
+Ahora soporta:
+- `repeat(N, ...)` - cualquier repeat
+- `auto-fill` / `auto-fit`
+- Columnas mixtas: `200px 1fr 100px`
+- `minmax(200px, 1fr)`
 
 NO soporta:
-- `200px 1fr 100px` (columnas mixtas)
-- `minmax(200px, 1fr)`
-- `auto-fill`, `auto-fit`
 - `grid-template-rows`
-- Areas con nombre
+- Áreas con nombre
 
 ---
 
 ## 3. PROBLEMAS DE SIZING
 
-### 3.1 Todos Los Divs Fuerzan FILL Width
-**Ubicacion:** linea 2286
-
+### 3.1 Todos Los Divs Fuerzan FILL Width ✅ RESUELTO
 ```typescript
-const needsFullWidth = true; // SIEMPRE true!
+const isInlineElement = display === 'inline' || display === 'inline-block' || display === 'inline-flex';
+const needsFullWidth = !isInlineElement;
 ```
 
-**PROBLEMA:** Esto es incorrecto. En CSS:
-- Elementos `block` llenan el ancho del padre (correcto)
-- Elementos `inline-block` solo ocupan lo necesario (INCORRECTO con este codigo)
-- Elementos con `width` explicito usan ese ancho (parcialmente correcto)
+### 3.2 Porcentajes de Width ✅ RESUELTO
+Implementado `parsePercentage()` y `calculatePercentageWidth()`.
 
-**SOLUCION:**
-```typescript
-const isBlockLevel = !display || display === 'block' || display === 'flex' || display === 'grid';
-const needsFullWidth = isBlockLevel && !node.styles?.width;
-```
+### 3.3 max-width No Limita Realmente ❌ PENDIENTE
 
-### 3.2 Porcentajes de Width No Funcionan
-**Ubicacion:** lineas 1747-1766
-
-Solo `width: 100%` tiene logica especial. Otros porcentajes como `50%`, `33%` se ignoran o fallan.
-
-```typescript
-if (styles.width) {
-  let targetWidth = parseSize(styles.width); // parseSize devuelve null para "50%"
-
-  // Solo maneja 100%
-  if (targetWidth && targetWidth > 0) {
-    frame.resize(targetWidth, frame.height);
-  } else if (styles.width === '100%') {
-    // Logica especial solo para 100%
-  }
-}
-```
-
-### 3.3 max-width No Limita Realmente
-**Ubicacion:** lineas 2274-2279
-
-Se menciona `max-width` pero no se aplica como limite real:
-
-```typescript
-if (node.styles?.['max-width'] && !node.styles?.height) {
-  frame.layoutSizingVertical = 'HUG'; // Solo afecta el alto, NO el ancho!
-}
-```
-
-### 3.4 min-width/min-height Parcialmente Implementados
-**Ubicacion:** lineas 2241-2242
-
-```typescript
-frame.minHeight = 20; // Hardcoded!
-frame.minWidth = 20;  // Ignora CSS min-width/min-height
-```
+### 3.4 min-width/min-height ❌ PENDIENTE
+Aún usa valores hardcodeados (20px).
 
 ---
 
 ## 4. PROBLEMAS DE TEXTO
 
-### 4.1 Width de Texto Arbitrario
-**Ubicacion:** lineas 2430-2434
+### 4.1 Width de Texto Arbitrario ✅ RESUELTO
+Ahora usa `layoutSizingHorizontal = 'FILL'` en lugar de 200px hardcodeado.
 
-```typescript
-const maxWidth = Math.min(frame.width - frame.paddingLeft - frame.paddingRight, 800);
-const textWidth = Math.max(maxWidth > 0 ? maxWidth : 400, 200);
-textNode.resize(textWidth, textNode.height);
-```
+### 4.2 Contenido Mixto (texto + elementos) ❌ PENDIENTE
+El parser aún separa `text` de `children`, perdiendo el orden.
 
-Valores magicos: 800, 400, 200. No se basan en CSS real.
+### 4.3 white-space ❌ PENDIENTE
 
-### 4.2 Contenido Mixto (texto + elementos) Mal Manejado
-**Ubicacion:** `nodeToStruct()` lineas 1016-1029
-
-Si el HTML es:
-```html
-<div>Texto inicial <span>destacado</span> texto final</div>
-```
-
-El parser separa `text` de `children`, perdiendo el orden.
-
-### 4.3 white-space No Implementado
-- `white-space: nowrap` - texto no deberia hacer wrap
-- `white-space: pre` - preservar espacios y saltos
-- `white-space: pre-wrap` - preservar pero permitir wrap
-
-### 4.4 text-overflow No Implementado
-- `text-overflow: ellipsis` - deberia truncar con "..."
+### 4.4 text-overflow ❌ PENDIENTE
 
 ---
 
 ## 5. PROBLEMAS DE HERENCIA
 
-### 5.1 Solo 4 Propiedades Se Heredan
-**Ubicacion:** lineas 2403-2406
+### 5.1 Solo 4 Propiedades Se Heredan ✅ RESUELTO
+Ahora hereda 10+ propiedades:
+- `color`, `font-family`, `font-size`, `font-weight`, `font-style`
+- `line-height`, `text-align`, `letter-spacing`, `word-spacing`, `text-transform`
 
-```typescript
-const inheritableStyles = {
-  color: node.styles?.color || inheritedStyles?.color,
-  'font-family': node.styles?.['font-family'] || inheritedStyles?.['font-family'],
-  'font-size': node.styles?.['font-size'] || inheritedStyles?.['font-size'],
-  'line-height': node.styles?.['line-height'] || inheritedStyles?.['line-height'],
-};
-```
-
-**FALTAN propiedades heredables de CSS:**
-- `font-weight`
-- `font-style`
-- `text-align`
-- `letter-spacing`
-- `word-spacing`
-- `text-transform`
-- `text-indent`
-- `list-style`
-- `visibility`
-- `cursor`
-- `quotes`
-
-### 5.2 Orden de Herencia Incorrecto
-El merge de estilos ocurre ANTES de calcular los estilos heredables:
-
-```typescript
-// Linea 2196
-const nodeStyles = { ...inheritedStyles, ...node.styles };
-node.styles = nodeStyles;
-
-// Luego en linea 2398
-const inheritableStyles = {
-  color: node.styles?.color || inheritedStyles?.color,  // Ya se mezclaron!
-  ...
-};
-```
+### 5.2 Orden de Herencia ❌ PENDIENTE
 
 ---
 
-## 6. PROBLEMAS DE ALINEACION
+## 6. PROBLEMAS DE ALINEACIÓN
 
-### 6.1 justify-content Incompleto
-**Ubicacion:** lineas 1903-1921
+### 6.1 justify-content Incompleto ⚠️ PARCIAL
+Soporta: `center`, `flex-end`, `space-between`
+Falta: `space-evenly`, `flex-start` como MIN
 
-Soporta:
-- `center` -> CENTER
-- `flex-end` -> MAX
-- `space-between` -> SPACE_BETWEEN
-- `space-around` (mapeado incorrecto a SPACE_BETWEEN)
+### 6.2 align-items ⚠️ PARCIAL
 
-NO soporta:
-- `space-evenly`
-- `start` / `end`
-- `flex-start` (deberia ser MIN)
-
-### 6.2 align-items Confuso
-La implementacion mezcla conceptos de VERTICAL y HORIZONTAL de forma inconsistente.
-
-### 6.3 align-self No Existe
-No hay forma de alinear un hijo individualmente diferente al resto.
+### 6.3 align-self ❌ PENDIENTE
 
 ---
 
-## 7. PROBLEMAS DE ELEMENTOS ESPECIFICOS
+## 7. PROBLEMAS DE ELEMENTOS ESPECÍFICOS
 
-### 7.1 Form Siempre Gris
-**Ubicacion:** lineas 2473-2483
+### 7.1 Form Siempre Gris ✅ RESUELTO
+Ahora usa `form.fills = []` - transparente, CSS controla.
 
-```typescript
-const form = figma.createFrame();
-form.fills = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }]; // Hardcoded!
-form.paddingLeft = 20;  // Hardcoded!
-```
+### 7.2 Button Siempre Azul ✅ RESUELTO
+Ahora usa CSS `background-color` o gris claro por defecto.
 
-### 7.2 Button Siempre Azul
-**Ubicacion:** linea 2752
-
-```typescript
-frame.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.5, b: 1 } }]; // Hardcoded azul
-```
-
-### 7.3 Table Cells Fijas
-**Ubicacion:** linea 2682
-
-```typescript
-cell.resize(85, 50); // Ancho fijo 85px!
-```
+### 7.3 Table Cells Fijas ✅ RESUELTO
+Ahora usa CSS `width`/`height` o defaults razonables.
 
 ---
 
 ## 8. PROBLEMAS DE POSICIONAMIENTO
 
-### 8.1 position: absolute/relative Ignorados
-**Ubicacion:** lineas 2186-2191
+### 8.1 position: absolute/relative ✅ RESUELTO
+Usa `frame.layoutPositioning = 'ABSOLUTE'` con constraints.
 
-```typescript
-if (node.styles?.position === 'sticky' || node.styles?.position === 'fixed') {
-  node.styles.position = 'relative'; // Se normaliza, perdiendo la intencion
-}
-```
+### 8.2 z-index ❌ PENDIENTE
 
-Elementos con `position: absolute` deberian poder superponerse y posicionarse con `top`, `left`, etc.
-
-### 8.2 z-index Ignorado
-No hay ordenamiento de capas basado en z-index.
-
-### 8.3 top/right/bottom/left Sin Efecto
-Estas propiedades se ignoran completamente.
+### 8.3 top/right/bottom/left ✅ RESUELTO
+Aplica como `x`/`y` y configura constraints.
 
 ---
 
@@ -349,104 +151,69 @@ Estas propiedades se ignoran completamente.
 
 | Propiedad | Estado |
 |-----------|--------|
-| `overflow` | No implementado |
-| `visibility: hidden` | No implementado |
-| `display: none` | No implementado |
-| `@media queries` | No implementado |
-| `CSS variables (--var)` | No implementado |
-| `calc()` | No implementado |
+| `overflow` | ❌ No implementado |
+| `visibility: hidden` | ❌ No implementado |
+| `display: none` | ❌ No implementado |
+| `@media queries` | ✅ Ignoradas gracefully |
+| `CSS variables (--var)` | ✅ Implementado |
+| `calc()` | ✅ Implementado (básico) |
 | `transition/animation` | N/A para Figma |
-| `transform: scale/translate` | Parcial (solo rotate) |
-| `filter` | No implementado |
-| `backdrop-filter` | No implementado |
-| `clip-path` | No implementado |
+| `transform: scale/translate` | ❌ Parcial (solo rotate) |
+| `filter` | ❌ No implementado |
+| `backdrop-filter` | ❌ No implementado |
+| `clip-path` | ❌ No implementado |
 
 ---
 
-## 10. RECOMENDACIONES DE ARQUITECTURA
+## 10. RESUMEN DE ESTADO
 
-### Redisenar el Parser de CSS
+### ✅ RESUELTOS (18 de 28)
+1. Especificidad CSS
+2. Selector universal (*)
+3. Layout mode para inline elements
+4. display: inline/inline-block/inline-flex
+5. flex-wrap
+6. Grid mejorado
+7. needsFullWidth lógica
+8. Width porcentajes
+9. Text width (FILL vs 200px)
+10. Herencia de estilos (10+ props)
+11. Form sin gris hardcodeado
+12. Button sin azul hardcodeado
+13. Table cells sin 85px hardcodeado
+14. position: absolute
+15. top/left/right/bottom
+16. CSS variables
+17. calc()
+18. Media queries (ignoradas)
 
-El parser actual es muy basico. Considerar:
-1. Usar una libreria como `css-tree` o `postcss` para parsing robusto
-2. Implementar cascada de especificidad correctamente
-3. Soportar media queries (al menos detectarlas)
-
-### Redisenar Deteccion de Layout
-
-```typescript
-function determineLayoutMode(node: any, parentLayout: string): LayoutConfig {
-  const display = node.styles?.display || getDefaultDisplay(node.tagName);
-
-  switch (display) {
-    case 'flex':
-    case 'inline-flex':
-      return {
-        mode: node.styles?.['flex-direction'] === 'column' ? 'VERTICAL' : 'HORIZONTAL',
-        wrap: node.styles?.['flex-wrap'] === 'wrap',
-        gap: parseSize(node.styles?.gap) ?? 0
-      };
-    case 'grid':
-      return parseGridLayout(node.styles);
-    case 'inline':
-    case 'inline-block':
-      return { mode: 'HORIZONTAL', wrap: true, gap: 0 };
-    case 'none':
-      return { skip: true };
-    default: // block
-      return { mode: 'VERTICAL', wrap: false, gap: 0 };
-  }
-}
-```
-
-### Implementar Sizing Correcto
-
-```typescript
-function determineSizing(node: any, parentFrame: FrameNode): SizingConfig {
-  const width = node.styles?.width;
-  const display = node.styles?.display;
-
-  // Elementos inline no llenan
-  if (display === 'inline' || display === 'inline-block') {
-    return { horizontal: 'HUG', vertical: 'HUG' };
-  }
-
-  // Width explicito
-  if (width) {
-    if (width === '100%') return { horizontal: 'FILL', vertical: 'HUG' };
-    if (width.endsWith('%')) {
-      // Calcular porcentaje del padre
-      const percent = parseFloat(width) / 100;
-      return { horizontal: 'FIXED', width: parentFrame.width * percent, vertical: 'HUG' };
-    }
-    return { horizontal: 'FIXED', width: parseSize(width), vertical: 'HUG' };
-  }
-
-  // Block sin width = fill
-  return { horizontal: 'FILL', vertical: 'HUG' };
-}
-```
+### ❌ PENDIENTES (10)
+1. Selectores CSS avanzados (>, +, ~, :pseudo)
+2. max-width real
+3. min-width/min-height desde CSS
+4. Contenido mixto (texto + elementos)
+5. white-space
+6. text-overflow
+7. Orden de herencia
+8. align-self
+9. z-index
+10. overflow, visibility, display:none
 
 ---
 
-## PRIORIDAD DE FIXES
+## PRIORIDAD DE FIXES RESTANTES
 
-### CRITICOS (Causan layouts rotos)
-1. Fix display inline/inline-block
-2. Fix needsFullWidth logica
-3. Fix orden de especificidad CSS
+### ALTOS
+1. ❌ Contenido mixto (texto + elementos)
+2. ❌ max-width/min-width desde CSS
 
-### ALTOS (Afectan apariencia)
-4. Implementar herencia completa
-5. Fix width porcentajes
-6. Remover estilos hardcoded
+### MEDIOS
+3. ❌ Selectores CSS avanzados
+4. ❌ white-space / text-overflow
+5. ❌ align-self
 
-### MEDIOS (Mejoras)
-7. Implementar flex-wrap
-8. Mejorar grid support
-9. Implementar position absolute
-
-### BAJOS (Nice to have)
-10. CSS variables
-11. calc()
-12. Media queries
+### BAJOS
+6. ❌ z-index
+7. ❌ overflow
+8. ❌ visibility: hidden
+9. ❌ display: none
