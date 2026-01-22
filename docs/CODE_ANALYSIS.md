@@ -28,15 +28,16 @@
 ### 1.2 Selector Universal (*) ✅ RESUELTO
 - Ahora se aplica en `selectorMatches()`
 
-### 1.3 Selectores Anidados Limitados ⚠️ PARCIAL
-Solo soporta:
+### 1.3 Selectores Anidados ✅ MEJORADO
+Ahora soporta:
 - `.parent .child` (descendant)
 - `.class1.class2` (combined classes)
+- `.parent > .child` (child directo) ✅ NEW
+- `.parent + .sibling` (adjacent sibling) ✅ NEW
+- `.parent ~ .sibling` (general sibling) ✅ NEW
 
 NO soporta:
-- `.parent > .child` (child directo)
-- `.parent + .sibling` (sibling adyacente)
-- `:hover`, `:focus`, `:first-child`, etc.
+- `:hover`, `:focus`, `:first-child`, etc. (pseudo-classes)
 
 ---
 
@@ -120,7 +121,8 @@ Falta: `space-evenly`, `flex-start` como MIN
 
 ### 6.2 align-items ⚠️ PARCIAL
 
-### 6.3 align-self ❌ PENDIENTE
+### 6.3 align-self ✅ RESUELTO
+Usa `frame.layoutAlign` para center, flex-start, flex-end, stretch.
 
 ---
 
@@ -154,8 +156,8 @@ Aplica como `x`/`y` y configura constraints.
 | Propiedad | Estado |
 |-----------|--------|
 | `overflow` | ❌ No implementado |
-| `visibility: hidden` | ❌ No implementado |
-| `display: none` | ❌ No implementado |
+| `visibility: hidden` | ✅ Implementado (opacity: 0) |
+| `display: none` | ✅ Implementado (skip element) |
 | `@media queries` | ✅ Ignoradas gracefully |
 | `CSS variables (--var)` | ✅ Implementado |
 | `calc()` | ✅ Implementado (básico) |
@@ -169,7 +171,7 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 10. RESUMEN DE ESTADO
 
-### ✅ RESUELTOS (21 de 28)
+### ✅ RESUELTOS (25 de 28)
 1. Especificidad CSS
 2. Selector universal (*)
 3. Layout mode para inline elements
@@ -188,30 +190,24 @@ Aplica como `x`/`y` y configura constraints.
 16. CSS variables
 17. calc()
 18. Media queries (ignoradas)
-19. Contenido mixto (texto + elementos) ✅ NEW
-20. max-width real ✅ NEW
-21. min-width/min-height desde CSS ✅ NEW
+19. Contenido mixto (texto + elementos)
+20. max-width real
+21. min-width/min-height desde CSS
+22. Selectores CSS avanzados (>, +, ~) ✅ NEW
+23. align-self ✅ NEW
+24. display: none ✅ NEW
+25. visibility: hidden ✅ NEW
 
-### ❌ PENDIENTES (7)
-1. Selectores CSS avanzados (>, +, ~, :pseudo)
-2. white-space
-3. text-overflow
-4. Orden de herencia
-5. align-self
-6. z-index
-7. overflow, visibility, display:none
+### ❌ PENDIENTES (3)
+1. white-space
+2. text-overflow
+3. z-index
 
 ---
 
 ## PRIORIDAD DE FIXES RESTANTES
 
-### MEDIOS
-1. ❌ Selectores CSS avanzados
-2. ❌ white-space / text-overflow
-3. ❌ align-self
-
 ### BAJOS
-4. ❌ z-index
-5. ❌ overflow
-6. ❌ visibility: hidden
-7. ❌ display: none
+1. ❌ white-space
+2. ❌ text-overflow
+3. ❌ z-index

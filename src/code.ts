@@ -1203,8 +1203,8 @@ function simpleParseHTML(htmlStr) {
       return selector.substring(1) === elementId;
     }
 
-    // Selectores anidados (descendant)
-    if (selector.includes(' ')) {
+    // Selectores anidados (descendant, child >, sibling +, ~)
+    if (selector.includes(' ') || selector.includes('>') || selector.includes('+') || selector.includes('~')) {
       return matchesNestedSelector(selector, element, className, tagName, elementId, ancestors);
     }
 
@@ -1216,29 +1216,62 @@ function simpleParseHTML(htmlStr) {
     return false;
   }
 
-  // Función para manejar selectores anidados
+  // Función para manejar selectores anidados (descendant, child >, sibling +~)
   function matchesNestedSelector(selector, element, className, tagName, elementId, ancestors) {
-    var parts = selector.split(' ').filter(function(p) { return p.trim(); }).reverse(); // Reverse para ir desde el elemento hacia arriba
+    // Parse selector into tokens with combinators
+    // Combinators: ' ' (descendant), '>' (child), '+' (adjacent sibling), '~' (general sibling)
+    var tokens = parseSelector(selector);
 
-    // La primera parte debe coincidir con el elemento actual
-    if (!selectorMatches(parts[0], element, className, tagName, elementId, [])) {
+    if (tokens.length === 0) return false;
+
+    // Last token must match current element
+    var lastToken = tokens[tokens.length - 1];
+    if (!selectorMatches(lastToken.selector, element, className, tagName, elementId, [])) {
       return false;
     }
 
-    // Verificar las partes restantes con los ancestors
+    // Process remaining tokens from right to left
     var ancestorIndex = 0;
-    for (var i = 1; i < parts.length; i++) {
+    for (var i = tokens.length - 2; i >= 0; i--) {
+      var token = tokens[i];
+      var combinator = tokens[i + 1].combinator; // Combinator that connects to next token
       var found = false;
-      while (ancestorIndex < ancestors.length) {
-        var ancestor = ancestors[ancestorIndex];
-        var ancestorClassNames = ancestor.classes.join(' ');
 
-        if (selectorMatches(parts[i], null, ancestorClassNames, ancestor.tag, ancestor.id, [])) {
-          found = true;
-          ancestorIndex++;
-          break;
+      if (combinator === '>') {
+        // Child combinator: must match immediate parent
+        if (ancestorIndex < ancestors.length) {
+          var parent = ancestors[ancestorIndex];
+          var parentClassNames = parent.classes.join(' ');
+          if (selectorMatches(token.selector, null, parentClassNames, parent.tag, parent.id, [])) {
+            found = true;
+            ancestorIndex++;
+          }
         }
-        ancestorIndex++;
+      } else if (combinator === '+' || combinator === '~') {
+        // Sibling selectors: not fully supported in this context (need sibling info)
+        // For now, treat as descendant (partial support)
+        while (ancestorIndex < ancestors.length) {
+          var ancestor = ancestors[ancestorIndex];
+          var ancestorClassNames = ancestor.classes.join(' ');
+          if (selectorMatches(token.selector, null, ancestorClassNames, ancestor.tag, ancestor.id, [])) {
+            found = true;
+            ancestorIndex++;
+            break;
+          }
+          ancestorIndex++;
+        }
+      } else {
+        // Descendant combinator (space): can skip ancestors
+        while (ancestorIndex < ancestors.length) {
+          var ancestor = ancestors[ancestorIndex];
+          var ancestorClassNames = ancestor.classes.join(' ');
+          if (selectorMatches(token.selector, null, ancestorClassNames, ancestor.tag, ancestor.id, [])) {
+            found = true;
+            ancestorIndex++;
+            break;
+          }
+          ancestorIndex++;
+        }
       }
 
       if (!found) {
@@ -1247,6 +1280,43 @@ function simpleParseHTML(htmlStr) {
     }
 
     return true;
+  }
+
+  // Parse selector into tokens with combinators
+  function parseSelector(selector) {
+    var tokens = [];
+    var current = '';
+    var lastCombinator = ' ';
+
+    for (var i = 0; i < selector.length; i++) {
+      var char = selector[i];
+
+      if (char === '>' || char === '+' || char === '~') {
+        if (current.trim()) {
+          tokens.push({ selector: current.trim(), combinator: lastCombinator });
+        }
+        lastCombinator = char;
+        current = '';
+      } else if (char === ' ') {
+        // Check if this is a space combinator or just whitespace around other combinators
+        if (current.trim() && i + 1 < selector.length) {
+          var nextNonSpace = selector.substring(i + 1).trimStart()[0];
+          if (nextNonSpace !== '>' && nextNonSpace !== '+' && nextNonSpace !== '~') {
+            tokens.push({ selector: current.trim(), combinator: lastCombinator });
+            lastCombinator = ' ';
+            current = '';
+          }
+        }
+      } else {
+        current += char;
+      }
+    }
+
+    if (current.trim()) {
+      tokens.push({ selector: current.trim(), combinator: lastCombinator });
+    }
+
+    return tokens;
   }
 
   // Función para manejar clases combinadas (.class1.class2)
@@ -2115,7 +2185,12 @@ function parseLinearGradient(gradientStr: string): any {
 }
 
 function applyStylesToFrame(frame: FrameNode, styles: any) {
-  
+
+  // FIXED: Handle visibility: hidden (element rendered but invisible)
+  if (styles['visibility'] === 'hidden') {
+    frame.opacity = 0;
+  }
+
   // CRITICAL: First, check if this element should have NO background
   const hasExplicitBackground = styles['background'] || styles['background-color'];
   
@@ -2628,7 +2703,12 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       if (['script', 'style', 'meta', 'link', 'title'].includes(node.tagName)) {
         continue;
       }
-      
+
+      // FIXED: Skip elements with display: none (don't render at all)
+      if (node.styles?.display === 'none') {
+        continue;
+      }
+
       // Convert sticky/fixed positioning to normal (but still render)
       if (node.styles?.position === 'sticky' || node.styles?.position === 'fixed') {
 
@@ -3062,7 +3142,25 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             }
           }
         }
-        
+
+        // FIXED: Apply align-self for individual item alignment within parent
+        if (node.styles?.['align-self'] && parentFrame) {
+          try {
+            const alignSelf = node.styles['align-self'];
+            if (alignSelf === 'center') {
+              frame.layoutAlign = 'CENTER';
+            } else if (alignSelf === 'flex-start' || alignSelf === 'start') {
+              frame.layoutAlign = 'MIN';
+            } else if (alignSelf === 'flex-end' || alignSelf === 'end') {
+              frame.layoutAlign = 'MAX';
+            } else if (alignSelf === 'stretch') {
+              frame.layoutAlign = 'STRETCH';
+            }
+          } catch (error) {
+            console.error('Error applying align-self:', error);
+          }
+        }
+
       } else if (node.tagName === 'form') {
         const form = figma.createFrame();
         form.name = 'FORM';
