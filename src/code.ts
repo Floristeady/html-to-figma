@@ -2569,6 +2569,51 @@ function applyStylesToText(text: TextNode, styles: any) {
       text.opacity = opacity;
     }
   }
+
+  // FIXED: white-space support
+  if (styles['white-space']) {
+    const whiteSpace = styles['white-space'];
+    if (whiteSpace === 'nowrap' || whiteSpace === 'pre') {
+      // No wrapping - use WIDTH_AND_HEIGHT to prevent line breaks
+      text.textAutoResize = 'WIDTH_AND_HEIGHT';
+    } else if (whiteSpace === 'pre-wrap' || whiteSpace === 'pre-line') {
+      // Preserve some whitespace but allow wrapping
+      text.textAutoResize = 'HEIGHT';
+    }
+    // 'normal' is the default behavior
+  }
+
+  // FIXED: text-overflow support (works with white-space: nowrap)
+  if (styles['text-overflow'] === 'ellipsis') {
+    // Figma supports truncation with ellipsis
+    text.textTruncation = 'ENDING';
+  }
+}
+
+// FIXED: Reorder children by z-index (higher z-index = later in children array = on top)
+function reorderChildrenByZIndex(parentFrame: FrameNode) {
+  try {
+    const children = [...parentFrame.children];
+    const childrenWithZIndex: { node: SceneNode, zIndex: number }[] = [];
+
+    for (const child of children) {
+      if ('getPluginData' in child) {
+        const zIndexStr = child.getPluginData('zIndex');
+        const zIndex = zIndexStr ? parseInt(zIndexStr, 10) : 0;
+        childrenWithZIndex.push({ node: child, zIndex: isNaN(zIndex) ? 0 : zIndex });
+      }
+    }
+
+    // Sort by z-index (ascending - lower z-index first, higher z-index last = on top)
+    childrenWithZIndex.sort((a, b) => a.zIndex - b.zIndex);
+
+    // Reorder children in the parent
+    for (const item of childrenWithZIndex) {
+      parentFrame.appendChild(item.node);
+    }
+  } catch (error) {
+    console.error('Error reordering by z-index:', error);
+  }
 }
 
 async function calculateContentSize(children: any[]): Promise<{width: number, height: number}> {
@@ -3121,9 +3166,20 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             } else {
               await createFigmaNodesFromStructure(node.children, frame, 0, 0, inheritableStyles);
             }
+
+            // FIXED: Reorder children by z-index after all children are created
+            reorderChildrenByZIndex(frame);
           }
         }
         
+        // FIXED: Store z-index for later reordering
+        if (node.styles?.['z-index']) {
+          const zIndex = parseInt(node.styles['z-index'], 10);
+          if (!isNaN(zIndex)) {
+            frame.setPluginData('zIndex', zIndex.toString());
+          }
+        }
+
         // Apply flex grow after appendChild for proper timing
         if ((node.styles?.flex === '1' || node.styles?.['flex-grow'] === '1') && parentFrame) {
           if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
