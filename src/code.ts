@@ -2763,6 +2763,9 @@ async function createGridLayoutWithAreas(
   gap: number,
   inheritedStyles?: any
 ) {
+  // Check if any area spans multiple rows (for height synchronization)
+  const hasMultiRowSpans = Object.values(areaMap).some(bounds => (bounds.rowEnd - bounds.rowStart) > 1);
+
   // Create a 2D array to track which cells are occupied
   const grid: (FrameNode | null)[][] = [];
   for (let r = 0; r < numRows; r++) {
@@ -2884,9 +2887,18 @@ async function createGridLayoutWithAreas(
             try {
               wrapper.layoutGrow = 1;
               wrapper.layoutSizingHorizontal = 'FILL';
+              // Fill vertical height when there are multi-row spans in the grid
+              if (hasMultiRowSpans) {
+                wrapper.layoutSizingVertical = 'FILL';
+              }
             } catch (error) {}
 
-            const gridInheritedStyles = { ...inheritedStyles, '_hasConstrainedWidth': true };
+            // Pass flag to children to also use FILL vertical
+            const gridInheritedStyles = {
+              ...inheritedStyles,
+              '_hasConstrainedWidth': true,
+              '_shouldFillVertical': hasMultiRowSpans
+            };
             await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
 
             // Add placeholders for remaining columns
@@ -3064,9 +3076,14 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         // Set basic properties - AUTO para que se ajuste al contenido
         frame.primaryAxisSizingMode = 'AUTO';
         frame.counterAxisSizingMode = 'AUTO';
-        
+
         // CRITICAL: Ensure container can grow to fit content
-        frame.layoutSizingVertical = 'HUG';
+        // Use FILL vertical when in a grid row with multi-row spans
+        if (inheritedStyles?.['_shouldFillVertical']) {
+          frame.layoutSizingVertical = 'FILL';
+        } else {
+          frame.layoutSizingVertical = 'HUG';
+        }
         frame.layoutSizingHorizontal = 'HUG';
         
         // Dimensiones mínimas para evitar colapso pero respetando CSS
@@ -3104,7 +3121,8 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         }
         
         // CRITICAL: After applying styles, ensure containers can still grow vertically
-        if (node.styles?.['max-width'] && !node.styles?.height) {
+        // BUT preserve FILL if _shouldFillVertical is set (for grid rows with multi-row spans)
+        if (node.styles?.['max-width'] && !node.styles?.height && !inheritedStyles?.['_shouldFillVertical']) {
           // For containers with max-width but no explicit height, allow vertical growth
           frame.layoutSizingVertical = 'HUG';
         }
@@ -3328,6 +3346,8 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           ...inheritedStyles,
           // CRITICAL: Propagate width constraint to all descendants
           '_hasConstrainedWidth': thisHasWidth || parentHadWidth,
+          // CRITICAL: Propagate FILL vertical for grid rows with multi-row spans
+          '_shouldFillVertical': inheritedStyles?.['_shouldFillVertical'],
 
           // TEXT PROPERTIES - CSS inherited properties
           color: node.styles?.color || inheritedStyles?.color,
@@ -4409,7 +4429,20 @@ figma.ui.onmessage = async (msg) => {
     const isFullPageLayout = detectFullPageLayout(msg.structure);
     const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
 
+    // Helper to get explicit width from root element
+    const getExplicitRootWidth = (structure: any[]): number | null => {
+      if (!structure || structure.length === 0) return null;
+      const root = structure[0];
+      if (root.styles?.width) {
+        const width = parseSize(root.styles.width);
+        if (width && width > 0) return width;
+      }
+      return null;
+    };
+
+    const explicitWidth = getExplicitRootWidth(msg.structure);
     debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
+    debugLog('[MAIN HANDLER] Explicit width from CSS:', explicitWidth);
 
     // Create a main container frame for all HTML content
     const mainContainer = figma.createFrame();
@@ -4421,11 +4454,13 @@ figma.ui.onmessage = async (msg) => {
     mainContainer.layoutMode = 'VERTICAL';
     mainContainer.primaryAxisSizingMode = 'AUTO';
 
-    // If full page layout detected, set fixed width; otherwise use AUTO
-    if (isFullPageLayout) {
+    // Determine container width: explicit CSS width > full page default > auto
+    const containerWidth = explicitWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
+
+    if (containerWidth) {
       mainContainer.counterAxisSizingMode = 'FIXED';
-      mainContainer.resize(DEFAULT_PAGE_WIDTH, mainContainer.height);
-      debugLog('[MAIN HANDLER] Set container width to:', DEFAULT_PAGE_WIDTH);
+      mainContainer.resize(containerWidth, mainContainer.height);
+      debugLog('[MAIN HANDLER] Set container width to:', containerWidth);
     } else {
       mainContainer.counterAxisSizingMode = 'AUTO';
     }
@@ -4439,7 +4474,7 @@ figma.ui.onmessage = async (msg) => {
 
     // Position the container at current viewport center
     const viewport = figma.viewport.center;
-    mainContainer.x = viewport.x - (isFullPageLayout ? DEFAULT_PAGE_WIDTH / 2 : 200);
+    mainContainer.x = viewport.x - (containerWidth ? containerWidth / 2 : 200);
     mainContainer.y = viewport.y - 200;
 
     // Add to current page

@@ -2691,6 +2691,8 @@ function getGridColCount(areasString) {
 // Create grid layout using grid-template-areas
 async function createGridLayoutWithAreas(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles) {
     var _a;
+    // Check if any area spans multiple rows (for height synchronization)
+    const hasMultiRowSpans = Object.values(areaMap).some(bounds => (bounds.rowEnd - bounds.rowStart) > 1);
     // Create a 2D array to track which cells are occupied
     const grid = [];
     for (let r = 0; r < numRows; r++) {
@@ -2806,9 +2808,14 @@ async function createGridLayoutWithAreas(children, parentFrame, areaMap, numRows
                         try {
                             wrapper.layoutGrow = 1;
                             wrapper.layoutSizingHorizontal = 'FILL';
+                            // Fill vertical height when there are multi-row spans in the grid
+                            if (hasMultiRowSpans) {
+                                wrapper.layoutSizingVertical = 'FILL';
+                            }
                         }
                         catch (error) { }
-                        const gridInheritedStyles = Object.assign(Object.assign({}, inheritedStyles), { '_hasConstrainedWidth': true });
+                        // Pass flag to children to also use FILL vertical
+                        const gridInheritedStyles = Object.assign(Object.assign({}, inheritedStyles), { '_hasConstrainedWidth': true, '_shouldFillVertical': hasMultiRowSpans });
                         await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
                         // Add placeholders for remaining columns
                         for (let cc = 1; cc < colSpan; cc++) {
@@ -2980,7 +2987,13 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 frame.primaryAxisSizingMode = 'AUTO';
                 frame.counterAxisSizingMode = 'AUTO';
                 // CRITICAL: Ensure container can grow to fit content
-                frame.layoutSizingVertical = 'HUG';
+                // Use FILL vertical when in a grid row with multi-row spans
+                if (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_shouldFillVertical']) {
+                    frame.layoutSizingVertical = 'FILL';
+                }
+                else {
+                    frame.layoutSizingVertical = 'HUG';
+                }
                 frame.layoutSizingHorizontal = 'HUG';
                 // Dimensiones mínimas para evitar colapso pero respetando CSS
                 frame.minHeight = 20;
@@ -3013,7 +3026,8 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // CRITICAL: After applying styles, ensure containers can still grow vertically
-                if (((_s = node.styles) === null || _s === void 0 ? void 0 : _s['max-width']) && !((_t = node.styles) === null || _t === void 0 ? void 0 : _t.height)) {
+                // BUT preserve FILL if _shouldFillVertical is set (for grid rows with multi-row spans)
+                if (((_s = node.styles) === null || _s === void 0 ? void 0 : _s['max-width']) && !((_t = node.styles) === null || _t === void 0 ? void 0 : _t.height) && !(inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_shouldFillVertical'])) {
                     // For containers with max-width but no explicit height, allow vertical growth
                     frame.layoutSizingVertical = 'HUG';
                 }
@@ -3225,6 +3239,8 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 const inheritableStyles = Object.assign(Object.assign({}, inheritedStyles), { 
                     // CRITICAL: Propagate width constraint to all descendants
                     '_hasConstrainedWidth': thisHasWidth || parentHadWidth, 
+                    // CRITICAL: Propagate FILL vertical for grid rows with multi-row spans
+                    '_shouldFillVertical': inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_shouldFillVertical'], 
                     // TEXT PROPERTIES - CSS inherited properties
                     color: ((_36 = node.styles) === null || _36 === void 0 ? void 0 : _36.color) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles.color), 'font-family': ((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37['font-family']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-family']), 'font-size': ((_38 = node.styles) === null || _38 === void 0 ? void 0 : _38['font-size']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-size']), 'font-weight': ((_39 = node.styles) === null || _39 === void 0 ? void 0 : _39['font-weight']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-weight']), 'font-style': ((_40 = node.styles) === null || _40 === void 0 ? void 0 : _40['font-style']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-style']), 'line-height': ((_41 = node.styles) === null || _41 === void 0 ? void 0 : _41['line-height']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['line-height']), 'text-align': ((_42 = node.styles) === null || _42 === void 0 ? void 0 : _42['text-align']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['text-align']), 'letter-spacing': ((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43['letter-spacing']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['letter-spacing']), 'word-spacing': ((_44 = node.styles) === null || _44 === void 0 ? void 0 : _44['word-spacing']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['word-spacing']), 'text-transform': ((_45 = node.styles) === null || _45 === void 0 ? void 0 : _45['text-transform']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['text-transform']), 
                     // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
@@ -4217,7 +4233,22 @@ figma.ui.onmessage = async (msg) => {
         };
         const isFullPageLayout = detectFullPageLayout(msg.structure);
         const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
+        // Helper to get explicit width from root element
+        const getExplicitRootWidth = (structure) => {
+            var _a;
+            if (!structure || structure.length === 0)
+                return null;
+            const root = structure[0];
+            if ((_a = root.styles) === null || _a === void 0 ? void 0 : _a.width) {
+                const width = parseSize(root.styles.width);
+                if (width && width > 0)
+                    return width;
+            }
+            return null;
+        };
+        const explicitWidth = getExplicitRootWidth(msg.structure);
         debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
+        debugLog('[MAIN HANDLER] Explicit width from CSS:', explicitWidth);
         // Create a main container frame for all HTML content
         const mainContainer = figma.createFrame();
         const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'}` : 'HTML Import Container';
@@ -4226,11 +4257,12 @@ figma.ui.onmessage = async (msg) => {
         // Enable auto-layout - el body controlará el layout interno
         mainContainer.layoutMode = 'VERTICAL';
         mainContainer.primaryAxisSizingMode = 'AUTO';
-        // If full page layout detected, set fixed width; otherwise use AUTO
-        if (isFullPageLayout) {
+        // Determine container width: explicit CSS width > full page default > auto
+        const containerWidth = explicitWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
+        if (containerWidth) {
             mainContainer.counterAxisSizingMode = 'FIXED';
-            mainContainer.resize(DEFAULT_PAGE_WIDTH, mainContainer.height);
-            debugLog('[MAIN HANDLER] Set container width to:', DEFAULT_PAGE_WIDTH);
+            mainContainer.resize(containerWidth, mainContainer.height);
+            debugLog('[MAIN HANDLER] Set container width to:', containerWidth);
         }
         else {
             mainContainer.counterAxisSizingMode = 'AUTO';
@@ -4243,7 +4275,7 @@ figma.ui.onmessage = async (msg) => {
         mainContainer.itemSpacing = 0;
         // Position the container at current viewport center
         const viewport = figma.viewport.center;
-        mainContainer.x = viewport.x - (isFullPageLayout ? DEFAULT_PAGE_WIDTH / 2 : 200);
+        mainContainer.x = viewport.x - (containerWidth ? containerWidth / 2 : 200);
         mainContainer.y = viewport.y - 200;
         // Add to current page
         figma.currentPage.appendChild(mainContainer);
