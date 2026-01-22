@@ -854,14 +854,71 @@ function parseInlineStyles(styleStr) {
   return filterUnsupportedCSS(styles);
 }
 
+// Función para verificar si un selector CSS es problemático
+function isUnsupportedSelector(selector) {
+  // Omitir @keyframes, @media, etc.
+  if (selector.charAt(0) === '@') {
+    return true;
+  }
+
+  // Omitir pseudo-selectores problemáticos (excepto ::before/::after que ahora soportamos)
+  if (selector.includes(':hover') ||
+      selector.includes(':active') ||
+      selector.includes(':focus') ||
+      selector.includes(':nth-child') ||
+      selector.includes(':first-child') ||
+      selector.includes(':last-child')) {
+    return true;
+  }
+
+  // Permitir ::before y ::after (ahora los soportamos parcialmente)
+  return false;
+}
+
+// Función mejorada para manejar selectores CSS complejos
+function parseComplexSelector(selector) {
+  // Limpiar espacios extra (sin regex problemático)
+  selector = selector.split(/[ ]+/).join(' ').trim();
+
+  // Manejar múltiples selectores separados por coma
+  if (selector.indexOf(',') !== -1) {
+    return selector.split(',').map(function(s) { return s.trim(); });
+  }
+
+  return [selector];
+}
+
+// Función mejorada para validar selectores CSS
+function isValidCSSSelector(selector) {
+  // Validación simplificada sin regex complejos
+  if (!selector || selector.length === 0) return false;
+
+  // Selector de elemento simple (h1, div, span)
+  if (/^[a-zA-Z][a-zA-Z0-9-]*$/.test(selector)) return true;
+
+  // Selector de clase simple (.class)
+  if (selector.charAt(0) === '.' && selector.indexOf(' ') === -1) return true;
+
+  // Selector de ID (#id)
+  if (selector.charAt(0) === '#') return true;
+
+  // Selectores anidados (.parent .child, div .class, etc.)
+  if (selector.indexOf(' ') !== -1) return true;
+
+  // Pseudoelementos (::before, ::after)
+  if (selector.indexOf('::') !== -1) return true;
+
+  return false;
+}
+
 function extractCSS(htmlStr) {
   var cssRules = {};
   var allCssText = '';
 
-  // FIX: Soportar múltiples style tags usando indexOf (sin regex problemático)
+  // Soportar múltiples style tags
   var searchStr = htmlStr;
   var startTag = '<style';
-  var endTag = '</style>';
+  var endTag = '<' + '/style>';
 
   while (true) {
     var styleStart = searchStr.indexOf(startTag);
@@ -880,18 +937,18 @@ function extractCSS(htmlStr) {
 
   if (!allCssText) return cssRules;
 
-  // Remove CSS comments (simple approach)
+  // Remove CSS comments (simple approach sin regex problemático)
   var cleanCss = '';
   var inComment = false;
-  for (var i = 0; i < allCssText.length; i++) {
-    if (!inComment && allCssText[i] === '/' && allCssText[i+1] === '*') {
+  for (var ci = 0; ci < allCssText.length; ci++) {
+    if (!inComment && allCssText[ci] === '/' && allCssText[ci+1] === '*') {
       inComment = true;
-      i++;
-    } else if (inComment && allCssText[i] === '*' && allCssText[i+1] === '/') {
+      ci++;
+    } else if (inComment && allCssText[ci] === '*' && allCssText[ci+1] === '/') {
       inComment = false;
-      i++;
+      ci++;
     } else if (!inComment) {
-      cleanCss += allCssText[i];
+      cleanCss += allCssText[ci];
     }
   }
   allCssText = cleanCss;
@@ -903,34 +960,28 @@ function extractCSS(htmlStr) {
     if (rule) {
       var braceIdx = rule.indexOf('{');
       if (braceIdx > 0) {
-        var selectorPart = rule.substring(0, braceIdx).trim();
+        var selector = rule.substring(0, braceIdx).trim();
         var declarations = rule.substring(braceIdx + 1).trim();
 
-        if (selectorPart && declarations) {
-          var parsedDeclarations = parseInlineStyles(declarations);
-
-          // FIX: Soportar selectores separados por coma (.class1, .class2)
-          var selectors = selectorPart.split(',').map(function(s) { return s.trim(); });
+        if (selector && declarations && !isUnsupportedSelector(selector)) {
+          // Procesar selectores múltiples (separados por coma)
+          var selectors = parseComplexSelector(selector);
 
           for (var j = 0; j < selectors.length; j++) {
-            var selector = selectors[j];
-            if (!selector) continue;
+            var singleSelector = selectors[j];
 
-            // Handle class selectors (simple: .class)
-            if (selector.charAt(0) === '.') {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-            }
-            // Handle nested selectors like ".card .badge" or ".form-section h2"
-            else if (selector.includes('.') || selector.includes(' ')) {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-            }
-            // Handle element selectors like "th", "td", "body"
-            else if (selector.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-            }
-            // Handle * (universal selector)
-            else if (selector === '*') {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
+            if (isValidCSSSelector(singleSelector)) {
+              // Almacenar la regla CSS procesada
+              cssRules[singleSelector] = Object.assign({}, cssRules[singleSelector] || {}, parseInlineStyles(declarations));
+
+              // También manejar variaciones del selector
+              if (singleSelector.includes(' ')) {
+                // Para selectores anidados, también guardar versión normalizada
+                var normalizedSelector = singleSelector.replace(/\s+/g, ' ');
+                if (normalizedSelector !== singleSelector) {
+                  cssRules[normalizedSelector] = Object.assign({}, cssRules[normalizedSelector] || {}, parseInlineStyles(declarations));
+                }
+              }
             }
           }
         }
@@ -941,68 +992,252 @@ function extractCSS(htmlStr) {
   return cssRules;
 }
 
-// HTML parsing function (restored from backup with full CSS support)
+// HTML parsing function - COMPLETE VERSION with CSS specificity support
 function simpleParseHTML(htmlStr) {
   var parser = new DOMParser();
   var doc = parser.parseFromString(htmlStr, 'text/html');
   var body = doc.body || doc.documentElement;
-  
+
   var cssRules = extractCSS(htmlStr);
+
+  // Función para extraer content de pseudoelementos
+  function extractPseudoContent(element, cssRules) {
+    var className = element.getAttribute('class');
+    var tagName = element.tagName.toLowerCase();
+    var beforeContent = '';
+    var afterContent = '';
+
+    if (className) {
+      var classes = className.split(' ').filter(function(c) { return c.trim(); });
+
+      // Buscar ::before content
+      for (var i = 0; i < classes.length; i++) {
+        var beforeSelector = '.' + classes[i] + '::before';
+        if (cssRules[beforeSelector] && cssRules[beforeSelector].content) {
+          var contentValue = cssRules[beforeSelector].content;
+          if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+            beforeContent = SUPPORTED_CONTENT[contentValue];
+            break;
+          }
+        }
+      }
+
+      // Buscar ::after content
+      for (var i = 0; i < classes.length; i++) {
+        var afterSelector = '.' + classes[i] + '::after';
+        if (cssRules[afterSelector] && cssRules[afterSelector].content) {
+          var contentValue = cssRules[afterSelector].content;
+          if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+            afterContent = SUPPORTED_CONTENT[contentValue];
+            break;
+          }
+        }
+      }
+    }
+
+    // También buscar por elemento
+    var beforeElementSelector = tagName + '::before';
+    var afterElementSelector = tagName + '::after';
+
+    if (cssRules[beforeElementSelector] && cssRules[beforeElementSelector].content && !beforeContent) {
+      var contentValue = cssRules[beforeElementSelector].content;
+      if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+        beforeContent = SUPPORTED_CONTENT[contentValue];
+      }
+    }
+
+    if (cssRules[afterElementSelector] && cssRules[afterElementSelector].content && !afterContent) {
+      var contentValue = cssRules[afterElementSelector].content;
+      if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+        afterContent = SUPPORTED_CONTENT[contentValue];
+      }
+    }
+
+    return { before: beforeContent, after: afterContent };
+  }
+
+  // Función mejorada para obtener todos los selectores que aplican a un elemento
+  function getAllMatchingSelectors(element) {
+    var matchingSelectors = [];
+    var className = element.getAttribute('class');
+    var tagName = element.tagName.toLowerCase();
+    var elementId = element.getAttribute('id');
+
+    // Construir jerarquía de ancestors
+    var ancestors = [];
+    var currentElement = element.parentElement;
+    while (currentElement && currentElement.tagName !== 'BODY' && currentElement.tagName !== 'HTML') {
+      var ancestorClasses = currentElement.getAttribute('class');
+      var ancestorTag = currentElement.tagName.toLowerCase();
+      var ancestorId = currentElement.getAttribute('id');
+
+      ancestors.push({
+        classes: ancestorClasses ? ancestorClasses.split(' ').filter(function(c) { return c.trim(); }) : [],
+        tag: ancestorTag,
+        id: ancestorId
+      });
+      currentElement = currentElement.parentElement;
+    }
+
+    // Verificar todos los selectores CSS disponibles
+    for (var selector in cssRules) {
+      if (cssRules.hasOwnProperty(selector)) {
+        // Skip pseudo-element selectors for main style matching
+        if (selector.includes('::before') || selector.includes('::after')) {
+          continue;
+        }
+        if (selectorMatches(selector, element, className, tagName, elementId, ancestors)) {
+          matchingSelectors.push({
+            selector: selector,
+            specificity: calculateSpecificity(selector),
+            styles: cssRules[selector]
+          });
+        }
+      }
+    }
+
+    // Ordenar por especificidad (menor a mayor)
+    matchingSelectors.sort(function(a, b) {
+      return a.specificity - b.specificity;
+    });
+
+    return matchingSelectors;
+  }
+
+  // Función para verificar si un selector CSS coincide con un elemento
+  function selectorMatches(selector, element, className, tagName, elementId, ancestors) {
+    // Selector de elemento simple
+    if (selector === tagName) {
+      return true;
+    }
+
+    // Selector de clase simple
+    if (selector.charAt(0) === '.' && !selector.includes(' ') && className) {
+      var selectorClass = selector.substring(1);
+      // Handle combined classes like .class1.class2
+      if (selectorClass.includes('.')) {
+        return matchesCombinedClasses(selector, className);
+      }
+      var classes = className.split(' ').filter(function(c) { return c.trim(); });
+      return classes.indexOf(selectorClass) !== -1;
+    }
+
+    // Selector de ID
+    if (selector.charAt(0) === '#' && elementId) {
+      return selector.substring(1) === elementId;
+    }
+
+    // Selectores anidados (descendant)
+    if (selector.includes(' ')) {
+      return matchesNestedSelector(selector, element, className, tagName, elementId, ancestors);
+    }
+
+    // Selectores múltiples con clases combinadas (.class1.class2)
+    if (selector.includes('.') && !selector.includes(' ') && selector.indexOf('.') !== selector.lastIndexOf('.')) {
+      return matchesCombinedClasses(selector, className);
+    }
+
+    return false;
+  }
+
+  // Función para manejar selectores anidados
+  function matchesNestedSelector(selector, element, className, tagName, elementId, ancestors) {
+    var parts = selector.split(' ').filter(function(p) { return p.trim(); }).reverse(); // Reverse para ir desde el elemento hacia arriba
+
+    // La primera parte debe coincidir con el elemento actual
+    if (!selectorMatches(parts[0], element, className, tagName, elementId, [])) {
+      return false;
+    }
+
+    // Verificar las partes restantes con los ancestors
+    var ancestorIndex = 0;
+    for (var i = 1; i < parts.length; i++) {
+      var found = false;
+      while (ancestorIndex < ancestors.length) {
+        var ancestor = ancestors[ancestorIndex];
+        var ancestorClassNames = ancestor.classes.join(' ');
+
+        if (selectorMatches(parts[i], null, ancestorClassNames, ancestor.tag, ancestor.id, [])) {
+          found = true;
+          ancestorIndex++;
+          break;
+        }
+        ancestorIndex++;
+      }
+
+      if (!found) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Función para manejar clases combinadas (.class1.class2)
+  function matchesCombinedClasses(selector, className) {
+    if (!className) return false;
+
+    var requiredClasses = selector.split('.').filter(function(c) { return c.trim(); });
+    var elementClasses = className.split(' ').filter(function(c) { return c.trim(); });
+
+    return requiredClasses.every(function(reqClass) {
+      return elementClasses.indexOf(reqClass) !== -1;
+    });
+  }
+
+  // Calcular especificidad CSS básica
+  function calculateSpecificity(selector) {
+    var specificity = 0;
+
+    // IDs = 100 (contar #)
+    for (var si = 0; si < selector.length; si++) {
+      if (selector[si] === '#') specificity += 100;
+    }
+
+    // Classes = 10 (contar .)
+    for (var si = 0; si < selector.length; si++) {
+      if (selector[si] === '.') specificity += 10;
+    }
+
+    // Elements = 1 (buscar palabras alfabéticas que no sigan a . o #)
+    var inWord = false;
+    var wordStart = 0;
+    for (var si = 0; si <= selector.length; si++) {
+      var ch = selector[si];
+      var isAlpha = ch && ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch === '-');
+      if (isAlpha && !inWord) {
+        inWord = true;
+        wordStart = si;
+      } else if (!isAlpha && inWord) {
+        inWord = false;
+        // Verificar si la palabra anterior no empieza con . o #
+        var prevChar = wordStart > 0 ? selector[wordStart - 1] : '';
+        if (prevChar !== '.' && prevChar !== '#') {
+          specificity += 1;
+        }
+      }
+    }
+
+    return specificity;
+  }
 
   function getElementStyles(element) {
     var styles = {};
-    var className = element.getAttribute('class');
-    
-    if (className) {
-      var classes = className.split(' ');
-  
-      for (var i = 0; i < classes.length; i++) {
-        var cls = classes[i].trim();
-        if (cls && cssRules['.' + cls]) {
-          styles = Object.assign(styles, cssRules['.' + cls]);
-        }
-      }
-      
-      // Check for combined class selectors like ".card.active"
-      var combinedSelector = '.' + classes.join('.');
-      if (cssRules[combinedSelector]) {
-        styles = Object.assign(styles, cssRules[combinedSelector]);
-      }
+
+    // Obtener todos los selectores que coinciden y aplicar en orden de especificidad
+    var matchingSelectors = getAllMatchingSelectors(element);
+
+    for (var i = 0; i < matchingSelectors.length; i++) {
+      styles = Object.assign(styles, matchingSelectors[i].styles);
     }
-    
-    // Check for element selectors (like "th", "td", "body")
-    var tagName = element.tagName.toLowerCase();
-    if (cssRules[tagName]) {
-      styles = Object.assign(styles, cssRules[tagName]);
-    }
-    
-    // Check for nested selectors - find parent classes
-    var parent = element.parentElement;
-    while (parent && parent.tagName !== 'BODY') {
-      var parentClass = parent.getAttribute('class');
-      if (parentClass && className) {
-        var nestedClassSelector = '.' + parentClass.split(' ')[0] + ' .' + className.split(' ')[0];
-        if (cssRules[nestedClassSelector]) {
-          styles = Object.assign(styles, cssRules[nestedClassSelector]);
-        }
-      }
-      
-      if (parentClass) {
-        var nestedElementSelector = '.' + parentClass.split(' ')[0] + ' ' + tagName;
-        if (cssRules[nestedElementSelector]) {
-          styles = Object.assign(styles, cssRules[nestedElementSelector]);
-        }
-      }
-      parent = parent.parentElement;
-    }
-    
+
     // Apply inline styles last (highest priority)
     var inlineStyle = element.getAttribute('style');
     if (inlineStyle) {
       var inlineStyles = parseInlineStyles(inlineStyle);
       styles = Object.assign(styles, inlineStyles);
     }
-    
+
     return styles;
   }
 
@@ -1012,6 +1247,9 @@ function simpleParseHTML(htmlStr) {
       var styles = getElementStyles(node);
       var text = '';
       var children = [];
+
+      // Extraer contenido de pseudoelementos
+      var pseudoContent = extractPseudoContent(node, cssRules);
 
       for (var i = 0; i < node.childNodes.length; i++) {
         var child = node.childNodes[i];
@@ -1028,6 +1266,16 @@ function simpleParseHTML(htmlStr) {
         }
       }
 
+      // Agregar contenido ::before como texto inicial
+      if (pseudoContent.before) {
+        text = pseudoContent.before + (text ? ' ' + text : '');
+      }
+
+      // Agregar contenido ::after como texto final
+      if (pseudoContent.after) {
+        text = (text || '') + (text ? ' ' : '') + pseudoContent.after;
+      }
+
       return {
         type: 'element',
         tagName: tag,
@@ -1039,18 +1287,26 @@ function simpleParseHTML(htmlStr) {
           alt: node.getAttribute('alt'),
           rows: node.getAttribute('rows')
         },
-        children: children
+        children: children,
+        pseudoContent: pseudoContent // Guardar para referencia
       };
     }
     return null;
   }
 
+  // Include body element with its styles (background, font-family, etc.)
+  var bodyStruct = nodeToStruct(body);
+  if (bodyStruct) {
+    return [bodyStruct];
+  }
+
+  // Fallback: if body parsing fails, return children directly
   var result = [];
   for (var i = 0; i < body.childNodes.length; i++) {
     var child = nodeToStruct(body.childNodes[i]);
     if (child) result.push(child);
   }
-  
+
   return result;
 }
 
@@ -2299,12 +2555,13 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         }
         
         // Padding ONLY from CSS - no hardcoded defaults
-        const defaultPadding = 0; // No default padding - respect CSS only
-        
-        const cssTopPadding = parseSize(node.styles?.['padding-top']) || parseSize(node.styles?.padding) || defaultPadding;
-        const cssRightPadding = parseSize(node.styles?.['padding-right']) || parseSize(node.styles?.padding) || defaultPadding;
-        const cssBottomPadding = parseSize(node.styles?.['padding-bottom']) || parseSize(node.styles?.padding) || defaultPadding;
-        const cssLeftPadding = parseSize(node.styles?.['padding-left']) || parseSize(node.styles?.padding) || defaultPadding;
+        // FIXED: Use ?? instead of || to respect padding: 0
+        const basePadding = parseSize(node.styles?.padding);
+
+        const cssTopPadding = parseSize(node.styles?.['padding-top']) ?? basePadding ?? 0;
+        const cssRightPadding = parseSize(node.styles?.['padding-right']) ?? basePadding ?? 0;
+        const cssBottomPadding = parseSize(node.styles?.['padding-bottom']) ?? basePadding ?? 0;
+        const cssLeftPadding = parseSize(node.styles?.['padding-left']) ?? basePadding ?? 0;
         
         frame.paddingTop = cssTopPadding;
         frame.paddingRight = cssRightPadding;
@@ -3238,17 +3495,62 @@ figma.ui.onmessage = async (msg) => {
     console.log(`[HTML] Processing: ${msg.name || 'Unnamed'}`);
     debugLog('[MAIN HANDLER] Structure length:', msg.structure?.length || 0);
     debugLog('[MAIN HANDLER] From MCP:', msg.fromMCP);
-    
+
     // ✅ DEDUPLICATION: Check if RequestID was already processed
     const requestId = msg.requestId || msg.timestamp || `fallback-${Date.now()}`;
     if (isRequestProcessed(requestId)) {
       console.log(`[DEDUP] 🚫 RequestID already processed, skipping: ${requestId}`);
       return;
     }
-    
+
     // Mark as processed immediately to prevent any race conditions
     markRequestProcessed(requestId);
-    
+
+    // Detect full page layout pattern (sidebar + main content)
+    const detectFullPageLayout = (structure: any[]): boolean => {
+      if (!structure || structure.length === 0) return false;
+
+      const checkNode = (node: any): boolean => {
+        if (!node.children || node.children.length < 2) return false;
+
+        // Look for sidebar pattern: position fixed/absolute with fixed width
+        const hasSidebar = node.children.some((child: any) => {
+          const pos = child.styles?.position;
+          const width = child.styles?.width;
+          return (pos === 'fixed' || pos === 'absolute') && width && !width.includes('%');
+        });
+
+        // Look for main content with margin-left
+        const hasMainContent = node.children.some((child: any) => {
+          const ml = child.styles?.['margin-left'];
+          return ml && parseSize(ml) && parseSize(ml)! > 50;
+        });
+
+        // Also detect 100vh height (full viewport)
+        const hasFullHeight = node.styles?.height === '100vh' ||
+                              node.styles?.['min-height'] === '100vh';
+
+        if (hasSidebar && hasMainContent) return true;
+        if (hasFullHeight) return true;
+
+        // Recursively check children
+        for (const child of node.children) {
+          if (checkNode(child)) return true;
+        }
+        return false;
+      };
+
+      for (const node of structure) {
+        if (checkNode(node)) return true;
+      }
+      return false;
+    };
+
+    const isFullPageLayout = detectFullPageLayout(msg.structure);
+    const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
+
+    debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
+
     // Create a main container frame for all HTML content
     const mainContainer = figma.createFrame();
     const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'}` : 'HTML Import Container';
@@ -3258,7 +3560,15 @@ figma.ui.onmessage = async (msg) => {
     // Enable auto-layout - el body controlará el layout interno
     mainContainer.layoutMode = 'VERTICAL';
     mainContainer.primaryAxisSizingMode = 'AUTO';
-    mainContainer.counterAxisSizingMode = 'AUTO';
+
+    // If full page layout detected, set fixed width; otherwise use AUTO
+    if (isFullPageLayout) {
+      mainContainer.counterAxisSizingMode = 'FIXED';
+      mainContainer.resize(DEFAULT_PAGE_WIDTH, mainContainer.height);
+      debugLog('[MAIN HANDLER] Set container width to:', DEFAULT_PAGE_WIDTH);
+    } else {
+      mainContainer.counterAxisSizingMode = 'AUTO';
+    }
 
     // Sin padding ni spacing hardcodeado - respetamos el CSS del HTML
     mainContainer.paddingLeft = 0;
@@ -3266,26 +3576,26 @@ figma.ui.onmessage = async (msg) => {
     mainContainer.paddingTop = 0;
     mainContainer.paddingBottom = 0;
     mainContainer.itemSpacing = 0;
-    
+
     // Position the container at current viewport center
     const viewport = figma.viewport.center;
-    mainContainer.x = viewport.x - 200;
+    mainContainer.x = viewport.x - (isFullPageLayout ? DEFAULT_PAGE_WIDTH / 2 : 200);
     mainContainer.y = viewport.y - 200;
-    
+
     // Add to current page
     figma.currentPage.appendChild(mainContainer);
-    
+
     debugLog('[MAIN HANDLER] Created main container, calling createFigmaNodesFromStructure...');
-    
+
     // Create all HTML content inside this container
     await createFigmaNodesFromStructure(msg.structure, mainContainer, 0, 0, undefined);
-    
+
     console.log('[HTML] ✅ Conversion completed');
-    
+
     // Select the created container for immediate visibility
     figma.currentPage.selection = [mainContainer];
     figma.viewport.scrollAndZoomIntoView([mainContainer]);
-    
+
     figma.notify('✅ HTML converted successfully!');
   }
 

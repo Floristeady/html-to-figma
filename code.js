@@ -854,14 +854,71 @@ function parseInlineStyles(styleStr) {
   return filterUnsupportedCSS(styles);
 }
 
+// Función para verificar si un selector CSS es problemático
+function isUnsupportedSelector(selector) {
+  // Omitir @keyframes, @media, etc.
+  if (selector.charAt(0) === '@') {
+    return true;
+  }
+
+  // Omitir pseudo-selectores problemáticos (excepto ::before/::after que ahora soportamos)
+  if (selector.includes(':hover') ||
+      selector.includes(':active') ||
+      selector.includes(':focus') ||
+      selector.includes(':nth-child') ||
+      selector.includes(':first-child') ||
+      selector.includes(':last-child')) {
+    return true;
+  }
+
+  // Permitir ::before y ::after (ahora los soportamos parcialmente)
+  return false;
+}
+
+// Función mejorada para manejar selectores CSS complejos
+function parseComplexSelector(selector) {
+  // Limpiar espacios extra (sin regex problemático)
+  selector = selector.split(/[ ]+/).join(' ').trim();
+
+  // Manejar múltiples selectores separados por coma
+  if (selector.indexOf(',') !== -1) {
+    return selector.split(',').map(function(s) { return s.trim(); });
+  }
+
+  return [selector];
+}
+
+// Función mejorada para validar selectores CSS
+function isValidCSSSelector(selector) {
+  // Validación simplificada sin regex complejos
+  if (!selector || selector.length === 0) return false;
+
+  // Selector de elemento simple (h1, div, span)
+  if (/^[a-zA-Z][a-zA-Z0-9-]*$/.test(selector)) return true;
+
+  // Selector de clase simple (.class)
+  if (selector.charAt(0) === '.' && selector.indexOf(' ') === -1) return true;
+
+  // Selector de ID (#id)
+  if (selector.charAt(0) === '#') return true;
+
+  // Selectores anidados (.parent .child, div .class, etc.)
+  if (selector.indexOf(' ') !== -1) return true;
+
+  // Pseudoelementos (::before, ::after)
+  if (selector.indexOf('::') !== -1) return true;
+
+  return false;
+}
+
 function extractCSS(htmlStr) {
   var cssRules = {};
   var allCssText = '';
 
-  // FIX: Soportar múltiples style tags usando indexOf (sin regex problemático)
+  // Soportar múltiples style tags
   var searchStr = htmlStr;
   var startTag = '<style';
-  var endTag = '</style>';
+  var endTag = '<' + '/style>';
 
   while (true) {
     var styleStart = searchStr.indexOf(startTag);
@@ -880,18 +937,18 @@ function extractCSS(htmlStr) {
 
   if (!allCssText) return cssRules;
 
-  // Remove CSS comments (simple approach)
+  // Remove CSS comments (simple approach sin regex problemático)
   var cleanCss = '';
   var inComment = false;
-  for (var i = 0; i < allCssText.length; i++) {
-    if (!inComment && allCssText[i] === '/' && allCssText[i+1] === '*') {
+  for (var ci = 0; ci < allCssText.length; ci++) {
+    if (!inComment && allCssText[ci] === '/' && allCssText[ci+1] === '*') {
       inComment = true;
-      i++;
-    } else if (inComment && allCssText[i] === '*' && allCssText[i+1] === '/') {
+      ci++;
+    } else if (inComment && allCssText[ci] === '*' && allCssText[ci+1] === '/') {
       inComment = false;
-      i++;
+      ci++;
     } else if (!inComment) {
-      cleanCss += allCssText[i];
+      cleanCss += allCssText[ci];
     }
   }
   allCssText = cleanCss;
@@ -903,34 +960,28 @@ function extractCSS(htmlStr) {
     if (rule) {
       var braceIdx = rule.indexOf('{');
       if (braceIdx > 0) {
-        var selectorPart = rule.substring(0, braceIdx).trim();
+        var selector = rule.substring(0, braceIdx).trim();
         var declarations = rule.substring(braceIdx + 1).trim();
 
-        if (selectorPart && declarations) {
-          var parsedDeclarations = parseInlineStyles(declarations);
-
-          // FIX: Soportar selectores separados por coma (.class1, .class2)
-          var selectors = selectorPart.split(',').map(function(s) { return s.trim(); });
+        if (selector && declarations && !isUnsupportedSelector(selector)) {
+          // Procesar selectores múltiples (separados por coma)
+          var selectors = parseComplexSelector(selector);
 
           for (var j = 0; j < selectors.length; j++) {
-            var selector = selectors[j];
-            if (!selector) continue;
+            var singleSelector = selectors[j];
 
-            // Handle class selectors (simple: .class)
-            if (selector.charAt(0) === '.') {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-            }
-            // Handle nested selectors like ".card .badge" or ".form-section h2"
-            else if (selector.includes('.') || selector.includes(' ')) {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-            }
-            // Handle element selectors like "th", "td", "body"
-            else if (selector.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
-            }
-            // Handle * (universal selector)
-            else if (selector === '*') {
-              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
+            if (isValidCSSSelector(singleSelector)) {
+              // Almacenar la regla CSS procesada
+              cssRules[singleSelector] = Object.assign({}, cssRules[singleSelector] || {}, parseInlineStyles(declarations));
+
+              // También manejar variaciones del selector
+              if (singleSelector.includes(' ')) {
+                // Para selectores anidados, también guardar versión normalizada
+                var normalizedSelector = singleSelector.replace(/\s+/g, ' ');
+                if (normalizedSelector !== singleSelector) {
+                  cssRules[normalizedSelector] = Object.assign({}, cssRules[normalizedSelector] || {}, parseInlineStyles(declarations));
+                }
+              }
             }
           }
         }
@@ -941,68 +992,252 @@ function extractCSS(htmlStr) {
   return cssRules;
 }
 
-// HTML parsing function (restored from backup with full CSS support)
+// HTML parsing function - COMPLETE VERSION with CSS specificity support
 function simpleParseHTML(htmlStr) {
   var parser = new DOMParser();
   var doc = parser.parseFromString(htmlStr, 'text/html');
   var body = doc.body || doc.documentElement;
-  
+
   var cssRules = extractCSS(htmlStr);
+
+  // Función para extraer content de pseudoelementos
+  function extractPseudoContent(element, cssRules) {
+    var className = element.getAttribute('class');
+    var tagName = element.tagName.toLowerCase();
+    var beforeContent = '';
+    var afterContent = '';
+
+    if (className) {
+      var classes = className.split(' ').filter(function(c) { return c.trim(); });
+
+      // Buscar ::before content
+      for (var i = 0; i < classes.length; i++) {
+        var beforeSelector = '.' + classes[i] + '::before';
+        if (cssRules[beforeSelector] && cssRules[beforeSelector].content) {
+          var contentValue = cssRules[beforeSelector].content;
+          if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+            beforeContent = SUPPORTED_CONTENT[contentValue];
+            break;
+          }
+        }
+      }
+
+      // Buscar ::after content
+      for (var i = 0; i < classes.length; i++) {
+        var afterSelector = '.' + classes[i] + '::after';
+        if (cssRules[afterSelector] && cssRules[afterSelector].content) {
+          var contentValue = cssRules[afterSelector].content;
+          if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+            afterContent = SUPPORTED_CONTENT[contentValue];
+            break;
+          }
+        }
+      }
+    }
+
+    // También buscar por elemento
+    var beforeElementSelector = tagName + '::before';
+    var afterElementSelector = tagName + '::after';
+
+    if (cssRules[beforeElementSelector] && cssRules[beforeElementSelector].content && !beforeContent) {
+      var contentValue = cssRules[beforeElementSelector].content;
+      if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+        beforeContent = SUPPORTED_CONTENT[contentValue];
+      }
+    }
+
+    if (cssRules[afterElementSelector] && cssRules[afterElementSelector].content && !afterContent) {
+      var contentValue = cssRules[afterElementSelector].content;
+      if (SUPPORTED_CONTENT.hasOwnProperty(contentValue)) {
+        afterContent = SUPPORTED_CONTENT[contentValue];
+      }
+    }
+
+    return { before: beforeContent, after: afterContent };
+  }
+
+  // Función mejorada para obtener todos los selectores que aplican a un elemento
+  function getAllMatchingSelectors(element) {
+    var matchingSelectors = [];
+    var className = element.getAttribute('class');
+    var tagName = element.tagName.toLowerCase();
+    var elementId = element.getAttribute('id');
+
+    // Construir jerarquía de ancestors
+    var ancestors = [];
+    var currentElement = element.parentElement;
+    while (currentElement && currentElement.tagName !== 'BODY' && currentElement.tagName !== 'HTML') {
+      var ancestorClasses = currentElement.getAttribute('class');
+      var ancestorTag = currentElement.tagName.toLowerCase();
+      var ancestorId = currentElement.getAttribute('id');
+
+      ancestors.push({
+        classes: ancestorClasses ? ancestorClasses.split(' ').filter(function(c) { return c.trim(); }) : [],
+        tag: ancestorTag,
+        id: ancestorId
+      });
+      currentElement = currentElement.parentElement;
+    }
+
+    // Verificar todos los selectores CSS disponibles
+    for (var selector in cssRules) {
+      if (cssRules.hasOwnProperty(selector)) {
+        // Skip pseudo-element selectors for main style matching
+        if (selector.includes('::before') || selector.includes('::after')) {
+          continue;
+        }
+        if (selectorMatches(selector, element, className, tagName, elementId, ancestors)) {
+          matchingSelectors.push({
+            selector: selector,
+            specificity: calculateSpecificity(selector),
+            styles: cssRules[selector]
+          });
+        }
+      }
+    }
+
+    // Ordenar por especificidad (menor a mayor)
+    matchingSelectors.sort(function(a, b) {
+      return a.specificity - b.specificity;
+    });
+
+    return matchingSelectors;
+  }
+
+  // Función para verificar si un selector CSS coincide con un elemento
+  function selectorMatches(selector, element, className, tagName, elementId, ancestors) {
+    // Selector de elemento simple
+    if (selector === tagName) {
+      return true;
+    }
+
+    // Selector de clase simple
+    if (selector.charAt(0) === '.' && !selector.includes(' ') && className) {
+      var selectorClass = selector.substring(1);
+      // Handle combined classes like .class1.class2
+      if (selectorClass.includes('.')) {
+        return matchesCombinedClasses(selector, className);
+      }
+      var classes = className.split(' ').filter(function(c) { return c.trim(); });
+      return classes.indexOf(selectorClass) !== -1;
+    }
+
+    // Selector de ID
+    if (selector.charAt(0) === '#' && elementId) {
+      return selector.substring(1) === elementId;
+    }
+
+    // Selectores anidados (descendant)
+    if (selector.includes(' ')) {
+      return matchesNestedSelector(selector, element, className, tagName, elementId, ancestors);
+    }
+
+    // Selectores múltiples con clases combinadas (.class1.class2)
+    if (selector.includes('.') && !selector.includes(' ') && selector.indexOf('.') !== selector.lastIndexOf('.')) {
+      return matchesCombinedClasses(selector, className);
+    }
+
+    return false;
+  }
+
+  // Función para manejar selectores anidados
+  function matchesNestedSelector(selector, element, className, tagName, elementId, ancestors) {
+    var parts = selector.split(' ').filter(function(p) { return p.trim(); }).reverse(); // Reverse para ir desde el elemento hacia arriba
+
+    // La primera parte debe coincidir con el elemento actual
+    if (!selectorMatches(parts[0], element, className, tagName, elementId, [])) {
+      return false;
+    }
+
+    // Verificar las partes restantes con los ancestors
+    var ancestorIndex = 0;
+    for (var i = 1; i < parts.length; i++) {
+      var found = false;
+      while (ancestorIndex < ancestors.length) {
+        var ancestor = ancestors[ancestorIndex];
+        var ancestorClassNames = ancestor.classes.join(' ');
+
+        if (selectorMatches(parts[i], null, ancestorClassNames, ancestor.tag, ancestor.id, [])) {
+          found = true;
+          ancestorIndex++;
+          break;
+        }
+        ancestorIndex++;
+      }
+
+      if (!found) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Función para manejar clases combinadas (.class1.class2)
+  function matchesCombinedClasses(selector, className) {
+    if (!className) return false;
+
+    var requiredClasses = selector.split('.').filter(function(c) { return c.trim(); });
+    var elementClasses = className.split(' ').filter(function(c) { return c.trim(); });
+
+    return requiredClasses.every(function(reqClass) {
+      return elementClasses.indexOf(reqClass) !== -1;
+    });
+  }
+
+  // Calcular especificidad CSS básica
+  function calculateSpecificity(selector) {
+    var specificity = 0;
+
+    // IDs = 100 (contar #)
+    for (var si = 0; si < selector.length; si++) {
+      if (selector[si] === '#') specificity += 100;
+    }
+
+    // Classes = 10 (contar .)
+    for (var si = 0; si < selector.length; si++) {
+      if (selector[si] === '.') specificity += 10;
+    }
+
+    // Elements = 1 (buscar palabras alfabéticas que no sigan a . o #)
+    var inWord = false;
+    var wordStart = 0;
+    for (var si = 0; si <= selector.length; si++) {
+      var ch = selector[si];
+      var isAlpha = ch && ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch === '-');
+      if (isAlpha && !inWord) {
+        inWord = true;
+        wordStart = si;
+      } else if (!isAlpha && inWord) {
+        inWord = false;
+        // Verificar si la palabra anterior no empieza con . o #
+        var prevChar = wordStart > 0 ? selector[wordStart - 1] : '';
+        if (prevChar !== '.' && prevChar !== '#') {
+          specificity += 1;
+        }
+      }
+    }
+
+    return specificity;
+  }
 
   function getElementStyles(element) {
     var styles = {};
-    var className = element.getAttribute('class');
-    
-    if (className) {
-      var classes = className.split(' ');
-  
-      for (var i = 0; i < classes.length; i++) {
-        var cls = classes[i].trim();
-        if (cls && cssRules['.' + cls]) {
-          styles = Object.assign(styles, cssRules['.' + cls]);
-        }
-      }
-      
-      // Check for combined class selectors like ".card.active"
-      var combinedSelector = '.' + classes.join('.');
-      if (cssRules[combinedSelector]) {
-        styles = Object.assign(styles, cssRules[combinedSelector]);
-      }
+
+    // Obtener todos los selectores que coinciden y aplicar en orden de especificidad
+    var matchingSelectors = getAllMatchingSelectors(element);
+
+    for (var i = 0; i < matchingSelectors.length; i++) {
+      styles = Object.assign(styles, matchingSelectors[i].styles);
     }
-    
-    // Check for element selectors (like "th", "td", "body")
-    var tagName = element.tagName.toLowerCase();
-    if (cssRules[tagName]) {
-      styles = Object.assign(styles, cssRules[tagName]);
-    }
-    
-    // Check for nested selectors - find parent classes
-    var parent = element.parentElement;
-    while (parent && parent.tagName !== 'BODY') {
-      var parentClass = parent.getAttribute('class');
-      if (parentClass && className) {
-        var nestedClassSelector = '.' + parentClass.split(' ')[0] + ' .' + className.split(' ')[0];
-        if (cssRules[nestedClassSelector]) {
-          styles = Object.assign(styles, cssRules[nestedClassSelector]);
-        }
-      }
-      
-      if (parentClass) {
-        var nestedElementSelector = '.' + parentClass.split(' ')[0] + ' ' + tagName;
-        if (cssRules[nestedElementSelector]) {
-          styles = Object.assign(styles, cssRules[nestedElementSelector]);
-        }
-      }
-      parent = parent.parentElement;
-    }
-    
+
     // Apply inline styles last (highest priority)
     var inlineStyle = element.getAttribute('style');
     if (inlineStyle) {
       var inlineStyles = parseInlineStyles(inlineStyle);
       styles = Object.assign(styles, inlineStyles);
     }
-    
+
     return styles;
   }
 
@@ -1012,6 +1247,9 @@ function simpleParseHTML(htmlStr) {
       var styles = getElementStyles(node);
       var text = '';
       var children = [];
+
+      // Extraer contenido de pseudoelementos
+      var pseudoContent = extractPseudoContent(node, cssRules);
 
       for (var i = 0; i < node.childNodes.length; i++) {
         var child = node.childNodes[i];
@@ -1028,6 +1266,16 @@ function simpleParseHTML(htmlStr) {
         }
       }
 
+      // Agregar contenido ::before como texto inicial
+      if (pseudoContent.before) {
+        text = pseudoContent.before + (text ? ' ' + text : '');
+      }
+
+      // Agregar contenido ::after como texto final
+      if (pseudoContent.after) {
+        text = (text || '') + (text ? ' ' : '') + pseudoContent.after;
+      }
+
       return {
         type: 'element',
         tagName: tag,
@@ -1039,18 +1287,26 @@ function simpleParseHTML(htmlStr) {
           alt: node.getAttribute('alt'),
           rows: node.getAttribute('rows')
         },
-        children: children
+        children: children,
+        pseudoContent: pseudoContent // Guardar para referencia
       };
     }
     return null;
   }
 
+  // Include body element with its styles (background, font-family, etc.)
+  var bodyStruct = nodeToStruct(body);
+  if (bodyStruct) {
+    return [bodyStruct];
+  }
+
+  // Fallback: if body parsing fails, return children directly
   var result = [];
   for (var i = 0; i < body.childNodes.length; i++) {
     var child = nodeToStruct(body.childNodes[i]);
     if (child) result.push(child);
   }
-  
+
   return result;
 }
 
@@ -2115,7 +2371,7 @@ async function createGridLayout(children, parentFrame, columns, gap, inheritedSt
     }
 }
 async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0, startY = 0, inheritedStyles) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60;
     debugLog('[NODE CREATION] Starting createFigmaNodesFromStructure');
     debugLog('[NODE CREATION] Structure:', structure);
     debugLog('[NODE CREATION] ParentFrame:', (parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) || 'none');
@@ -2230,26 +2486,27 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // Padding ONLY from CSS - no hardcoded defaults
-                const defaultPadding = 0; // No default padding - respect CSS only
-                const cssTopPadding = parseSize((_q = node.styles) === null || _q === void 0 ? void 0 : _q['padding-top']) || parseSize((_r = node.styles) === null || _r === void 0 ? void 0 : _r.padding) || defaultPadding;
-                const cssRightPadding = parseSize((_s = node.styles) === null || _s === void 0 ? void 0 : _s['padding-right']) || parseSize((_t = node.styles) === null || _t === void 0 ? void 0 : _t.padding) || defaultPadding;
-                const cssBottomPadding = parseSize((_u = node.styles) === null || _u === void 0 ? void 0 : _u['padding-bottom']) || parseSize((_v = node.styles) === null || _v === void 0 ? void 0 : _v.padding) || defaultPadding;
-                const cssLeftPadding = parseSize((_w = node.styles) === null || _w === void 0 ? void 0 : _w['padding-left']) || parseSize((_x = node.styles) === null || _x === void 0 ? void 0 : _x.padding) || defaultPadding;
+                // FIXED: Use ?? instead of || to respect padding: 0
+                const basePadding = parseSize((_q = node.styles) === null || _q === void 0 ? void 0 : _q.padding);
+                const cssTopPadding = (_t = (_s = parseSize((_r = node.styles) === null || _r === void 0 ? void 0 : _r['padding-top'])) !== null && _s !== void 0 ? _s : basePadding) !== null && _t !== void 0 ? _t : 0;
+                const cssRightPadding = (_w = (_v = parseSize((_u = node.styles) === null || _u === void 0 ? void 0 : _u['padding-right'])) !== null && _v !== void 0 ? _v : basePadding) !== null && _w !== void 0 ? _w : 0;
+                const cssBottomPadding = (_z = (_y = parseSize((_x = node.styles) === null || _x === void 0 ? void 0 : _x['padding-bottom'])) !== null && _y !== void 0 ? _y : basePadding) !== null && _z !== void 0 ? _z : 0;
+                const cssLeftPadding = (_2 = (_1 = parseSize((_0 = node.styles) === null || _0 === void 0 ? void 0 : _0['padding-left'])) !== null && _1 !== void 0 ? _1 : basePadding) !== null && _2 !== void 0 ? _2 : 0;
                 frame.paddingTop = cssTopPadding;
                 frame.paddingRight = cssRightPadding;
                 frame.paddingBottom = cssBottomPadding;
                 frame.paddingLeft = cssLeftPadding;
                 // Set spacing: RESPETAR CSS gap (incluyendo gap: 0)
                 let gap;
-                if (((_y = node.styles) === null || _y === void 0 ? void 0 : _y.gap) !== undefined) {
-                    gap = (_z = parseSize(node.styles.gap)) !== null && _z !== void 0 ? _z : 0;
+                if (((_3 = node.styles) === null || _3 === void 0 ? void 0 : _3.gap) !== undefined) {
+                    gap = (_4 = parseSize(node.styles.gap)) !== null && _4 !== void 0 ? _4 : 0;
                 }
                 else {
                     gap = layoutMode === 'HORIZONTAL' ? 16 : 12;
                 }
                 frame.itemSpacing = gap;
                 // Store gap for grid layout
-                if (((_0 = node.styles) === null || _0 === void 0 ? void 0 : _0.display) === 'grid') {
+                if (((_5 = node.styles) === null || _5 === void 0 ? void 0 : _5.display) === 'grid') {
                     frame.setPluginData('gridGap', gap.toString());
                 }
                 // Only set position if there's no parent (root elements)
@@ -2262,12 +2519,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     parentFrame.appendChild(frame);
                 }
                 // Apply full width AFTER appendChild (proper timing) - BUT NOT for elements with explicit dimensions
-                const hasExplicitDimensions = ((_1 = node.styles) === null || _1 === void 0 ? void 0 : _1.width) || ((_2 = node.styles) === null || _2 === void 0 ? void 0 : _2.height);
+                const hasExplicitDimensions = ((_6 = node.styles) === null || _6 === void 0 ? void 0 : _6.width) || ((_7 = node.styles) === null || _7 === void 0 ? void 0 : _7.height);
                 if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
                     try {
                         frame.layoutSizingHorizontal = 'FILL';
                         // Maintain vertical HUG for containers to grow with content
-                        if (!((_3 = node.styles) === null || _3 === void 0 ? void 0 : _3.height)) {
+                        if (!((_8 = node.styles) === null || _8 === void 0 ? void 0 : _8.height)) {
                             frame.layoutSizingVertical = 'HUG';
                         }
                     }
@@ -2280,22 +2537,22 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     // Only resize if needed, don't force arbitrary widths
                     frame.resize(Math.max(frame.width, 300), frame.height);
                     // Allow vertical growth for containers
-                    if (!((_4 = node.styles) === null || _4 === void 0 ? void 0 : _4.height)) {
+                    if (!((_9 = node.styles) === null || _9 === void 0 ? void 0 : _9.height)) {
                         frame.layoutSizingVertical = 'HUG';
                     }
                 }
                 else if (hasExplicitDimensions) {
                 }
                 // Handle flex child height separately for ALL elements (including those with explicit width like sidebar)
-                if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !((_5 = node.styles) === null || _5 === void 0 ? void 0 : _5.height)) {
+                if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !((_10 = node.styles) === null || _10 === void 0 ? void 0 : _10.height)) {
                     try {
                         frame.layoutSizingVertical = 'FILL';
                         // Debug height filling for sidebar
-                        if (((_6 = node.styles) === null || _6 === void 0 ? void 0 : _6.className) === 'sidebar') {
+                        if (((_11 = node.styles) === null || _11 === void 0 ? void 0 : _11.className) === 'sidebar') {
                         }
                     }
                     catch (error) {
-                        console.error('Height fill error for', ((_7 = node.styles) === null || _7 === void 0 ? void 0 : _7.className) || 'element', error);
+                        console.error('Height fill error for', ((_12 = node.styles) === null || _12 === void 0 ? void 0 : _12.className) || 'element', error);
                     }
                 }
                 // Apply centering for elements marked with margin: 0 auto
@@ -2306,18 +2563,18 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 // Pass styles that should be inherited by children
                 // CRITICAL: Track if we're inside a width-constrained container
-                const thisHasWidth = Boolean((_8 = node.styles) === null || _8 === void 0 ? void 0 : _8.width);
+                const thisHasWidth = Boolean((_13 = node.styles) === null || _13 === void 0 ? void 0 : _13.width);
                 const parentHadWidth = (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_hasConstrainedWidth']) === true;
                 const inheritableStyles = Object.assign(Object.assign({}, inheritedStyles), { 
                     // CRITICAL: Propagate width constraint to all descendants
                     '_hasConstrainedWidth': thisHasWidth || parentHadWidth, 
                     // Solo heredar color si el hijo no tiene uno propio
-                    color: ((_9 = node.styles) === null || _9 === void 0 ? void 0 : _9.color) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles.color), 'font-family': ((_10 = node.styles) === null || _10 === void 0 ? void 0 : _10['font-family']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-family']), 'font-size': ((_11 = node.styles) === null || _11 === void 0 ? void 0 : _11['font-size']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-size']), 'line-height': ((_12 = node.styles) === null || _12 === void 0 ? void 0 : _12['line-height']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['line-height']), 
+                    color: ((_14 = node.styles) === null || _14 === void 0 ? void 0 : _14.color) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles.color), 'font-family': ((_15 = node.styles) === null || _15 === void 0 ? void 0 : _15['font-family']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-family']), 'font-size': ((_16 = node.styles) === null || _16 === void 0 ? void 0 : _16['font-size']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-size']), 'line-height': ((_17 = node.styles) === null || _17 === void 0 ? void 0 : _17['line-height']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['line-height']), 
                     // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
-                    'parent-has-gradient': (((_13 = node.styles) === null || _13 === void 0 ? void 0 : _13['background']) && node.styles['background'].includes('linear-gradient')) ||
+                    'parent-has-gradient': (((_18 = node.styles) === null || _18 === void 0 ? void 0 : _18['background']) && node.styles['background'].includes('linear-gradient')) ||
                         (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-has-gradient']), 
                     // Pass parent class name to help with styling decisions
-                    'parent-class': ((_14 = node.styles) === null || _14 === void 0 ? void 0 : _14.className) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-class']) });
+                    'parent-class': ((_19 = node.styles) === null || _19 === void 0 ? void 0 : _19.className) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-class']) });
                 // Create text node if there's direct text content
                 if (node.text && node.text.trim()) {
                     await figma.loadFontAsync({ family: "Inter", style: "Regular" });
@@ -2338,10 +2595,10 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Process children if they exist
                 if (node.children && node.children.length > 0) {
                     // Manejo de grid genérico
-                    if (((_15 = node.styles) === null || _15 === void 0 ? void 0 : _15.display) === 'grid') {
-                        const gridTemplateColumns = (_16 = node.styles) === null || _16 === void 0 ? void 0 : _16['grid-template-columns'];
+                    if (((_20 = node.styles) === null || _20 === void 0 ? void 0 : _20.display) === 'grid') {
+                        const gridTemplateColumns = (_21 = node.styles) === null || _21 === void 0 ? void 0 : _21['grid-template-columns'];
                         const columns = parseGridColumns(gridTemplateColumns);
-                        const gap = parseSize((_17 = node.styles) === null || _17 === void 0 ? void 0 : _17.gap) || parseSize((parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('gridGap')) || '') || 12;
+                        const gap = parseSize((_22 = node.styles) === null || _22 === void 0 ? void 0 : _22.gap) || parseSize((parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('gridGap')) || '') || 12;
                         // Si no se pudieron parsear columnas, usar fallback
                         const finalColumns = columns > 0 ? columns : 2;
                         await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
@@ -2351,7 +2608,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // Apply flex grow after appendChild for proper timing
-                if ((((_18 = node.styles) === null || _18 === void 0 ? void 0 : _18.flex) === '1' || ((_19 = node.styles) === null || _19 === void 0 ? void 0 : _19['flex-grow']) === '1') && parentFrame) {
+                if ((((_23 = node.styles) === null || _23 === void 0 ? void 0 : _23.flex) === '1' || ((_24 = node.styles) === null || _24 === void 0 ? void 0 : _24['flex-grow']) === '1') && parentFrame) {
                     if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
                         try {
                             frame.layoutGrow = 1;
@@ -2398,37 +2655,37 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             }
             else if (['input', 'textarea', 'select'].includes(node.tagName)) {
                 // Calcular alto y ancho
-                let inputWidth = parseSize((_20 = node.styles) === null || _20 === void 0 ? void 0 : _20.width);
+                let inputWidth = parseSize((_25 = node.styles) === null || _25 === void 0 ? void 0 : _25.width);
                 const inputHeight = node.tagName === 'textarea' ?
-                    (parseSize((_21 = node.attributes) === null || _21 === void 0 ? void 0 : _21.rows) || 3) * 20 + 20 :
-                    parseSize((_22 = node.styles) === null || _22 === void 0 ? void 0 : _22.height) || 40;
+                    (parseSize((_26 = node.attributes) === null || _26 === void 0 ? void 0 : _26.rows) || 3) * 20 + 20 :
+                    parseSize((_27 = node.styles) === null || _27 === void 0 ? void 0 : _27.height) || 40;
                 const input = figma.createFrame();
                 // Fondo y borde: usar CSS si está, si no, fallback blanco/gris
                 let bgColor = { r: 1, g: 1, b: 1 };
-                if (((_23 = node.styles) === null || _23 === void 0 ? void 0 : _23['background']) && node.styles['background'] !== 'transparent') {
+                if (((_28 = node.styles) === null || _28 === void 0 ? void 0 : _28['background']) && node.styles['background'] !== 'transparent') {
                     const bgParsed = hexToRgb(node.styles['background']);
                     if (bgParsed)
                         bgColor = bgParsed;
                 }
-                else if (((_24 = node.styles) === null || _24 === void 0 ? void 0 : _24['background-color']) && node.styles['background-color'] !== 'transparent') {
+                else if (((_29 = node.styles) === null || _29 === void 0 ? void 0 : _29['background-color']) && node.styles['background-color'] !== 'transparent') {
                     const bgParsed = hexToRgb(node.styles['background-color']);
                     if (bgParsed)
                         bgColor = bgParsed;
                 }
                 input.fills = [{ type: 'SOLID', color: bgColor }];
                 let borderColor = { r: 0.8, g: 0.8, b: 0.8 };
-                if (((_25 = node.styles) === null || _25 === void 0 ? void 0 : _25['border']) || ((_26 = node.styles) === null || _26 === void 0 ? void 0 : _26['border-color'])) {
+                if (((_30 = node.styles) === null || _30 === void 0 ? void 0 : _30['border']) || ((_31 = node.styles) === null || _31 === void 0 ? void 0 : _31['border-color'])) {
                     const borderParsed = hexToRgb(node.styles['border-color'] || extractBorderColor(node.styles['border']));
                     if (borderParsed)
                         borderColor = borderParsed;
                 }
                 input.strokes = [{ type: 'SOLID', color: borderColor }];
-                input.strokeWeight = parseSize((_27 = node.styles) === null || _27 === void 0 ? void 0 : _27['border-width']) || 1;
-                input.cornerRadius = parseSize((_28 = node.styles) === null || _28 === void 0 ? void 0 : _28['border-radius']) || 4;
+                input.strokeWeight = parseSize((_32 = node.styles) === null || _32 === void 0 ? void 0 : _32['border-width']) || 1;
+                input.cornerRadius = parseSize((_33 = node.styles) === null || _33 === void 0 ? void 0 : _33['border-radius']) || 4;
                 input.name = node.tagName.toUpperCase();
                 input.layoutMode = 'HORIZONTAL';
                 // Solo centrar si el CSS lo especifica (no hardcodear centrado)
-                if (((_29 = node.styles) === null || _29 === void 0 ? void 0 : _29['text-align']) === 'center') {
+                if (((_34 = node.styles) === null || _34 === void 0 ? void 0 : _34['text-align']) === 'center') {
                     input.primaryAxisAlignItems = 'CENTER'; // Horizontal center
                     input.counterAxisAlignItems = 'CENTER'; // Vertical center
                 }
@@ -2436,13 +2693,13 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     input.primaryAxisAlignItems = 'MIN'; // Alineado a la izquierda horizontalmente (eje principal)
                     input.counterAxisAlignItems = 'CENTER'; // Centrado verticalmente (eje perpendicular)
                 }
-                input.paddingLeft = parseSize((_30 = node.styles) === null || _30 === void 0 ? void 0 : _30['padding-left']) || 12;
-                input.paddingRight = parseSize((_31 = node.styles) === null || _31 === void 0 ? void 0 : _31['padding-right']) || 12;
+                input.paddingLeft = parseSize((_35 = node.styles) === null || _35 === void 0 ? void 0 : _35['padding-left']) || 12;
+                input.paddingRight = parseSize((_36 = node.styles) === null || _36 === void 0 ? void 0 : _36['padding-right']) || 12;
                 // Detectar si el parent es auto-layout
                 const parentIsAutoLayout = parentFrame && parentFrame.type === 'FRAME' && parentFrame.layoutMode && parentFrame.layoutMode !== 'NONE';
                 // Soporte width: 100% (FILL) si el CSS lo pide y el parent es auto-layout
                 let useFill = false;
-                if (((_32 = node.styles) === null || _32 === void 0 ? void 0 : _32.width) === '100%') {
+                if (((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37.width) === '100%') {
                     if (parentIsAutoLayout) {
                         useFill = true;
                         // NO setear FILL aquí - lo haremos después de appendChild
@@ -2464,17 +2721,17 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Add placeholder or value text
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const inputText = figma.createText();
-                const displayText = ((_33 = node.attributes) === null || _33 === void 0 ? void 0 : _33.value) || ((_34 = node.attributes) === null || _34 === void 0 ? void 0 : _34.placeholder) ||
+                const displayText = ((_38 = node.attributes) === null || _38 === void 0 ? void 0 : _38.value) || ((_39 = node.attributes) === null || _39 === void 0 ? void 0 : _39.placeholder) ||
                     (node.tagName === 'select' ? 'Select option ▼' : 'Input field');
                 inputText.characters = displayText;
                 // Color de texto: usar CSS si está, si no, gris claro para placeholder
                 let textColor = { r: 0.2, g: 0.2, b: 0.2 };
-                if ((_35 = node.styles) === null || _35 === void 0 ? void 0 : _35.color) {
+                if ((_40 = node.styles) === null || _40 === void 0 ? void 0 : _40.color) {
                     const colorParsed = hexToRgb(node.styles.color);
                     if (colorParsed)
                         textColor = colorParsed;
                 }
-                else if (!((_36 = node.attributes) === null || _36 === void 0 ? void 0 : _36.value)) {
+                else if (!((_41 = node.attributes) === null || _41 === void 0 ? void 0 : _41.value)) {
                     textColor = { r: 0.6, g: 0.6, b: 0.6 };
                 }
                 inputText.fills = [{ type: 'SOLID', color: textColor }];
@@ -2504,7 +2761,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'table') {
-                const tableWidth = parseSize((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37.width) || 500; // Increased default width
+                const tableWidth = parseSize((_42 = node.styles) === null || _42 === void 0 ? void 0 : _42.width) || 500; // Increased default width
                 let tableHeight = 60; // Base height for header
                 // Calculate table height based on rows
                 const bodyRows = node.children.filter((c) => c.tagName === 'tbody' || c.tagName === 'tr');
@@ -2618,12 +2875,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Check if parent has text-align center and inherit it
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                     // If parent container has text-align center, apply it to this text
-                    if (!((_38 = node.styles) === null || _38 === void 0 ? void 0 : _38['text-align'])) {
+                    if (!((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43['text-align'])) {
                         cellText.textAlignHorizontal = 'CENTER';
                     }
                 }
                 // Special debug for detail elements
-                if ((_40 = (_39 = node.styles) === null || _39 === void 0 ? void 0 : _39.className) === null || _40 === void 0 ? void 0 : _40.includes('detail')) {
+                if ((_45 = (_44 = node.styles) === null || _44 === void 0 ? void 0 : _44.className) === null || _45 === void 0 ? void 0 : _45.includes('detail')) {
                 }
                 if (!parentFrame) {
                     cell.x = startX;
@@ -2635,8 +2892,8 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'button') {
-                const buttonWidth = parseSize((_41 = node.styles) === null || _41 === void 0 ? void 0 : _41.width) || Math.max(120, node.text.length * 12);
-                const buttonHeight = parseSize((_42 = node.styles) === null || _42 === void 0 ? void 0 : _42.height) || 50; // Aumentado de 40 a 50
+                const buttonWidth = parseSize((_46 = node.styles) === null || _46 === void 0 ? void 0 : _46.width) || Math.max(120, node.text.length * 12);
+                const buttonHeight = parseSize((_47 = node.styles) === null || _47 === void 0 ? void 0 : _47.height) || 50; // Aumentado de 40 a 50
                 const frame = figma.createFrame();
                 frame.resize(buttonWidth, buttonHeight);
                 frame.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.5, b: 1 } }];
@@ -2675,12 +2932,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'img') {
-                const width = parseSize((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43.width) || 200;
-                const height = parseSize((_44 = node.styles) === null || _44 === void 0 ? void 0 : _44.height) || 150;
+                const width = parseSize((_48 = node.styles) === null || _48 === void 0 ? void 0 : _48.width) || 200;
+                const height = parseSize((_49 = node.styles) === null || _49 === void 0 ? void 0 : _49.height) || 150;
                 const frame = figma.createFrame();
                 frame.resize(width, height);
                 frame.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
-                frame.name = 'Image: ' + (((_45 = node.attributes) === null || _45 === void 0 ? void 0 : _45.alt) || 'Unnamed');
+                frame.name = 'Image: ' + (((_50 = node.attributes) === null || _50 === void 0 ? void 0 : _50.alt) || 'Unnamed');
                 // Center the placeholder text
                 frame.layoutMode = 'HORIZONTAL';
                 frame.primaryAxisAlignItems = 'CENTER';
@@ -2688,7 +2945,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Add placeholder text
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const placeholderText = figma.createText();
-                placeholderText.characters = ((_46 = node.attributes) === null || _46 === void 0 ? void 0 : _46.alt) || 'Image';
+                placeholderText.characters = ((_51 = node.attributes) === null || _51 === void 0 ? void 0 : _51.alt) || 'Image';
                 placeholderText.fills = [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }];
                 frame.appendChild(placeholderText);
                 if (!parentFrame) {
@@ -2730,7 +2987,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             else if (node.tagName === 'li') {
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const text = figma.createText();
-                const parentList = ((_47 = parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) === null || _47 === void 0 ? void 0 : _47.includes('OL')) ? 'OL' : 'UL';
+                const parentList = ((_52 = parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) === null || _52 === void 0 ? void 0 : _52.includes('OL')) ? 'OL' : 'UL';
                 const bullet = parentList === 'OL' ? '1. ' : '• ';
                 text.characters = bullet + (node.text || 'List item');
                 text.name = 'List Item';
@@ -2741,12 +2998,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Check if parent has text-align center and inherit it
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                     // If parent container has text-align center, apply it to this text
-                    if (!((_48 = node.styles) === null || _48 === void 0 ? void 0 : _48['text-align'])) {
+                    if (!((_53 = node.styles) === null || _53 === void 0 ? void 0 : _53['text-align'])) {
                         text.textAlignHorizontal = 'CENTER';
                     }
                 }
                 // Special debug for detail elements
-                if ((_50 = (_49 = node.styles) === null || _49 === void 0 ? void 0 : _49.className) === null || _50 === void 0 ? void 0 : _50.includes('detail')) {
+                if ((_55 = (_54 = node.styles) === null || _54 === void 0 ? void 0 : _54.className) === null || _55 === void 0 ? void 0 : _55.includes('detail')) {
                 }
                 if (!parentFrame) {
                     text.x = startX;
@@ -2759,7 +3016,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             }
             else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'label'].includes(node.tagName)) {
                 // Special handling for span elements with backgrounds (like badges)
-                const hasBackground = ((_51 = node.styles) === null || _51 === void 0 ? void 0 : _51['background']) || ((_52 = node.styles) === null || _52 === void 0 ? void 0 : _52['background-color']);
+                const hasBackground = ((_56 = node.styles) === null || _56 === void 0 ? void 0 : _56['background']) || ((_57 = node.styles) === null || _57 === void 0 ? void 0 : _57['background-color']);
                 const isSpanWithBackground = node.tagName === 'span' && hasBackground && hasBackground !== 'transparent';
                 if (isSpanWithBackground) {
                     // Create span with background as FrameNode (like a badge)
@@ -2821,12 +3078,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     // Check if parent has text-align center and inherit it
                     if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                         // If parent container has text-align center, apply it to this text
-                        if (!((_53 = node.styles) === null || _53 === void 0 ? void 0 : _53['text-align'])) {
+                        if (!((_58 = node.styles) === null || _58 === void 0 ? void 0 : _58['text-align'])) {
                             text.textAlignHorizontal = 'CENTER';
                         }
                     }
                     // Special debug for detail elements
-                    if ((_55 = (_54 = node.styles) === null || _54 === void 0 ? void 0 : _54.className) === null || _55 === void 0 ? void 0 : _55.includes('detail')) {
+                    if ((_60 = (_59 = node.styles) === null || _59 === void 0 ? void 0 : _59.className) === null || _60 === void 0 ? void 0 : _60.includes('detail')) {
                     }
                     // Better text positioning and width
                     if (!parentFrame) {
@@ -3091,6 +3348,50 @@ figma.ui.onmessage = async (msg) => {
         }
         // Mark as processed immediately to prevent any race conditions
         markRequestProcessed(requestId);
+        // Detect full page layout pattern (sidebar + main content)
+        const detectFullPageLayout = (structure) => {
+            if (!structure || structure.length === 0)
+                return false;
+            const checkNode = (node) => {
+                var _a, _b;
+                if (!node.children || node.children.length < 2)
+                    return false;
+                // Look for sidebar pattern: position fixed/absolute with fixed width
+                const hasSidebar = node.children.some((child) => {
+                    var _a, _b;
+                    const pos = (_a = child.styles) === null || _a === void 0 ? void 0 : _a.position;
+                    const width = (_b = child.styles) === null || _b === void 0 ? void 0 : _b.width;
+                    return (pos === 'fixed' || pos === 'absolute') && width && !width.includes('%');
+                });
+                // Look for main content with margin-left
+                const hasMainContent = node.children.some((child) => {
+                    var _a;
+                    const ml = (_a = child.styles) === null || _a === void 0 ? void 0 : _a['margin-left'];
+                    return ml && parseSize(ml) && parseSize(ml) > 50;
+                });
+                // Also detect 100vh height (full viewport)
+                const hasFullHeight = ((_a = node.styles) === null || _a === void 0 ? void 0 : _a.height) === '100vh' ||
+                    ((_b = node.styles) === null || _b === void 0 ? void 0 : _b['min-height']) === '100vh';
+                if (hasSidebar && hasMainContent)
+                    return true;
+                if (hasFullHeight)
+                    return true;
+                // Recursively check children
+                for (const child of node.children) {
+                    if (checkNode(child))
+                        return true;
+                }
+                return false;
+            };
+            for (const node of structure) {
+                if (checkNode(node))
+                    return true;
+            }
+            return false;
+        };
+        const isFullPageLayout = detectFullPageLayout(msg.structure);
+        const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
+        debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
         // Create a main container frame for all HTML content
         const mainContainer = figma.createFrame();
         const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'}` : 'HTML Import Container';
@@ -3099,7 +3400,15 @@ figma.ui.onmessage = async (msg) => {
         // Enable auto-layout - el body controlará el layout interno
         mainContainer.layoutMode = 'VERTICAL';
         mainContainer.primaryAxisSizingMode = 'AUTO';
-        mainContainer.counterAxisSizingMode = 'AUTO';
+        // If full page layout detected, set fixed width; otherwise use AUTO
+        if (isFullPageLayout) {
+            mainContainer.counterAxisSizingMode = 'FIXED';
+            mainContainer.resize(DEFAULT_PAGE_WIDTH, mainContainer.height);
+            debugLog('[MAIN HANDLER] Set container width to:', DEFAULT_PAGE_WIDTH);
+        }
+        else {
+            mainContainer.counterAxisSizingMode = 'AUTO';
+        }
         // Sin padding ni spacing hardcodeado - respetamos el CSS del HTML
         mainContainer.paddingLeft = 0;
         mainContainer.paddingRight = 0;
@@ -3108,7 +3417,7 @@ figma.ui.onmessage = async (msg) => {
         mainContainer.itemSpacing = 0;
         // Position the container at current viewport center
         const viewport = figma.viewport.center;
-        mainContainer.x = viewport.x - 200;
+        mainContainer.x = viewport.x - (isFullPageLayout ? DEFAULT_PAGE_WIDTH / 2 : 200);
         mainContainer.y = viewport.y - 200;
         // Add to current page
         figma.currentPage.appendChild(mainContainer);
