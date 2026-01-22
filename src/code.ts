@@ -16,10 +16,9 @@ const html = `<html>
       color: #1A1A1A;
       padding: 16px;
       line-height: 1.4;
-      height: 100vh;
+      min-height: auto;
       display: flex;
       flex-direction: column;
-      overflow-y: auto;
     }
     
     .header {
@@ -67,15 +66,11 @@ const html = `<html>
     
     /* Tab Content */
     .tab-content {
-      flex: 1;
       display: none;
-      min-height: 0;
-      overflow-y: auto;
     }
-    
+
     .tab-content.active {
-      display: flex;
-      flex-direction: column;
+      display: block;
     }
     
     /* MCP Tab Styles */
@@ -240,57 +235,58 @@ const html = `<html>
       opacity: 0.8;
     }
 
-    /* CONNECTION STATUS STYLES */
+    /* CONNECTION STATUS STYLES - Minimalist */
     .connection-status {
       margin: 12px 0;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      border-left: 3px solid #dee2e6;
-      transition: all 0.3s ease;
-    }
-
-    .connection-status.connected {
-      background: #d4edda;
-      border-left-color: #28a745;
-    }
-
-    .connection-status.error {
-      background: #f8d7da;
-      border-left-color: #dc3545;
-    }
-
-    .connection-status.warning {
-      background: #fff3cd;
-      border-left-color: #ffc107;
+      padding: 12px 0;
+      border-top: 1px solid #E6E6E6;
+      border-bottom: 1px solid #E6E6E6;
     }
 
     .status-row {
       display: flex;
       align-items: center;
-      margin: 4px 0;
+      margin: 6px 0;
     }
 
     .status-icon {
-      margin-right: 8px;
-      font-size: 12px;
-      min-width: 16px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 10px;
+      background: #ccc;
+      flex-shrink: 0;
+    }
+
+    .status-icon.connected {
+      background: #22c55e;
+    }
+
+    .status-icon.error {
+      background: #ef4444;
+    }
+
+    .status-icon.warning {
+      background: #f59e0b;
+    }
+
+    .status-icon.inactive {
+      background: #9ca3af;
     }
 
     .status-text {
-      font-weight: 500;
+      font-weight: 400;
       font-size: 13px;
-      color: #333;
+      color: #666;
     }
 
     .info-row {
-      margin-top: 6px;
+      margin-top: 8px;
     }
 
     .status-detail {
       font-size: 11px;
-      color: #6c757d;
-      font-style: italic;
+      color: #999;
     }
 
     /* ACTION BUTTONS */
@@ -430,12 +426,12 @@ const html = `<html>
     /* Minimized state */
     .minimized-bar {
       display: none;
-      padding: 6px 12px;
-      padding-right: 32px;
+      padding: 8px 16px;
+      padding-right: 40px;
       background: #FFFFFF;
       align-items: center;
-      gap: 8px;
-      height: 32px;
+      gap: 10px;
+      height: 36px;
     }
 
     .minimized-bar .status-dot {
@@ -512,11 +508,11 @@ const html = `<html>
     <!-- CONNECTION STATUS -->
     <div class="connection-status" id="connection-status">
       <div class="status-row">
-        <span class="status-icon" id="sse-indicator">🔴</span>
+        <span class="status-icon inactive" id="sse-indicator"></span>
         <span class="status-text" id="sse-status-text">SSE Disconnected</span>
       </div>
       <div class="status-row">
-        <span class="status-icon" id="mcp-indicator">⚪</span>
+        <span class="status-icon inactive" id="mcp-indicator"></span>
         <span class="status-text" id="mcp-status-text">MCP Inactive</span>
       </div>
       <div class="status-row info-row">
@@ -627,8 +623,8 @@ document.getElementById('mcp-switch').addEventListener('change', function() {
   
   if (mcpMonitoring) {
     updateConnectionStatus('connecting');
-    updateSSEStatus('🟡 SSE Connecting...', 'connecting');
-    updateMCPStatus('🔄 MCP Starting', 'connecting');
+    updateSSEStatus('SSE Connecting...', 'connecting');
+    updateMCPStatus('MCP Starting', 'connecting');
     updateConnectionDetails('Establishing connection...');
     
     // Start SSE connection
@@ -646,8 +642,8 @@ document.getElementById('mcp-switch').addEventListener('change', function() {
     }, '*');
   } else {
     updateConnectionStatus('disconnected');
-    updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
-    updateMCPStatus('⚪ MCP Inactive', 'disconnected');
+    updateSSEStatus('SSE Disconnected', 'disconnected');
+    updateMCPStatus('MCP Inactive', 'disconnected');
     updateConnectionDetails('Ready to connect');
     
     // Stop SSE connection
@@ -771,18 +767,19 @@ function updateSSEStatus(text, status) {
   }
 
   if (indicator) {
+    indicator.className = 'status-icon';
     switch(status) {
       case 'connected':
-        indicator.textContent = '🟢';
+        indicator.classList.add('connected');
         break;
       case 'connecting':
-        indicator.textContent = '🟡';
+        indicator.classList.add('warning');
         break;
       case 'error':
-        indicator.textContent = '❌';
+        indicator.classList.add('error');
         break;
       default:
-        indicator.textContent = '🔴';
+        indicator.classList.add('inactive');
     }
   }
 }
@@ -790,24 +787,26 @@ function updateSSEStatus(text, status) {
 function updateMCPStatus(text, status) {
   var indicator = document.getElementById('mcp-indicator');
   var statusText = document.getElementById('mcp-status-text');
-  
+
   if (statusText) {
     statusText.textContent = text;
   }
-  
+
   if (indicator) {
+    indicator.className = 'status-icon';
     switch(status) {
       case 'connected':
-        indicator.textContent = '✅';
+      case 'success':
+        indicator.classList.add('connected');
         break;
       case 'connecting':
-        indicator.textContent = '🔄';
+        indicator.classList.add('warning');
         break;
       case 'error':
-        indicator.textContent = '🔴';
+        indicator.classList.add('error');
         break;
       default:
-        indicator.textContent = '⚪';
+        indicator.classList.add('inactive');
     }
   }
 }
@@ -857,44 +856,88 @@ function parseInlineStyles(styleStr) {
 
 function extractCSS(htmlStr) {
   var cssRules = {};
-  var styleStart = htmlStr.indexOf('<style>');
-  var styleEnd = htmlStr.indexOf('</style>');
-  
-  if (styleStart !== -1 && styleEnd !== -1) {
-    var cssText = htmlStr.substring(styleStart + 7, styleEnd);
-    
-    // Remove CSS comments to prevent parsing corruption
-    cssText = cssText.replace(/\\/\\*[\\s\\S]*?\\*\\//g, '');
-    
-    var rules = cssText.split('}');
-    
-    for (var i = 0; i < rules.length; i++) {
-      var rule = rules[i].trim();
-      if (rule) {
-        var braceIdx = rule.indexOf('{');
-        if (braceIdx > 0) {
-          var selector = rule.substring(0, braceIdx).trim();
-          var declarations = rule.substring(braceIdx + 1).trim();
-          
-          if (selector && declarations) {
-            // Handle class selectors (simple and nested)
+  var allCssText = '';
+
+  // FIX: Soportar múltiples style tags usando indexOf (sin regex problemático)
+  var searchStr = htmlStr;
+  var startTag = '<style';
+  var endTag = '</style>';
+
+  while (true) {
+    var styleStart = searchStr.indexOf(startTag);
+    if (styleStart === -1) break;
+
+    var contentStart = searchStr.indexOf('>', styleStart);
+    if (contentStart === -1) break;
+    contentStart += 1;
+
+    var styleEnd = searchStr.indexOf(endTag, contentStart);
+    if (styleEnd === -1) break;
+
+    allCssText += searchStr.substring(contentStart, styleEnd) + ' ';
+    searchStr = searchStr.substring(styleEnd + endTag.length);
+  }
+
+  if (!allCssText) return cssRules;
+
+  // Remove CSS comments (simple approach)
+  var cleanCss = '';
+  var inComment = false;
+  for (var i = 0; i < allCssText.length; i++) {
+    if (!inComment && allCssText[i] === '/' && allCssText[i+1] === '*') {
+      inComment = true;
+      i++;
+    } else if (inComment && allCssText[i] === '*' && allCssText[i+1] === '/') {
+      inComment = false;
+      i++;
+    } else if (!inComment) {
+      cleanCss += allCssText[i];
+    }
+  }
+  allCssText = cleanCss;
+
+  var rules = allCssText.split('}');
+
+  for (var i = 0; i < rules.length; i++) {
+    var rule = rules[i].trim();
+    if (rule) {
+      var braceIdx = rule.indexOf('{');
+      if (braceIdx > 0) {
+        var selectorPart = rule.substring(0, braceIdx).trim();
+        var declarations = rule.substring(braceIdx + 1).trim();
+
+        if (selectorPart && declarations) {
+          var parsedDeclarations = parseInlineStyles(declarations);
+
+          // FIX: Soportar selectores separados por coma (.class1, .class2)
+          var selectors = selectorPart.split(',').map(function(s) { return s.trim(); });
+
+          for (var j = 0; j < selectors.length; j++) {
+            var selector = selectors[j];
+            if (!selector) continue;
+
+            // Handle class selectors (simple: .class)
             if (selector.charAt(0) === '.') {
-              cssRules[selector] = parseInlineStyles(declarations);
+              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
             }
             // Handle nested selectors like ".card .badge" or ".form-section h2"
-            else if (selector.includes('.') && selector.includes(' ')) {
-              cssRules[selector] = parseInlineStyles(declarations);
+            else if (selector.includes('.') || selector.includes(' ')) {
+              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
             }
-            // Handle element selectors like "th" or "td"
+            // Handle element selectors like "th", "td", "body"
             else if (selector.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
-              cssRules[selector] = parseInlineStyles(declarations);
+              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
+            }
+            // Handle * (universal selector)
+            else if (selector === '*') {
+              cssRules[selector] = Object.assign({}, cssRules[selector] || {}, parsedDeclarations);
             }
           }
         }
       }
     }
   }
-  
+
   return cssRules;
 }
 
@@ -1042,25 +1085,28 @@ function updateConnectionDetails(text) {
 function updateMCPStatus(text, status) {
   var indicator = document.getElementById('mcp-indicator');
   var statusText = document.getElementById('mcp-status-text');
-  
+
   if (statusText) {
     statusText.textContent = text;
   }
-  
+
   if (indicator) {
+    indicator.className = 'status-icon';
     switch(status) {
       case 'success':
-        indicator.textContent = '✅';
+      case 'connected':
+        indicator.classList.add('connected');
         break;
       case 'waiting':
       case 'info':
-        indicator.textContent = '🔄';
+      case 'connecting':
+        indicator.classList.add('warning');
         break;
       case 'error':
-        indicator.textContent = '🔴';
+        indicator.classList.add('error');
         break;
       default:
-        indicator.textContent = '⚪';
+        indicator.classList.add('inactive');
     }
   }
     }
@@ -1097,9 +1143,9 @@ window.addEventListener('message', function(event) {
           }
         }, '*');
         
-        updateStatusMessage('✅ Converted: ' + msg.name, 'success');
+        updateStatusMessage('Converted: ' + msg.name, 'success');
       } catch (error) {
-        updateStatusMessage('❌ Error processing HTML', 'error');
+        updateStatusMessage('Error processing HTML', 'error');
       }
     } else if (msg.type === 'request-file-mcp-data') {
       // Handle file system reading for MCP data
@@ -1154,7 +1200,7 @@ function startRealSSEConnection() {
       debugLog('[SSE] Connection opened successfully');
       sseConnected = true;
       sseReconnectAttempts = 0;
-      updateSSEStatus('🟢 SSE Connected', 'connected');
+      updateSSEStatus('SSE Connected', 'connected');
       updateConnectionStatus('connected');
       updateConnectionDetails('Ready for MCP requests');
     };
@@ -1175,12 +1221,12 @@ function startRealSSEConnection() {
       sseConnected = false;
       
       if (eventSource.readyState === EventSource.CLOSED) {
-        updateSSEStatus('🔴 SSE Disconnected', 'error');
+        updateSSEStatus('SSE Disconnected', 'error');
         updateConnectionStatus('error');
         updateConnectionDetails('Connection lost');
         attemptSSEReconnection();
       } else {
-        updateSSEStatus('🟡 SSE Connection Issues', 'warning');
+        updateSSEStatus('SSE Connection Issues', 'warning');
         updateConnectionStatus('warning');
         updateConnectionDetails('Connection unstable');
       }
@@ -1188,7 +1234,7 @@ function startRealSSEConnection() {
     
   } catch (error) {
     console.error('[SSE] Failed to create EventSource:', error);
-    updateSSEStatus('❌ SSE Failed to Start', 'error');
+    updateSSEStatus('SSE Failed to Start', 'error');
     updateConnectionStatus('error');
     updateConnectionDetails('Failed to start SSE');
   }
@@ -1204,7 +1250,7 @@ function stopRealSSEConnection() {
   
   sseConnected = false;
   sseReconnectAttempts = 0;
-  updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
+  updateSSEStatus('SSE Disconnected', 'disconnected');
   updateConnectionStatus('disconnected');
   updateConnectionDetails('Ready to connect');
 }
@@ -1212,14 +1258,14 @@ function stopRealSSEConnection() {
 function attemptSSEReconnection() {
   if (sseReconnectAttempts >= maxReconnectAttempts) {
     debugLog('[SSE] Max reconnection attempts reached');
-    updateSSEStatus('❌ SSE Connection Failed', 'error');
+    updateSSEStatus('SSE Connection Failed', 'error');
     updateConnectionStatus('error');
     updateConnectionDetails('Max reconnection attempts reached');
     return;
   }
   
   sseReconnectAttempts++;
-  updateSSEStatus('🔄 Reconnecting... (' + sseReconnectAttempts + '/' + maxReconnectAttempts + ')', 'connecting');
+  updateSSEStatus('Reconnecting (' + sseReconnectAttempts + '/' + maxReconnectAttempts + ')', 'connecting');
   updateConnectionStatus('warning');
   updateConnectionDetails('Reconnecting...');
   
@@ -1235,8 +1281,8 @@ function processSSEMessage(data) {
   switch (data.type) {
     case 'connection-established':
       debugLog('[SSE] Connection established confirmed');
-      updateSSEStatus('✅ SSE Ready for MCP', 'connected');
-      updateMCPStatus('✅ MCP Ready', 'connected');
+      updateSSEStatus('SSE Ready', 'connected');
+      updateMCPStatus('MCP Ready', 'connected');
       updateConnectionDetails('Ready for MCP requests');
       break;
       
@@ -1268,7 +1314,7 @@ function handleSSEMCPRequest(data) {
     debugLog('[SSE] Processing HTML import:', designName);
     debugLog('[SSE] *** USING DIRECT PARSING - TYPESCRIPT VERSION 4.0 ***');
     updateConnectionDetails('Processing: ' + designName);
-    updateMCPStatus('🎨 Processing: ' + designName, 'connecting');
+    updateMCPStatus('Processing: ' + designName, 'connecting');
     
     // DIRECT PROCESSING: Parse HTML and send structure directly
     try {
@@ -1290,11 +1336,11 @@ function handleSSEMCPRequest(data) {
       }, '*');
       
       debugLog('[SSE] Sent html-structure directly to main handler');
-      updateMCPStatus('✅ Converted: ' + designName, 'success');
+      updateMCPStatus('Converted: ' + designName, 'success');
       
     } catch (error) {
       console.error('[SSE] Error parsing HTML:', error);
-      updateMCPStatus('❌ Error: ' + error.message, 'error');
+      updateMCPStatus('Error: ' + error.message, 'error');
     }
     
   } else {
@@ -1314,13 +1360,13 @@ window.addEventListener('message', function(event) {
     } else if (msg.type === 'stop-sse-connection') {
       stopRealSSEConnection();
     } else if (msg.type === 'sse-connected') {
-      updateSSEStatus('✅ SSE Connected', 'connected');
-      updateMCPStatus('✅ MCP Ready', 'connected');
+      updateSSEStatus('SSE Connected', 'connected');
+      updateMCPStatus('MCP Ready', 'connected');
     } else if (msg.type === 'sse-disconnected') {
-      updateSSEStatus('🔴 SSE Disconnected', 'disconnected');
-      updateMCPStatus('⚪ MCP Inactive', 'disconnected');
+      updateSSEStatus('SSE Disconnected', 'disconnected');
+      updateMCPStatus('MCP Inactive', 'disconnected');
     } else if (msg.type === 'test-broadcast-complete') {
-      updateConnectionDetails('✅ Connection test completed');
+      updateConnectionDetails('Connection test completed');
     }
   }
 });
@@ -1329,7 +1375,7 @@ window.addEventListener('message', function(event) {
 </body>
 </html>`;
 
-figma.showUI(html, { width: 360, height: 500 });
+figma.showUI(html, { width: 360, height: 380 });
 
 function hexToRgb(color: string): {r: number, g: number, b: number} | null {
   // First handle CSS color keywords
@@ -1934,10 +1980,13 @@ function applyStylesToText(text: TextNode, styles: any) {
       const percent = parseFloat(value);
       if (!isNaN(percent)) text.lineHeight = { value: percent, unit: 'PERCENT' };
     } else if (!isNaN(Number(value))) {
-      // Unitless: NO aplicar nada
-    } else {
-      // Otros valores (normal, inherit, etc): ignorar
+      // Unitless (ej: 1.5): convertir a porcentaje (1.5 = 150%)
+      const multiplier = parseFloat(value);
+      if (!isNaN(multiplier) && multiplier > 0) {
+        text.lineHeight = { value: multiplier * 100, unit: 'PERCENT' };
+      }
     }
+    // Otros valores (normal, inherit, etc): ignorar - Figma usa default
   }
   
   // Letter spacing
@@ -2139,7 +2188,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       const nodeStyles = { ...inheritedStyles, ...node.styles };
       node.styles = nodeStyles;
       
-      if (['div', 'section', 'article', 'nav', 'header', 'footer', 'main'].includes(node.tagName)) {
+      if (['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside'].includes(node.tagName)) {
         const frame = figma.createFrame();
         frame.name = node.tagName.toUpperCase() + ' Frame';
         
@@ -2148,15 +2197,28 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         if (node.styles?.display === 'flex') {
           // Flex direction: row = HORIZONTAL, column = VERTICAL
           layoutMode = node.styles?.['flex-direction'] === 'column' ? 'VERTICAL' : 'HORIZONTAL';
-          
-          // Debug flexbox layout
-          if (node.styles?.className === 'dashboard') {
-          }
         } else if (node.styles?.display === 'grid') {
           // Keep vertical layout for grid - we'll handle 2x2 layout in child processing
           layoutMode = 'VERTICAL';
-
         }
+
+        // SIDEBAR PATTERN DETECTION: Si hay hijo con position:fixed/width + hijo con margin-left
+        // Cambiar a HORIZONTAL para layout sidebar + contenido
+        if (layoutMode === 'VERTICAL' && node.children && node.children.length >= 2) {
+          const hasSidebar = node.children.some((child: any) => {
+            const pos = child.styles?.position;
+            const width = child.styles?.width;
+            return (pos === 'fixed' || pos === 'absolute') && width && !width.includes('%');
+          });
+          const hasMainContent = node.children.some((child: any) => {
+            const ml = child.styles?.['margin-left'];
+            return ml && parseSize(ml) && parseSize(ml)! > 50;
+          });
+          if (hasSidebar && hasMainContent) {
+            layoutMode = 'HORIZONTAL';
+          }
+        }
+
         frame.layoutMode = layoutMode;
         
         // Set basic properties - AUTO para que se ajuste al contenido
@@ -2249,8 +2311,13 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         frame.paddingBottom = cssBottomPadding;
         frame.paddingLeft = cssLeftPadding;
         
-        // Set spacing: usar CSS gap o default más generoso
-        const gap = parseSize(node.styles?.gap) || (layoutMode === 'HORIZONTAL' ? 16 : 12);
+        // Set spacing: RESPETAR CSS gap (incluyendo gap: 0)
+        let gap: number;
+        if (node.styles?.gap !== undefined) {
+          gap = parseSize(node.styles.gap) ?? 0;
+        } else {
+          gap = layoutMode === 'HORIZONTAL' ? 16 : 12;
+        }
         frame.itemSpacing = gap;
         
         // Store gap for grid layout
@@ -3125,7 +3192,7 @@ figma.ui.onmessage = async (msg) => {
     if (msg.minimized) {
       figma.ui.resize(360, 40);
     } else {
-      figma.ui.resize(360, 500);
+      figma.ui.resize(360, 380);
     }
     return;
   }
@@ -3186,21 +3253,19 @@ figma.ui.onmessage = async (msg) => {
     const mainContainer = figma.createFrame();
     const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'}` : 'HTML Import Container';
     mainContainer.name = containerName;
-    mainContainer.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-    
-    // Enable auto-layout for better organization
+    mainContainer.fills = []; // Sin fondo - el body lo controla
+
+    // Enable auto-layout - el body controlará el layout interno
     mainContainer.layoutMode = 'VERTICAL';
     mainContainer.primaryAxisSizingMode = 'AUTO';
     mainContainer.counterAxisSizingMode = 'AUTO';
-    
-    // Set minimum width to ensure proper sizing
-    mainContainer.minWidth = 600;
-    
-    mainContainer.paddingLeft = 30;
-    mainContainer.paddingRight = 30;
-    mainContainer.paddingTop = 30;
-    mainContainer.paddingBottom = 30;
-    mainContainer.itemSpacing = 20;
+
+    // Sin padding ni spacing hardcodeado - respetamos el CSS del HTML
+    mainContainer.paddingLeft = 0;
+    mainContainer.paddingRight = 0;
+    mainContainer.paddingTop = 0;
+    mainContainer.paddingBottom = 0;
+    mainContainer.itemSpacing = 0;
     
     // Position the container at current viewport center
     const viewport = figma.viewport.center;
