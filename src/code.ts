@@ -913,6 +913,7 @@ function isValidCSSSelector(selector) {
 
 function extractCSS(htmlStr) {
   var cssRules = {};
+  var cssVariables = {}; // FIXED: Store CSS variables
   var allCssText = '';
 
   // Soportar múltiples style tags
@@ -953,6 +954,74 @@ function extractCSS(htmlStr) {
   }
   allCssText = cleanCss;
 
+  // FIXED: Extract CSS variables from :root
+  var rootMatch = allCssText.match(/:root\s*\{([^}]+)\}/);
+  if (rootMatch) {
+    var rootDeclarations = rootMatch[1];
+    var varPairs = rootDeclarations.split(';');
+    for (var vi = 0; vi < varPairs.length; vi++) {
+      var pair = varPairs[vi].trim();
+      if (pair.indexOf('--') === 0) {
+        var colonIdx = pair.indexOf(':');
+        if (colonIdx > 0) {
+          var varName = pair.substring(0, colonIdx).trim();
+          var varValue = pair.substring(colonIdx + 1).trim();
+          cssVariables[varName] = varValue;
+        }
+      }
+    }
+  }
+
+  // FIXED: Function to resolve var() references
+  function resolveVariables(value) {
+    if (!value || typeof value !== 'string') return value;
+    return value.replace(/var\(([^)]+)\)/g, function(match, varRef) {
+      var parts = varRef.split(',');
+      var varName = parts[0].trim();
+      var fallback = parts[1] ? parts[1].trim() : null;
+      return cssVariables[varName] || fallback || match;
+    });
+  }
+
+  // FIXED: Remove @media, @keyframes, @supports blocks to prevent parsing issues
+  // These have nested braces that confuse the simple split by '}'
+  function removeAtRuleBlocks(css) {
+    var result = '';
+    var i = 0;
+    while (i < css.length) {
+      // Check for @ rules
+      if (css[i] === '@' && (css.substring(i, i + 6) === '@media' ||
+                             css.substring(i, i + 10) === '@keyframes' ||
+                             css.substring(i, i + 9) === '@supports' ||
+                             css.substring(i, i + 8) === '@charset' ||
+                             css.substring(i, i + 7) === '@import')) {
+        // Find the opening brace
+        var braceStart = css.indexOf('{', i);
+        if (braceStart === -1) {
+          // No brace, skip to end of line
+          var lineEnd = css.indexOf(';', i);
+          i = lineEnd !== -1 ? lineEnd + 1 : css.length;
+          continue;
+        }
+        // Count braces to find matching closing brace
+        var braceCount = 1;
+        var j = braceStart + 1;
+        while (j < css.length && braceCount > 0) {
+          if (css[j] === '{') braceCount++;
+          else if (css[j] === '}') braceCount--;
+          j++;
+        }
+        i = j; // Skip the entire @rule block
+      } else {
+        result += css[i];
+        i++;
+      }
+    }
+    return result;
+  }
+
+  allCssText = removeAtRuleBlocks(allCssText);
+
   var rules = allCssText.split('}');
 
   for (var i = 0; i < rules.length; i++) {
@@ -971,15 +1040,17 @@ function extractCSS(htmlStr) {
             var singleSelector = selectors[j];
 
             if (isValidCSSSelector(singleSelector)) {
+              // FIXED: Resolve CSS variables before parsing
+              var resolvedDeclarations = resolveVariables(declarations);
               // Almacenar la regla CSS procesada
-              cssRules[singleSelector] = Object.assign({}, cssRules[singleSelector] || {}, parseInlineStyles(declarations));
+              cssRules[singleSelector] = Object.assign({}, cssRules[singleSelector] || {}, parseInlineStyles(resolvedDeclarations));
 
               // También manejar variaciones del selector
               if (singleSelector.includes(' ')) {
                 // Para selectores anidados, también guardar versión normalizada
                 var normalizedSelector = singleSelector.replace(/\s+/g, ' ');
                 if (normalizedSelector !== singleSelector) {
-                  cssRules[normalizedSelector] = Object.assign({}, cssRules[normalizedSelector] || {}, parseInlineStyles(declarations));
+                  cssRules[normalizedSelector] = Object.assign({}, cssRules[normalizedSelector] || {}, parseInlineStyles(resolvedDeclarations));
                 }
               }
             }
@@ -1106,6 +1177,11 @@ function simpleParseHTML(htmlStr) {
 
   // Función para verificar si un selector CSS coincide con un elemento
   function selectorMatches(selector, element, className, tagName, elementId, ancestors) {
+    // FIXED: Universal selector (*) matches all elements
+    if (selector === '*') {
+      return true;
+    }
+
     // Selector de elemento simple
     if (selector === tagName) {
       return true;
@@ -1741,7 +1817,12 @@ function hexToRgba(color: string): {r: number, g: number, b: number, a: number} 
 
 function parseSize(value: string): number | null {
   if (!value || value === 'auto' || value === 'inherit' || value === 'initial') return null;
-  
+
+  // FIXED: Handle calc() expressions
+  if (value.includes('calc(')) {
+    return parseCalc(value);
+  }
+
   // Handle percentage values for border-radius specially
   if (value.includes('%')) {
     // For border-radius: 50%, we should return a special value
@@ -1750,9 +1831,70 @@ function parseSize(value: string): number | null {
     }
     return null; // Other percentages handled by special logic
   }
-  
+
   const numericValue = parseFloat(value);
   return isNaN(numericValue) ? null : numericValue;
+}
+
+// FIXED: Parse calc() expressions - handles simple cases like calc(100px - 20px), calc(50% - 10px)
+function parseCalc(value: string): number | null {
+  // Extract content inside calc()
+  const match = value.match(/calc\(([^)]+)\)/);
+  if (!match) return null;
+
+  const expression = match[1].trim();
+
+  // Handle simple addition/subtraction: "100px - 20px" or "50px + 10px"
+  // Split by + or - while keeping the operator
+  const parts = expression.split(/\s*([+-])\s*/);
+
+  if (parts.length === 1) {
+    // Single value inside calc
+    return parseFloat(parts[0]) || null;
+  }
+
+  if (parts.length === 3) {
+    // Simple binary operation: value operator value
+    const left = parseFloat(parts[0]);
+    const operator = parts[1];
+    const right = parseFloat(parts[2]);
+
+    if (isNaN(left) || isNaN(right)) {
+      // One operand might be percentage - just return the px value if one exists
+      if (parts[0].includes('px')) return parseFloat(parts[0]);
+      if (parts[2].includes('px')) return parseFloat(parts[2]);
+      return null;
+    }
+
+    if (operator === '+') return left + right;
+    if (operator === '-') return left - right;
+  }
+
+  // For complex expressions, try to extract first numeric value
+  const numMatch = expression.match(/(\d+(?:\.\d+)?)\s*px/);
+  if (numMatch) return parseFloat(numMatch[1]);
+
+  return null;
+}
+
+// FIXED: Parse percentage values and calculate based on parent size
+function parsePercentage(value: string): number | null {
+  if (!value || !value.includes('%')) return null;
+  const match = value.match(/^([0-9.]+)%$/);
+  if (match) {
+    return parseFloat(match[1]);
+  }
+  return null;
+}
+
+function calculatePercentageWidth(widthValue: string, parentFrame: FrameNode | null): number | null {
+  if (!parentFrame || !widthValue) return null;
+  const percentage = parsePercentage(widthValue);
+  if (percentage === null) return null;
+
+  // Calculate available width (parent width minus padding)
+  const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
+  return Math.round((percentage / 100) * availableWidth);
 }
 
 function parseMargin(marginValue: string): {top: number, right: number, bottom: number, left: number} {
@@ -2276,6 +2418,15 @@ function applyStylesToText(text: TextNode, styles: any) {
     }
   }
   
+  // Font style (italic)
+  if (styles['font-style'] === 'italic') {
+    figma.loadFontAsync({ family: "Inter", style: "Italic" }).then(() => {
+      text.fontName = { family: "Inter", style: "Italic" };
+    }).catch(() => {
+      // Fallback: no italic available
+    });
+  }
+
   // Text decoration
   if (styles['text-decoration']) {
     const decoration = styles['text-decoration'];
@@ -2368,14 +2519,37 @@ async function calculateContentSize(children: any[]): Promise<{width: number, he
 // Helper function to parse number of columns from grid-template-columns
 function parseGridColumns(gridTemplate: string | undefined): number {
   if (!gridTemplate) return 1;
-  // Soporta repeat(N, 1fr) y listas explícitas
-  const repeatMatch = gridTemplate.match(/repeat\((\d+),\s*1fr\)/);
+
+  // FIXED: Support more grid-template-columns patterns
+
+  // 1. repeat(N, ...) - any repeat with explicit count
+  const repeatMatch = gridTemplate.match(/repeat\((\d+),/);
   if (repeatMatch) {
     return parseInt(repeatMatch[1], 10);
   }
-  // Cuenta la cantidad de "1fr" en la lista
-  const columns = gridTemplate.split(' ').filter(x => x.trim().endsWith('fr'));
-  return columns.length > 0 ? columns.length : 1;
+
+  // 2. auto-fill / auto-fit - estimate based on common patterns
+  if (gridTemplate.includes('auto-fill') || gridTemplate.includes('auto-fit')) {
+    // Try to extract minmax min value to estimate columns
+    const minmaxMatch = gridTemplate.match(/minmax\((\d+)px/);
+    if (minmaxMatch) {
+      const minWidth = parseInt(minmaxMatch[1], 10);
+      // Estimate columns based on typical container width (1200px)
+      return Math.max(1, Math.floor(1200 / (minWidth + 16))); // 16px gap estimate
+    }
+    return 3; // Default for auto-fill/auto-fit
+  }
+
+  // 3. Count column definitions (handles: "200px 1fr 100px", "1fr 1fr 1fr", etc.)
+  // Split by space but handle minmax() as single unit
+  const normalized = gridTemplate.replace(/minmax\([^)]+\)/g, '1fr'); // Treat minmax as 1fr
+  const parts = normalized.split(/\s+/).filter(p => p.trim() && p !== '');
+
+  if (parts.length > 0) {
+    return parts.length;
+  }
+
+  return 1;
 }
 
 // Grid layout genérico para N columnas
@@ -2450,12 +2624,15 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         
         // LAYOUT MODE: Aplicar display CSS directamente PRIMERO
         let layoutMode: 'HORIZONTAL' | 'VERTICAL' = 'VERTICAL';
-        if (node.styles?.display === 'flex') {
+        if (node.styles?.display === 'flex' || node.styles?.display === 'inline-flex') {
           // Flex direction: row = HORIZONTAL, column = VERTICAL
           layoutMode = node.styles?.['flex-direction'] === 'column' ? 'VERTICAL' : 'HORIZONTAL';
         } else if (node.styles?.display === 'grid') {
           // Keep vertical layout for grid - we'll handle 2x2 layout in child processing
           layoutMode = 'VERTICAL';
+        } else if (node.styles?.display === 'inline' || node.styles?.display === 'inline-block') {
+          // Inline elements: children flow horizontally
+          layoutMode = 'HORIZONTAL';
         }
 
         // SIDEBAR PATTERN DETECTION: Si hay hijo con position:fixed/width + hijo con margin-left
@@ -2476,7 +2653,12 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         }
 
         frame.layoutMode = layoutMode;
-        
+
+        // FIXED: Support flex-wrap
+        if (node.styles?.['flex-wrap'] === 'wrap' || node.styles?.['flex-wrap'] === 'wrap-reverse') {
+          frame.layoutWrap = 'WRAP';
+        }
+
         // Set basic properties - AUTO para que se ajuste al contenido
         frame.primaryAxisSizingMode = 'AUTO';
         frame.counterAxisSizingMode = 'AUTO';
@@ -2530,8 +2712,11 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         
 
         
-        // Store if we need to apply full width (ALL div containers should fill parent width)
-        const needsFullWidth = true; // All div containers should fill their parent width when in auto-layout
+        // FIXED: Determine if element should fill width based on CSS display property
+        // Block-level elements fill width, inline elements don't
+        const display = node.styles?.display || 'block'; // Default is block for div
+        const isInlineElement = display === 'inline' || display === 'inline-block' || display === 'inline-flex';
+        const needsFullWidth = !isInlineElement; // Only block-level elements fill parent width
         
         // Remove early height filling - will do it after appendChild
         
@@ -2590,11 +2775,60 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         } else {
           parentFrame.appendChild(frame);
         }
-        
-        // Apply full width AFTER appendChild (proper timing) - BUT NOT for elements with explicit dimensions
-        const hasExplicitDimensions = node.styles?.width || node.styles?.height;
-        
-        if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
+
+        // FIXED: Handle position: absolute/relative with top/left/right/bottom
+        if (node.styles?.position === 'absolute' && parentFrame) {
+          try {
+            // In Figma, use absolute positioning within auto-layout
+            frame.layoutPositioning = 'ABSOLUTE';
+
+            // Apply top/left/right/bottom as constraints
+            const top = parseSize(node.styles?.top);
+            const left = parseSize(node.styles?.left);
+            const right = parseSize(node.styles?.right);
+            const bottom = parseSize(node.styles?.bottom);
+
+            // Set position based on top/left
+            if (top !== null) frame.y = top;
+            if (left !== null) frame.x = left;
+
+            // Set constraints based on which values are defined
+            if (top !== null && bottom !== null) {
+              frame.constraints = { vertical: 'STRETCH', horizontal: frame.constraints?.horizontal || 'MIN' };
+            } else if (bottom !== null) {
+              frame.constraints = { vertical: 'MAX', horizontal: frame.constraints?.horizontal || 'MIN' };
+            } else if (top !== null) {
+              frame.constraints = { vertical: 'MIN', horizontal: frame.constraints?.horizontal || 'MIN' };
+            }
+
+            if (left !== null && right !== null) {
+              frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'STRETCH' };
+            } else if (right !== null) {
+              frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'MAX' };
+            } else if (left !== null) {
+              frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'MIN' };
+            }
+          } catch (error) {
+            // Fallback: just position with x/y if absolute positioning fails
+            console.error('Absolute positioning error:', error);
+          }
+        }
+
+        // Apply sizing AFTER appendChild (proper timing)
+        const widthValue = node.styles?.width;
+        const heightValue = node.styles?.height;
+        const hasExplicitPixelWidth = widthValue && parseSize(widthValue) !== null;
+        const hasPercentageWidth = widthValue && parsePercentage(widthValue) !== null;
+        const hasExplicitDimensions = hasExplicitPixelWidth || heightValue;
+
+        // FIXED: Handle percentage widths
+        if (hasPercentageWidth && parentFrame) {
+          const calculatedWidth = calculatePercentageWidth(widthValue, parentFrame);
+          if (calculatedWidth && calculatedWidth > 0) {
+            frame.resize(calculatedWidth, frame.height);
+            frame.layoutSizingHorizontal = 'FIXED';
+          }
+        } else if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
           try {
             frame.layoutSizingHorizontal = 'FILL';
             // Maintain vertical HUG for containers to grow with content
@@ -2647,11 +2881,18 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           ...inheritedStyles,
           // CRITICAL: Propagate width constraint to all descendants
           '_hasConstrainedWidth': thisHasWidth || parentHadWidth,
-          // Solo heredar color si el hijo no tiene uno propio
+
+          // TEXT PROPERTIES - CSS inherited properties
           color: node.styles?.color || inheritedStyles?.color,
           'font-family': node.styles?.['font-family'] || inheritedStyles?.['font-family'],
           'font-size': node.styles?.['font-size'] || inheritedStyles?.['font-size'],
+          'font-weight': node.styles?.['font-weight'] || inheritedStyles?.['font-weight'],
+          'font-style': node.styles?.['font-style'] || inheritedStyles?.['font-style'],
           'line-height': node.styles?.['line-height'] || inheritedStyles?.['line-height'],
+          'text-align': node.styles?.['text-align'] || inheritedStyles?.['text-align'],
+          'letter-spacing': node.styles?.['letter-spacing'] || inheritedStyles?.['letter-spacing'],
+          'word-spacing': node.styles?.['word-spacing'] || inheritedStyles?.['word-spacing'],
+          'text-transform': node.styles?.['text-transform'] || inheritedStyles?.['text-transform'],
 
           // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
           'parent-has-gradient': (node.styles?.['background'] && node.styles['background'].includes('linear-gradient')) ||
@@ -2673,12 +2914,14 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           
           frame.appendChild(textNode);
           
-          // FIXED: Set appropriate width for text wrapping in auto-layout
+          // FIXED: Use FILL for text in auto-layout containers instead of hardcoded width
           if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
-            const maxWidth = Math.min(frame.width - frame.paddingLeft - frame.paddingRight, 800);
-            const textWidth = Math.max(maxWidth > 0 ? maxWidth : 400, 200);
-            textNode.resize(textWidth, textNode.height);
+            // Text should fill the container width and wrap
+            textNode.layoutSizingHorizontal = 'FILL';
             textNode.textAutoResize = 'HEIGHT';
+          } else {
+            // No auto-layout: let text size naturally
+            textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
           }
         }
         
@@ -2720,16 +2963,19 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       } else if (node.tagName === 'form') {
         const form = figma.createFrame();
         form.name = 'FORM';
-        form.fills = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }];
+        form.fills = []; // FIXED: No hardcoded background - let CSS handle it
         form.layoutMode = 'VERTICAL';
         form.primaryAxisSizingMode = 'AUTO';
         form.counterAxisSizingMode = 'AUTO';
-        form.paddingLeft = 20;
-        form.paddingRight = 20;
-        form.paddingTop = 20;
-        form.paddingBottom = 20;
-        form.itemSpacing = 18;
-        
+
+        // FIXED: Only apply default padding/spacing if no CSS values
+        const basePadding = parseSize(node.styles?.padding);
+        form.paddingLeft = parseSize(node.styles?.['padding-left']) ?? basePadding ?? 0;
+        form.paddingRight = parseSize(node.styles?.['padding-right']) ?? basePadding ?? 0;
+        form.paddingTop = parseSize(node.styles?.['padding-top']) ?? basePadding ?? 0;
+        form.paddingBottom = parseSize(node.styles?.['padding-bottom']) ?? basePadding ?? 0;
+        form.itemSpacing = parseSize(node.styles?.gap) ?? 0;
+
         if (node.styles) {
           applyStylesToFrame(form, node.styles);
         }
@@ -2927,16 +3173,42 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         
       } else if (['td', 'th'].includes(node.tagName)) {
         const cell = figma.createFrame();
-        cell.resize(85, 50); // Aumentado de 40 a 50
-        cell.fills = [];
-        cell.strokes = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
-        cell.strokeWeight = 0.5;
+
+        // FIXED: Use CSS dimensions or auto-size
+        const cellWidth = parseSize(node.styles?.width) || 100; // Reasonable default
+        const cellHeight = parseSize(node.styles?.height) || 40;
+        cell.resize(cellWidth, cellHeight);
+
+        // FIXED: Use CSS background-color or transparent
+        const bgColor = node.styles?.['background-color'] || node.styles?.background;
+        if (bgColor && bgColor !== 'transparent') {
+          const parsedBg = hexToRgb(bgColor);
+          cell.fills = parsedBg ? [{ type: 'SOLID', color: parsedBg }] : [];
+        } else {
+          cell.fills = [];
+        }
+
+        // FIXED: Use CSS border or light default
+        const borderColor = node.styles?.['border-color'];
+        if (borderColor) {
+          const parsedBorder = hexToRgb(borderColor);
+          cell.strokes = parsedBorder ? [{ type: 'SOLID', color: parsedBorder }] : [];
+        } else {
+          cell.strokes = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
+        }
+        cell.strokeWeight = parseSize(node.styles?.['border-width']) ?? 0.5;
+
         cell.name = node.tagName.toUpperCase();
         cell.layoutMode = 'HORIZONTAL';
         cell.primaryAxisAlignItems = 'CENTER';
         cell.counterAxisAlignItems = 'CENTER';
-        cell.paddingLeft = 8;
-        cell.paddingRight = 8;
+
+        // FIXED: Use CSS padding
+        const basePadding = parseSize(node.styles?.padding);
+        cell.paddingLeft = parseSize(node.styles?.['padding-left']) ?? basePadding ?? 8;
+        cell.paddingRight = parseSize(node.styles?.['padding-right']) ?? basePadding ?? 8;
+        cell.paddingTop = parseSize(node.styles?.['padding-top']) ?? basePadding ?? 4;
+        cell.paddingBottom = parseSize(node.styles?.['padding-bottom']) ?? basePadding ?? 4;
         
         await figma.loadFontAsync({ family: "Inter", style: "Regular" });
         const cellText = figma.createText();
@@ -2955,18 +3227,27 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           }).filter((text: string) => text.trim()).join(' ');
         }
         
-        cellText.characters = textContent || 'Cell';
-        
-        if (node.tagName === 'th') {
-          const currentSize = typeof cellText.fontSize === 'number' ? cellText.fontSize : 16;
-          cellText.fontSize = currentSize * 1.1;
-          cellText.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.2, b: 0.2 } }];
+        cellText.characters = textContent || '';
+
+        // FIXED: Use CSS color or default to black, let CSS override
+        const textColor = node.styles?.color;
+        if (textColor) {
+          const parsedColor = hexToRgb(textColor);
+          cellText.fills = parsedColor ? [{ type: 'SOLID', color: parsedColor }] : [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
         } else {
-          cellText.fills = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
+          cellText.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
         }
-        
+
+        // TH gets bold by default (browser behavior)
+        if (node.tagName === 'th') {
+          figma.loadFontAsync({ family: "Inter", style: "Bold" }).then(() => {
+            cellText.fontName = { family: "Inter", style: "Bold" };
+          }).catch(() => {});
+        }
+
         cell.appendChild(cellText);
-        
+
+        // Apply additional text styles from CSS
         if (node.styles) {
           applyStylesToText(cellText, node.styles);
         }
@@ -2992,36 +3273,65 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         }
         
       } else if (node.tagName === 'button') {
-        const buttonWidth = parseSize(node.styles?.width) || Math.max(120, node.text.length * 12);
-        const buttonHeight = parseSize(node.styles?.height) || 50; // Aumentado de 40 a 50
-        
+        const buttonWidth = parseSize(node.styles?.width) || Math.max(120, (node.text?.length || 6) * 12);
+        const buttonHeight = parseSize(node.styles?.height) || 44;
+
         const frame = figma.createFrame();
         frame.resize(buttonWidth, buttonHeight);
-        frame.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.5, b: 1 } }];
-        frame.cornerRadius = 8;
+
+        // FIXED: Use CSS background-color or default to transparent (browser default)
+        const bgColor = node.styles?.['background-color'] || node.styles?.background;
+        if (bgColor) {
+          const parsedColor = hexToRgb(bgColor);
+          if (parsedColor) {
+            frame.fills = [{ type: 'SOLID', color: parsedColor }];
+          } else {
+            frame.fills = [];
+          }
+        } else {
+          // Default button style - light gray like browser default
+          frame.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
+        }
+
+        // FIXED: Use CSS border-radius or default to small radius
+        const borderRadius = parseSize(node.styles?.['border-radius']) ?? 4;
+        frame.cornerRadius = borderRadius;
         frame.name = 'Button';
-        
+
         // Enable auto-layout for centering
         frame.layoutMode = 'HORIZONTAL';
         frame.primaryAxisAlignItems = 'CENTER';
         frame.counterAxisAlignItems = 'CENTER';
-        frame.paddingLeft = 20; // Aumentado de 16 a 20
-        frame.paddingRight = 20;
-        frame.paddingTop = 12; // Aumentado de 8 a 12
-        frame.paddingBottom = 12;
-        
+
+        // FIXED: Use CSS padding or sensible defaults
+        const basePadding = parseSize(node.styles?.padding);
+        frame.paddingLeft = parseSize(node.styles?.['padding-left']) ?? basePadding ?? 16;
+        frame.paddingRight = parseSize(node.styles?.['padding-right']) ?? basePadding ?? 16;
+        frame.paddingTop = parseSize(node.styles?.['padding-top']) ?? basePadding ?? 8;
+        frame.paddingBottom = parseSize(node.styles?.['padding-bottom']) ?? basePadding ?? 8;
+
         // Apply styles (including new CSS properties)
         if (node.styles) {
           applyStylesToFrame(frame, node.styles);
         }
-        
+
         // Add button text
         await figma.loadFontAsync({ family: "Inter", style: "Regular" });
         const buttonText = figma.createText();
         buttonText.characters = node.text || 'Button';
-        
-        // Default white text for buttons, unless overridden by styles
-        buttonText.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+
+        // FIXED: Use CSS color or default to dark text (for light background default)
+        const textColor = node.styles?.color;
+        if (textColor) {
+          const parsedTextColor = hexToRgb(textColor);
+          if (parsedTextColor) {
+            buttonText.fills = [{ type: 'SOLID', color: parsedTextColor }];
+          } else {
+            buttonText.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+          }
+        } else {
+          buttonText.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+        }
         
         // Apply text styles if present
         if (node.styles) {
