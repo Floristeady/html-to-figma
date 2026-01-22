@@ -78,10 +78,11 @@ const needsFullWidth = !isInlineElement;
 ### 3.2 Porcentajes de Width ✅ RESUELTO
 Implementado `parsePercentage()` y `calculatePercentageWidth()`.
 
-### 3.3 max-width No Limita Realmente ❌ PENDIENTE
+### 3.3 max-width No Limita Realmente ✅ RESUELTO
+Ahora usa `frame.maxWidth` de Figma API con fallback a resize.
 
-### 3.4 min-width/min-height ❌ PENDIENTE
-Aún usa valores hardcodeados (20px).
+### 3.4 min-width/min-height ✅ RESUELTO
+Ahora usa `frame.minWidth`, `frame.minHeight` de Figma API con fallback a resize.
 
 ---
 
@@ -90,8 +91,9 @@ Aún usa valores hardcodeados (20px).
 ### 4.1 Width de Texto Arbitrario ✅ RESUELTO
 Ahora usa `layoutSizingHorizontal = 'FILL'` en lugar de 200px hardcodeado.
 
-### 4.2 Contenido Mixto (texto + elementos) ❌ PENDIENTE
-El parser aún separa `text` de `children`, perdiendo el orden.
+### 4.2 Contenido Mixto (texto + elementos) ✅ RESUELTO
+El parser ahora usa `mixedContent` array para preservar el orden de texto y elementos.
+En Figma se crean nodos inline en el orden correcto.
 
 ### 4.3 white-space ❌ PENDIENTE
 
@@ -167,7 +169,7 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 10. RESUMEN DE ESTADO
 
-### ✅ RESUELTOS (18 de 28)
+### ✅ RESUELTOS (21 de 28)
 1. Especificidad CSS
 2. Selector universal (*)
 3. Layout mode para inline elements
@@ -186,34 +188,30 @@ Aplica como `x`/`y` y configura constraints.
 16. CSS variables
 17. calc()
 18. Media queries (ignoradas)
+19. Contenido mixto (texto + elementos) ✅ NEW
+20. max-width real ✅ NEW
+21. min-width/min-height desde CSS ✅ NEW
 
-### ❌ PENDIENTES (10)
+### ❌ PENDIENTES (7)
 1. Selectores CSS avanzados (>, +, ~, :pseudo)
-2. max-width real
-3. min-width/min-height desde CSS
-4. Contenido mixto (texto + elementos)
-5. white-space
-6. text-overflow
-7. Orden de herencia
-8. align-self
-9. z-index
-10. overflow, visibility, display:none
+2. white-space
+3. text-overflow
+4. Orden de herencia
+5. align-self
+6. z-index
+7. overflow, visibility, display:none
 
 ---
 
 ## PRIORIDAD DE FIXES RESTANTES
 
-### ALTOS
-1. ❌ Contenido mixto (texto + elementos)
-2. ❌ max-width/min-width desde CSS
-
 ### MEDIOS
-3. ❌ Selectores CSS avanzados
-4. ❌ white-space / text-overflow
-5. ❌ align-self
+1. ❌ Selectores CSS avanzados
+2. ❌ white-space / text-overflow
+3. ❌ align-self
 
 ### BAJOS
-6. ❌ z-index
-7. ❌ overflow
-8. ❌ visibility: hidden
-9. ❌ display: none
+4. ❌ z-index
+5. ❌ overflow
+6. ❌ visibility: hidden
+7. ❌ display: none

@@ -1,7 +1,7 @@
 # Plan de Fixes HTML-to-Figma
 
 **Fecha:** 2026-01-22
-**Estado:** EN PROGRESO (Fase 2)
+**Estado:** EN PROGRESO (Fase 3)
 
 ## Problemas Identificados
 
@@ -317,3 +317,64 @@ if (node.styles?.position === 'absolute' && parentFrame) {
   // Configura constraints según top/bottom/left/right
 }
 ```
+
+---
+
+### BLOQUE 11: Contenido Mixto y Sizing (2026-01-22 - Fase 3)
+
+#### Fix 11.1: Contenido mixto (texto + elementos) preserva orden (línea ~1320)
+```typescript
+// ANTES: Texto y children separados, perdiendo orden
+text += textContent;  // Todo el texto concatenado
+children.push(childStruct);  // Todos los elementos al final
+
+// DESPUÉS: mixedContent preserva orden original
+mixedContent.push({ type: 'text', text: textContent });
+mixedContent.push({ type: 'element', node: childStruct });
+// Procesados en orden en createFigmaNodesFromStructure
+```
+
+#### Fix 11.2: max-width real (línea ~2890)
+```typescript
+// NUEVO: Usa Figma API para max-width real
+const maxWidthValue = parseSize(node.styles?.['max-width']);
+if (maxWidthValue !== null && maxWidthValue > 0) {
+  try {
+    frame.maxWidth = maxWidthValue;
+  } catch (error) {
+    if (frame.width > maxWidthValue) {
+      frame.resize(maxWidthValue, frame.height);
+    }
+  }
+}
+```
+
+#### Fix 11.3: min-width/min-height desde CSS (línea ~2900)
+```typescript
+// NUEVO: Usa Figma API para min-width/min-height
+const minWidthValue = parseSize(node.styles?.['min-width']);
+const minHeightValue = parseSize(node.styles?.['min-height']);
+
+if (minWidthValue !== null && minWidthValue > 0) {
+  frame.minWidth = minWidthValue;
+}
+if (minHeightValue !== null && minHeightValue > 0) {
+  frame.minHeight = minHeightValue;
+}
+```
+
+---
+
+## Estado Actual de Issues
+
+### ✅ RESUELTOS (21 de 28)
+- Todos los issues de ALTA prioridad resueltos
+
+### ❌ PENDIENTES (7 - prioridad media/baja)
+1. Selectores CSS avanzados (>, +, ~, :pseudo)
+2. white-space
+3. text-overflow
+4. Orden de herencia
+5. align-self
+6. z-index
+7. overflow, visibility, display:none

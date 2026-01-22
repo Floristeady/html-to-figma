@@ -1323,9 +1323,15 @@ function simpleParseHTML(htmlStr) {
       var styles = getElementStyles(node);
       var text = '';
       var children = [];
+      var mixedContent = []; // NEW: Track order of text and elements
 
       // Extraer contenido de pseudoelementos
       var pseudoContent = extractPseudoContent(node, cssRules);
+
+      // Add ::before content as first mixed content item
+      if (pseudoContent.before) {
+        mixedContent.push({ type: 'text', text: pseudoContent.before });
+      }
 
       for (var i = 0; i < node.childNodes.length; i++) {
         var child = node.childNodes[i];
@@ -1333,24 +1339,41 @@ function simpleParseHTML(htmlStr) {
           var textContent = child.textContent.trim();
           if (textContent) {
             text += textContent;
+            // NEW: Add text to mixedContent array in order
+            mixedContent.push({ type: 'text', text: textContent });
           }
         } else if (child.nodeType === 1) {
           var childStruct = nodeToStruct(child);
           if (childStruct) {
             children.push(childStruct);
+            // NEW: Add element to mixedContent array in order
+            mixedContent.push({ type: 'element', node: childStruct });
           }
         }
       }
 
-      // Agregar contenido ::before como texto inicial
+      // Add ::after content as last mixed content item
+      if (pseudoContent.after) {
+        mixedContent.push({ type: 'text', text: pseudoContent.after });
+      }
+
+      // Legacy text property (for backward compatibility)
       if (pseudoContent.before) {
         text = pseudoContent.before + (text ? ' ' + text : '');
       }
-
-      // Agregar contenido ::after como texto final
       if (pseudoContent.after) {
         text = (text || '') + (text ? ' ' : '') + pseudoContent.after;
       }
+
+      // Determine if this element has mixed content (text interleaved with elements)
+      var hasMixedContent = false;
+      var hasText = false;
+      var hasElements = false;
+      for (var j = 0; j < mixedContent.length; j++) {
+        if (mixedContent[j].type === 'text') hasText = true;
+        if (mixedContent[j].type === 'element') hasElements = true;
+      }
+      hasMixedContent = hasText && hasElements;
 
       return {
         type: 'element',
@@ -1364,6 +1387,7 @@ function simpleParseHTML(htmlStr) {
           rows: node.getAttribute('rows')
         },
         children: children,
+        mixedContent: hasMixedContent ? mixedContent : null, // Only include if truly mixed
         pseudoContent: pseudoContent // Guardar para referencia
       };
     }
@@ -2705,13 +2729,8 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         if (node.styles?.['max-width'] && !node.styles?.height) {
           // For containers with max-width but no explicit height, allow vertical growth
           frame.layoutSizingVertical = 'HUG';
-
         }
-        
 
-        
-
-        
         // FIXED: Determine if element should fill width based on CSS display property
         // Block-level elements fill width, inline elements don't
         const display = node.styles?.display || 'block'; // Default is block for div
@@ -2855,7 +2874,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !node.styles?.height) {
           try {
             frame.layoutSizingVertical = 'FILL';
-            
+
             // Debug height filling for sidebar
             if (node.styles?.className === 'sidebar') {
             }
@@ -2863,7 +2882,57 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             console.error('Height fill error for', node.styles?.className || 'element', error);
           }
         }
-        
+
+        // FIXED: Apply max-width, min-width, max-height, min-height from CSS
+        const maxWidthValue = parseSize(node.styles?.['max-width']);
+        const minWidthValue = parseSize(node.styles?.['min-width']);
+        const maxHeightValue = parseSize(node.styles?.['max-height']);
+        const minHeightValue = parseSize(node.styles?.['min-height']);
+
+        if (maxWidthValue !== null && maxWidthValue > 0) {
+          try {
+            frame.maxWidth = maxWidthValue;
+          } catch (error) {
+            // Fallback: if maxWidth property doesn't exist, resize if needed
+            if (frame.width > maxWidthValue) {
+              frame.resize(maxWidthValue, frame.height);
+            }
+          }
+        }
+
+        if (minWidthValue !== null && minWidthValue > 0) {
+          try {
+            frame.minWidth = minWidthValue;
+          } catch (error) {
+            // Fallback: if minWidth property doesn't exist, resize if needed
+            if (frame.width < minWidthValue) {
+              frame.resize(minWidthValue, frame.height);
+            }
+          }
+        }
+
+        if (maxHeightValue !== null && maxHeightValue > 0) {
+          try {
+            frame.maxHeight = maxHeightValue;
+          } catch (error) {
+            // Fallback: if maxHeight property doesn't exist, resize if needed
+            if (frame.height > maxHeightValue) {
+              frame.resize(frame.width, maxHeightValue);
+            }
+          }
+        }
+
+        if (minHeightValue !== null && minHeightValue > 0) {
+          try {
+            frame.minHeight = minHeightValue;
+          } catch (error) {
+            // Fallback: if minHeight property doesn't exist, resize if needed
+            if (frame.height < minHeightValue) {
+              frame.resize(frame.width, minHeightValue);
+            }
+          }
+        }
+
         // Apply centering for elements marked with margin: 0 auto
         if (frame.getPluginData('centerHorizontally') === 'true' && parentFrame) {
           if (parentFrame.layoutMode === 'VERTICAL') {
@@ -2902,42 +2971,76 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           'parent-class': node.styles?.className || inheritedStyles?.['parent-class']
         };
         
-        // Create text node if there's direct text content
-        if (node.text && node.text.trim()) {
+        // FIXED: Handle mixed content (text interleaved with elements) in correct order
+        if (node.mixedContent && node.mixedContent.length > 0) {
+          // Process mixed content in order
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-          const textNode = figma.createText();
-          textNode.characters = node.text.trim();
-          textNode.name = 'DIV Text';
-          
-          // Apply inherited styles and specific text styles
-          applyStylesToText(textNode, { ...inheritableStyles, ...node.styles });
-          
-          frame.appendChild(textNode);
-          
-          // FIXED: Use FILL for text in auto-layout containers instead of hardcoded width
-          if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
-            // Text should fill the container width and wrap
-            textNode.layoutSizingHorizontal = 'FILL';
-            textNode.textAutoResize = 'HEIGHT';
-          } else {
-            // No auto-layout: let text size naturally
-            textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+
+          for (const item of node.mixedContent) {
+            if (item.type === 'text' && item.text && item.text.trim()) {
+              // Create inline text node
+              const textNode = figma.createText();
+              textNode.characters = item.text.trim();
+              textNode.name = 'Inline Text';
+
+              // Apply inherited styles and specific text styles
+              applyStylesToText(textNode, { ...inheritableStyles, ...node.styles });
+
+              frame.appendChild(textNode);
+
+              // For mixed content, use HUG so text sits inline with elements
+              if (frame.layoutMode === 'HORIZONTAL') {
+                textNode.layoutSizingHorizontal = 'HUG';
+                textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+              } else if (frame.layoutMode === 'VERTICAL') {
+                textNode.layoutSizingHorizontal = 'FILL';
+                textNode.textAutoResize = 'HEIGHT';
+              } else {
+                textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+              }
+            } else if (item.type === 'element' && item.node) {
+              // Process element child in order
+              await createFigmaNodesFromStructure([item.node], frame, 0, 0, inheritableStyles);
+            }
           }
-        }
-        
-        // Process children if they exist
-        if (node.children && node.children.length > 0) {
-          // Manejo de grid genérico
-          if (node.styles?.display === 'grid') {
-            const gridTemplateColumns = node.styles?.['grid-template-columns'];
-            const columns = parseGridColumns(gridTemplateColumns);
-            const gap = parseSize(node.styles?.gap) || parseSize(parentFrame?.getPluginData('gridGap') || '') || 12;
-            
-            // Si no se pudieron parsear columnas, usar fallback
-            const finalColumns = columns > 0 ? columns : 2;
-            await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
-          } else {
-            await createFigmaNodesFromStructure(node.children, frame, 0, 0, inheritableStyles);
+        } else {
+          // Legacy behavior: Create text node if there's direct text content
+          if (node.text && node.text.trim()) {
+            await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+            const textNode = figma.createText();
+            textNode.characters = node.text.trim();
+            textNode.name = 'DIV Text';
+
+            // Apply inherited styles and specific text styles
+            applyStylesToText(textNode, { ...inheritableStyles, ...node.styles });
+
+            frame.appendChild(textNode);
+
+            // FIXED: Use FILL for text in auto-layout containers instead of hardcoded width
+            if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
+              // Text should fill the container width and wrap
+              textNode.layoutSizingHorizontal = 'FILL';
+              textNode.textAutoResize = 'HEIGHT';
+            } else {
+              // No auto-layout: let text size naturally
+              textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+            }
+          }
+
+          // Process children if they exist
+          if (node.children && node.children.length > 0) {
+            // Manejo de grid genérico
+            if (node.styles?.display === 'grid') {
+              const gridTemplateColumns = node.styles?.['grid-template-columns'];
+              const columns = parseGridColumns(gridTemplateColumns);
+              const gap = parseSize(node.styles?.gap) || parseSize(parentFrame?.getPluginData('gridGap') || '') || 12;
+
+              // Si no se pudieron parsear columnas, usar fallback
+              const finalColumns = columns > 0 ? columns : 2;
+              await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
+            } else {
+              await createFigmaNodesFromStructure(node.children, frame, 0, 0, inheritableStyles);
+            }
           }
         }
         
