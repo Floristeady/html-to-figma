@@ -2696,8 +2696,261 @@ function parseGridColumns(gridTemplate: string | undefined): number {
   return 1;
 }
 
+// Helper function to parse grid-template-areas
+// Returns a map of area names to their grid positions { areaName: { rowStart, rowEnd, colStart, colEnd } }
+function parseGridTemplateAreas(areasString: string | undefined): { [key: string]: { rowStart: number, rowEnd: number, colStart: number, colEnd: number } } | null {
+  if (!areasString) return null;
+
+  // Parse the areas string: "header header header" "sidebar main main" "footer footer footer"
+  // Each quoted string is a row, each word is a column
+  const rowMatches = areasString.match(/"([^"]+)"/g);
+  if (!rowMatches || rowMatches.length === 0) return null;
+
+  const areaMap: { [key: string]: { rowStart: number, rowEnd: number, colStart: number, colEnd: number } } = {};
+
+  for (let rowIndex = 0; rowIndex < rowMatches.length; rowIndex++) {
+    const rowContent = rowMatches[rowIndex].replace(/"/g, '').trim();
+    const columns = rowContent.split(/\s+/);
+
+    for (let colIndex = 0; colIndex < columns.length; colIndex++) {
+      const areaName = columns[colIndex];
+      if (areaName === '.') continue; // Skip empty cells
+
+      if (!areaMap[areaName]) {
+        // First occurrence of this area
+        areaMap[areaName] = {
+          rowStart: rowIndex,
+          rowEnd: rowIndex + 1,
+          colStart: colIndex,
+          colEnd: colIndex + 1
+        };
+      } else {
+        // Extend the area
+        areaMap[areaName].rowEnd = Math.max(areaMap[areaName].rowEnd, rowIndex + 1);
+        areaMap[areaName].colEnd = Math.max(areaMap[areaName].colEnd, colIndex + 1);
+        areaMap[areaName].rowStart = Math.min(areaMap[areaName].rowStart, rowIndex);
+        areaMap[areaName].colStart = Math.min(areaMap[areaName].colStart, colIndex);
+      }
+    }
+  }
+
+  return Object.keys(areaMap).length > 0 ? areaMap : null;
+}
+
+// Get the number of rows from grid-template-areas
+function getGridRowCount(areasString: string | undefined): number {
+  if (!areasString) return 1;
+  const rowMatches = areasString.match(/"([^"]+)"/g);
+  return rowMatches ? rowMatches.length : 1;
+}
+
+// Get the number of columns from grid-template-areas
+function getGridColCount(areasString: string | undefined): number {
+  if (!areasString) return 1;
+  const rowMatches = areasString.match(/"([^"]+)"/g);
+  if (!rowMatches || rowMatches.length === 0) return 1;
+  const firstRow = rowMatches[0].replace(/"/g, '').trim();
+  return firstRow.split(/\s+/).length;
+}
+
+// Create grid layout using grid-template-areas
+async function createGridLayoutWithAreas(
+  children: any[],
+  parentFrame: FrameNode,
+  areaMap: { [key: string]: { rowStart: number, rowEnd: number, colStart: number, colEnd: number } },
+  numRows: number,
+  numCols: number,
+  gap: number,
+  inheritedStyles?: any
+) {
+  // Create a 2D array to track which cells are occupied
+  const grid: (FrameNode | null)[][] = [];
+  for (let r = 0; r < numRows; r++) {
+    grid[r] = new Array(numCols).fill(null);
+  }
+
+  // Create row frames
+  const rowFrames: FrameNode[] = [];
+  for (let r = 0; r < numRows; r++) {
+    const rowFrame = figma.createFrame();
+    rowFrame.name = `Grid Row ${r + 1}`;
+    rowFrame.fills = [];
+    rowFrame.layoutMode = 'HORIZONTAL';
+    rowFrame.primaryAxisSizingMode = 'AUTO';
+    rowFrame.counterAxisSizingMode = 'AUTO';
+    rowFrame.itemSpacing = gap;
+    parentFrame.appendChild(rowFrame);
+    if (parentFrame.layoutMode !== 'NONE') {
+      try {
+        rowFrame.layoutSizingHorizontal = 'FILL';
+      } catch (error) {}
+    }
+    rowFrames.push(rowFrame);
+  }
+
+  // Map children to their grid areas
+  const childrenByArea: { [key: string]: any } = {};
+  for (const child of children) {
+    const gridArea = child.styles?.['grid-area'];
+    if (gridArea && areaMap[gridArea]) {
+      childrenByArea[gridArea] = child;
+    }
+  }
+
+  // Process each unique area and place children
+  const processedAreas = new Set<string>();
+
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < numCols; c++) {
+      // Find which area this cell belongs to
+      let cellArea: string | null = null;
+      for (const [areaName, bounds] of Object.entries(areaMap)) {
+        if (r >= bounds.rowStart && r < bounds.rowEnd && c >= bounds.colStart && c < bounds.colEnd) {
+          cellArea = areaName;
+          break;
+        }
+      }
+
+      if (!cellArea) {
+        // Empty cell - create placeholder
+        const placeholder = figma.createFrame();
+        placeholder.name = `Empty Cell ${r}-${c}`;
+        placeholder.fills = [];
+        placeholder.resize(10, 10);
+        rowFrames[r].appendChild(placeholder);
+        // Set layout properties AFTER appending to parent
+        try {
+          placeholder.layoutGrow = 1;
+          placeholder.layoutSizingHorizontal = 'FILL';
+          placeholder.layoutSizingVertical = 'HUG';
+        } catch (error) {}
+        continue;
+      }
+
+      const bounds = areaMap[cellArea];
+      const isFirstCellOfArea = (r === bounds.rowStart && c === bounds.colStart);
+
+      if (isFirstCellOfArea && !processedAreas.has(cellArea)) {
+        processedAreas.add(cellArea);
+
+        // Create the child in this position
+        const child = childrenByArea[cellArea];
+        if (child) {
+          const colSpan = bounds.colEnd - bounds.colStart;
+          const rowSpan = bounds.rowEnd - bounds.rowStart;
+
+          // Create a wrapper frame if the element spans multiple rows
+          if (rowSpan > 1) {
+            // For multi-row spans, create wrapper in first row
+            const wrapper = figma.createFrame();
+            wrapper.name = `${cellArea} (spans ${rowSpan} rows, ${colSpan} cols)`;
+            wrapper.fills = [];
+            wrapper.layoutMode = 'VERTICAL';
+            wrapper.primaryAxisSizingMode = 'AUTO';
+            wrapper.counterAxisSizingMode = 'AUTO';
+            rowFrames[r].appendChild(wrapper);
+            // Set layout properties AFTER appending
+            try {
+              wrapper.layoutGrow = 1;
+              wrapper.layoutSizingHorizontal = 'FILL';
+            } catch (error) {}
+
+            const gridInheritedStyles = { ...inheritedStyles, '_hasConstrainedWidth': true };
+            await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
+
+            // Add placeholders for remaining columns in first row
+            for (let cc = 1; cc < colSpan; cc++) {
+              const placeholder = figma.createFrame();
+              placeholder.name = `${cellArea} span ${cc}`;
+              placeholder.fills = [];
+              placeholder.resize(1, 1);
+              placeholder.visible = false;
+              rowFrames[r].appendChild(placeholder);
+              try {
+                placeholder.layoutGrow = 1;
+                placeholder.layoutSizingHorizontal = 'FILL';
+              } catch (error) {}
+            }
+          } else {
+            // Single row - simpler case
+            const wrapper = figma.createFrame();
+            wrapper.name = `${cellArea} (${colSpan} cols)`;
+            wrapper.fills = [];
+            wrapper.layoutMode = 'VERTICAL';
+            wrapper.primaryAxisSizingMode = 'AUTO';
+            wrapper.counterAxisSizingMode = 'AUTO';
+            rowFrames[r].appendChild(wrapper);
+            // Set layout properties AFTER appending
+            try {
+              wrapper.layoutGrow = 1;
+              wrapper.layoutSizingHorizontal = 'FILL';
+            } catch (error) {}
+
+            const gridInheritedStyles = { ...inheritedStyles, '_hasConstrainedWidth': true };
+            await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
+
+            // Add placeholders for remaining columns
+            for (let cc = 1; cc < colSpan; cc++) {
+              const placeholder = figma.createFrame();
+              placeholder.name = `${cellArea} span ${cc}`;
+              placeholder.fills = [];
+              placeholder.resize(1, 1);
+              placeholder.visible = false;
+              rowFrames[r].appendChild(placeholder);
+              try {
+                placeholder.layoutGrow = 1;
+                placeholder.layoutSizingHorizontal = 'FILL';
+              } catch (error) {}
+            }
+          }
+        } else {
+          // Area exists but no child matches - create placeholder
+          const placeholder = figma.createFrame();
+          placeholder.name = `${cellArea} (empty)`;
+          placeholder.fills = [];
+          placeholder.resize(10, 10);
+          rowFrames[r].appendChild(placeholder);
+          try {
+            placeholder.layoutGrow = 1;
+            placeholder.layoutSizingHorizontal = 'FILL';
+            placeholder.layoutSizingVertical = 'HUG';
+          } catch (error) {}
+        }
+      } else if (!isFirstCellOfArea) {
+        // This cell is part of a multi-cell area but not the first cell
+        // For subsequent rows of multi-row areas, add invisible placeholders
+        if (r > bounds.rowStart && c === bounds.colStart) {
+          // First column of a subsequent row in a multi-row span
+          // Add placeholders for each column the area spans
+          const colSpan = bounds.colEnd - bounds.colStart;
+          for (let cc = 0; cc < colSpan; cc++) {
+            const placeholder = figma.createFrame();
+            placeholder.name = `${cellArea} row-span placeholder ${cc}`;
+            placeholder.fills = [];
+            placeholder.resize(1, 1);
+            placeholder.visible = false;
+            rowFrames[r].appendChild(placeholder);
+            try {
+              placeholder.layoutGrow = 1;
+              placeholder.layoutSizingHorizontal = 'FILL';
+            } catch (error) {}
+          }
+        }
+        // Skip other cells in the span
+      }
+    }
+  }
+}
+
 // Grid layout genérico para N columnas
 async function createGridLayout(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
+  console.log('[GRID] createGridLayout called with', children.length, 'children,', columns, 'columns');
+
+  if (!children || children.length === 0) {
+    console.log('[GRID] No children to process!');
+    return;
+  }
+
   for (let i = 0; i < children.length; i += columns) {
     const rowFrame = figma.createFrame();
     rowFrame.name = `Grid Row (${columns} cols)`;
@@ -3156,13 +3409,27 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           if (node.children && node.children.length > 0) {
             // Manejo de grid genérico
             if (node.styles?.display === 'grid') {
+              console.log('[GRID] Grid detected! Children:', node.children.length);
+              const gridTemplateAreas = node.styles?.['grid-template-areas'];
               const gridTemplateColumns = node.styles?.['grid-template-columns'];
-              const columns = parseGridColumns(gridTemplateColumns);
+              console.log('[GRID] template-areas:', gridTemplateAreas);
+              console.log('[GRID] template-columns:', gridTemplateColumns);
               const gap = parseSize(node.styles?.gap) || parseSize(parentFrame?.getPluginData('gridGap') || '') || 12;
 
-              // Si no se pudieron parsear columnas, usar fallback
-              const finalColumns = columns > 0 ? columns : 2;
-              await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
+              // Check if grid-template-areas is defined
+              const areaMap = parseGridTemplateAreas(gridTemplateAreas);
+
+              if (areaMap) {
+                // Use grid-template-areas layout
+                const numRows = getGridRowCount(gridTemplateAreas);
+                const numCols = getGridColCount(gridTemplateAreas);
+                await createGridLayoutWithAreas(node.children, frame, areaMap, numRows, numCols, gap, inheritableStyles);
+              } else {
+                // Fallback to column-based grid layout
+                const columns = parseGridColumns(gridTemplateColumns);
+                const finalColumns = columns > 0 ? columns : 2;
+                await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
+              }
             } else {
               await createFigmaNodesFromStructure(node.children, frame, 0, 0, inheritableStyles);
             }
@@ -4072,13 +4339,39 @@ figma.ui.onmessage = async (msg) => {
 
     // Mark as processed immediately to prevent any race conditions
     markRequestProcessed(requestId);
+    console.log(`[HTML] ✅ Passed dedup check, proceeding with requestId: ${requestId}`);
 
-    // Detect full page layout pattern (sidebar + main content)
+    // Detect full page layout pattern (sidebar + main content, grid layouts, etc.)
     const detectFullPageLayout = (structure: any[]): boolean => {
       if (!structure || structure.length === 0) return false;
 
       const checkNode = (node: any): boolean => {
-        if (!node.children || node.children.length < 2) return false;
+        // Check for grid with grid-template-areas (complex layout = full page)
+        if (node.styles?.display === 'grid' && node.styles?.['grid-template-areas']) {
+          return true;
+        }
+
+        // Check for grid with multiple columns
+        if (node.styles?.display === 'grid' && node.styles?.['grid-template-columns']) {
+          const cols = parseGridColumns(node.styles['grid-template-columns']);
+          if (cols >= 3) return true; // 3+ column grid = likely full page
+        }
+
+        // Check for body/html with padding (indicates designed layout)
+        if ((node.tagName === 'body' || node.tagName === 'html') && node.styles?.padding) {
+          const padding = parseSize(node.styles.padding);
+          if (padding && padding >= 16) return true;
+        }
+
+        if (!node.children || node.children.length < 2) {
+          // Still check single children recursively
+          if (node.children) {
+            for (const child of node.children) {
+              if (checkNode(child)) return true;
+            }
+          }
+          return false;
+        }
 
         // Look for sidebar pattern: position fixed/absolute with fixed width
         const hasSidebar = node.children.some((child: any) => {
