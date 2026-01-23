@@ -3078,12 +3078,8 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         frame.counterAxisSizingMode = 'AUTO';
 
         // CRITICAL: Ensure container can grow to fit content
-        // Use FILL vertical when in a grid row with multi-row spans
-        if (inheritedStyles?.['_shouldFillVertical']) {
-          frame.layoutSizingVertical = 'FILL';
-        } else {
-          frame.layoutSizingVertical = 'HUG';
-        }
+        // Default to HUG - FILL will be set AFTER appendChild if needed
+        frame.layoutSizingVertical = 'HUG';
         frame.layoutSizingHorizontal = 'HUG';
         
         // Dimensiones mínimas para evitar colapso pero respetando CSS
@@ -3189,6 +3185,15 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           figma.currentPage.appendChild(frame);
         } else {
           parentFrame.appendChild(frame);
+
+          // CRITICAL: Set FILL vertical AFTER appendChild (requires auto-layout parent)
+          if (inheritedStyles?.['_shouldFillVertical'] && parentFrame.layoutMode !== 'NONE') {
+            try {
+              frame.layoutSizingVertical = 'FILL';
+            } catch (e) {
+              // Silently ignore if parent doesn't support FILL
+            }
+          }
         }
 
         // FIXED: Handle position: absolute/relative with top/left/right/bottom

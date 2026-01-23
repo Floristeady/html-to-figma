@@ -2987,13 +2987,8 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 frame.primaryAxisSizingMode = 'AUTO';
                 frame.counterAxisSizingMode = 'AUTO';
                 // CRITICAL: Ensure container can grow to fit content
-                // Use FILL vertical when in a grid row with multi-row spans
-                if (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_shouldFillVertical']) {
-                    frame.layoutSizingVertical = 'FILL';
-                }
-                else {
-                    frame.layoutSizingVertical = 'HUG';
-                }
+                // Default to HUG - FILL will be set AFTER appendChild if needed
+                frame.layoutSizingVertical = 'HUG';
                 frame.layoutSizingHorizontal = 'HUG';
                 // Dimensiones mínimas para evitar colapso pero respetando CSS
                 frame.minHeight = 20;
@@ -3087,6 +3082,15 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 else {
                     parentFrame.appendChild(frame);
+                    // CRITICAL: Set FILL vertical AFTER appendChild (requires auto-layout parent)
+                    if ((inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_shouldFillVertical']) && parentFrame.layoutMode !== 'NONE') {
+                        try {
+                            frame.layoutSizingVertical = 'FILL';
+                        }
+                        catch (e) {
+                            // Silently ignore if parent doesn't support FILL
+                        }
+                    }
                 }
                 // FIXED: Handle position: absolute/relative with top/left/right/bottom
                 if (((_13 = node.styles) === null || _13 === void 0 ? void 0 : _13.position) === 'absolute' && parentFrame) {
