@@ -2396,15 +2396,24 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
     frame.primaryAxisAlignItems = 'MIN';
   } else if (styles['justify-content'] === 'flex-end') {
     frame.primaryAxisAlignItems = 'MAX';
+  } else if (styles['justify-content'] === 'space-evenly') {
+    // Figma doesn't have SPACE_EVENLY, use SPACE_BETWEEN as closest approximation
+    frame.primaryAxisAlignItems = 'SPACE_BETWEEN';
   }
-  
+
   if (styles['align-items'] === 'center') {
     frame.counterAxisAlignItems = 'CENTER';
-
-  } else if (styles['align-items'] === 'flex-start') {
+  } else if (styles['align-items'] === 'flex-start' || styles['align-items'] === 'start') {
     frame.counterAxisAlignItems = 'MIN';
-  } else if (styles['align-items'] === 'flex-end') {
+  } else if (styles['align-items'] === 'flex-end' || styles['align-items'] === 'end') {
     frame.counterAxisAlignItems = 'MAX';
+  } else if (styles['align-items'] === 'baseline') {
+    frame.counterAxisAlignItems = 'BASELINE';
+  }
+
+  // Overflow: hidden - clip content
+  if (styles['overflow'] === 'hidden' || styles['overflow-x'] === 'hidden' || styles['overflow-y'] === 'hidden') {
+    frame.clipsContent = true;
   }
 
   // TEXT-ALIGN: center support (for containers with text children)
