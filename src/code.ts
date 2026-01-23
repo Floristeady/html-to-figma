@@ -4429,15 +4429,27 @@ figma.ui.onmessage = async (msg) => {
     const isFullPageLayout = detectFullPageLayout(msg.structure);
     const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
 
-    // Helper to get explicit width from root element
+    // Helper to get explicit width from root element (searches recursively)
     const getExplicitRootWidth = (structure: any[]): number | null => {
       if (!structure || structure.length === 0) return null;
-      const root = structure[0];
-      if (root.styles?.width) {
-        const width = parseSize(root.styles.width);
-        if (width && width > 0) return width;
-      }
-      return null;
+
+      const findWidth = (node: any): number | null => {
+        // Check this node for explicit width
+        if (node.styles?.width) {
+          const width = parseSize(node.styles.width);
+          if (width && width > 0) {
+            console.log('[WIDTH] Found explicit width:', width, 'on', node.tagName);
+            return width;
+          }
+        }
+        // If this is body/html without width, check first child
+        if ((node.tagName === 'body' || node.tagName === 'html') && node.children?.length > 0) {
+          return findWidth(node.children[0]);
+        }
+        return null;
+      };
+
+      return findWidth(structure[0]);
     };
 
     const explicitWidth = getExplicitRootWidth(msg.structure);
