@@ -1,6 +1,6 @@
 # Análisis Completo del Código HTML-to-Figma
 
-**Fecha:** 2026-01-22 (Actualizado)
+**Fecha:** 2026-01-23 (Actualizado)
 **Archivo Principal:** `src/code.ts`
 
 ---
@@ -55,16 +55,18 @@ Implementado con `layoutMode = 'HORIZONTAL'` para elementos inline.
 ### 2.3 flex-wrap ✅ RESUELTO
 Usa `frame.layoutWrap = 'WRAP'` para `flex-wrap: wrap`.
 
-### 2.4 Grid Limitado ✅ MEJORADO
+### 2.4 Grid Avanzado ✅ COMPLETO
 Ahora soporta:
 - `repeat(N, ...)` - cualquier repeat
 - `auto-fill` / `auto-fit`
 - Columnas mixtas: `200px 1fr 100px`
 - `minmax(200px, 1fr)`
+- `grid-template-areas` ✅ NEW - layouts bento complejos
+- `grid-column: span N` / `grid-row: span N` ✅ NEW
+- Sincronización de altura en filas con multi-row spans ✅ NEW
 
 NO soporta:
-- `grid-template-rows`
-- Áreas con nombre
+- `grid-template-rows` (parcial - se infiere de areas)
 
 ---
 
@@ -85,6 +87,18 @@ Ahora usa `frame.maxWidth` de Figma API con fallback a resize.
 ### 3.4 min-width/min-height ✅ RESUELTO
 Ahora usa `frame.minWidth`, `frame.minHeight` de Figma API con fallback a resize.
 
+### 3.5 width: 100% en Auto-Layout ✅ NEW
+Cuando `width: 100%` está en un contenedor auto-layout, usa `layoutSizingHorizontal = 'FILL'` en lugar de calcular píxeles fijos.
+
+### 3.6 Detección Dinámica de Ancho ✅ NEW
+`calculateDynamicWidth()` detecta patrones de layout comunes:
+- Sidebar fijo (`position: fixed` + `width`) + contenido principal (`margin-left`)
+- Ancho explícito en elementos raíz (búsqueda recursiva)
+- Calcula ancho total automáticamente para layouts complejos
+
+### 3.7 Propagación de FILL Vertical ✅ NEW
+`_shouldFillVertical` se propaga a través de `inheritedStyles` para mantener altura FILL en contenedores anidados dentro de filas grid con multi-row spans.
+
 ---
 
 ## 4. PROBLEMAS DE TEXTO
@@ -96,9 +110,11 @@ Ahora usa `layoutSizingHorizontal = 'FILL'` en lugar de 200px hardcodeado.
 El parser ahora usa `mixedContent` array para preservar el orden de texto y elementos.
 En Figma se crean nodos inline en el orden correcto.
 
-### 4.3 white-space ❌ PENDIENTE
+### 4.3 white-space ✅ RESUELTO
+Implementado soporte para `white-space: nowrap`, `pre`, `pre-wrap`.
 
-### 4.4 text-overflow ❌ PENDIENTE
+### 4.4 text-overflow ✅ RESUELTO
+Implementado soporte para `text-overflow: ellipsis` con `textTruncation`.
 
 ---
 
@@ -144,7 +160,8 @@ Ahora usa CSS `width`/`height` o defaults razonables.
 ### 8.1 position: absolute/relative ✅ RESUELTO
 Usa `frame.layoutPositioning = 'ABSOLUTE'` con constraints.
 
-### 8.2 z-index ❌ PENDIENTE
+### 8.2 z-index ✅ RESUELTO
+Implementado ordenamiento de nodos según z-index.
 
 ### 8.3 top/right/bottom/left ✅ RESUELTO
 Aplica como `x`/`y` y configura constraints.
@@ -171,7 +188,7 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 10. RESUMEN DE ESTADO
 
-### ✅ RESUELTOS (28 de 28) - 100% COMPLETO
+### ✅ RESUELTOS (33 de 33) - 100% COMPLETO
 1. Especificidad CSS
 2. Selector universal (*)
 3. Layout mode para inline elements
@@ -197,9 +214,14 @@ Aplica como `x`/`y` y configura constraints.
 23. align-self
 24. display: none
 25. visibility: hidden
-26. white-space ✅ NEW
-27. text-overflow ✅ NEW
-28. z-index ✅ NEW
+26. white-space
+27. text-overflow
+28. z-index
+29. grid-template-areas ✅ NEW
+30. grid-column/row span ✅ NEW
+31. width: 100% → FILL en auto-layout ✅ NEW
+32. Detección dinámica de ancho (sidebar + main) ✅ NEW
+33. Propagación FILL vertical para grid rows ✅ NEW
 
 ### ❌ PENDIENTES (0)
 ¡Todos los issues identificados han sido resueltos!
@@ -208,4 +230,4 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 🎉 PROYECTO COMPLETO
 
-Todos los 28 issues identificados en el análisis original han sido implementados.
+Todos los 33 issues identificados han sido implementados.

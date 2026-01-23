@@ -3243,10 +3243,24 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 
         // FIXED: Handle percentage widths
         if (hasPercentageWidth && parentFrame) {
-          const calculatedWidth = calculatePercentageWidth(widthValue, parentFrame);
-          if (calculatedWidth && calculatedWidth > 0) {
-            frame.resize(calculatedWidth, frame.height);
-            frame.layoutSizingHorizontal = 'FIXED';
+          const percentage = parsePercentage(widthValue);
+          // For 100% width in auto-layout parent, use FILL instead of fixed calculation
+          if (percentage === 100 && parentFrame.layoutMode !== 'NONE') {
+            try {
+              frame.layoutSizingHorizontal = 'FILL';
+            } catch (e) {
+              // Fallback to calculated width
+              const calculatedWidth = calculatePercentageWidth(widthValue, parentFrame);
+              if (calculatedWidth && calculatedWidth > 0) {
+                frame.resize(calculatedWidth, frame.height);
+              }
+            }
+          } else {
+            const calculatedWidth = calculatePercentageWidth(widthValue, parentFrame);
+            if (calculatedWidth && calculatedWidth > 0) {
+              frame.resize(calculatedWidth, frame.height);
+              frame.layoutSizingHorizontal = 'FIXED';
+            }
           }
         } else if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
           try {
@@ -4434,30 +4448,69 @@ figma.ui.onmessage = async (msg) => {
     const isFullPageLayout = detectFullPageLayout(msg.structure);
     const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
 
-    // Helper to get explicit width from root element (searches recursively)
-    const getExplicitRootWidth = (structure: any[]): number | null => {
+    // Helper to calculate dynamic width based on layout structure
+    const calculateDynamicWidth = (structure: any[]): number | null => {
       if (!structure || structure.length === 0) return null;
 
-      const findWidth = (node: any): number | null => {
-        // Check this node for explicit width
-        if (node.styles?.width) {
+      let sidebarWidth = 0;
+      let mainContentMargin = 0;
+      let explicitWidth: number | null = null;
+
+      const analyzeNode = (node: any, depth: number = 0): void => {
+        // Check for explicit width on root elements
+        if (depth <= 1 && node.styles?.width) {
           const width = parseSize(node.styles.width);
-          if (width && width > 0) {
+          if (width && width > 0 && !node.styles?.position?.includes('fixed')) {
             console.log('[WIDTH] Found explicit width:', width, 'on', node.tagName);
-            return width;
+            explicitWidth = width;
           }
         }
-        // If this is body/html without width, check first child
-        if ((node.tagName === 'body' || node.tagName === 'html') && node.children?.length > 0) {
-          return findWidth(node.children[0]);
+
+        // Detect fixed sidebar with explicit width
+        if (node.styles?.position === 'fixed' && node.styles?.width) {
+          const width = parseSize(node.styles.width);
+          if (width && width > 0) {
+            sidebarWidth = Math.max(sidebarWidth, width);
+            console.log('[WIDTH] Detected fixed sidebar width:', width);
+          }
         }
-        return null;
+
+        // Detect main content with margin-left (sidebar offset)
+        if (node.styles?.['margin-left']) {
+          const margin = parseSize(node.styles['margin-left']);
+          if (margin && margin > 0) {
+            mainContentMargin = Math.max(mainContentMargin, margin);
+            console.log('[WIDTH] Detected main content margin-left:', margin);
+          }
+        }
+
+        // Check children
+        if (node.children) {
+          for (const child of node.children) {
+            analyzeNode(child, depth + 1);
+          }
+        }
       };
 
-      return findWidth(structure[0]);
+      for (const node of structure) {
+        analyzeNode(node, 0);
+      }
+
+      // If we found explicit width, use it
+      if (explicitWidth) return explicitWidth;
+
+      // If we detected sidebar + main content pattern, calculate total width
+      // Main content should be ~1200px, so total = sidebar + 1200
+      if (sidebarWidth > 0 && mainContentMargin > 0) {
+        const calculatedWidth = sidebarWidth + 1200; // sidebar + reasonable main content width
+        console.log('[WIDTH] Calculated width from sidebar pattern:', calculatedWidth);
+        return calculatedWidth;
+      }
+
+      return null;
     };
 
-    const explicitWidth = getExplicitRootWidth(msg.structure);
+    const explicitWidth = calculateDynamicWidth(msg.structure);
     debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
     debugLog('[MAIN HANDLER] Explicit width from CSS:', explicitWidth);
 
