@@ -144,12 +144,13 @@ Ahora hereda 10+ propiedades:
 
 ## 6. PROBLEMAS DE ALINEACIÓN
 
-### 6.1 justify-content ⚠️ PARCIAL
-Soporta: `center`, `flex-end`, `space-between`
-Falta: `space-evenly`
+### 6.1 justify-content ✅ COMPLETO
+Soporta: `center`, `flex-start`, `flex-end`, `space-between`, `space-around`, `space-evenly`
+Nota: `space-evenly` usa SPACE_BETWEEN como aproximación (Figma no tiene SPACE_EVENLY nativo)
 
-### 6.2 align-items ⚠️ PARCIAL
-Soporta valores básicos, faltan algunos edge cases.
+### 6.2 align-items ✅ COMPLETO
+Soporta: `center`, `flex-start`, `start`, `flex-end`, `end`, `baseline`
+Nota: `stretch` es comportamiento por defecto en Figma, no requiere configuración explícita.
 
 ### 6.3 align-self ✅ RESUELTO
 Usa `frame.layoutAlign` para center, flex-start, flex-end, stretch.
@@ -186,7 +187,7 @@ Aplica como `x`/`y` y configura constraints.
 
 | Propiedad | Estado |
 |-----------|--------|
-| `overflow` | ❌ No implementado |
+| `overflow: hidden` | ✅ Implementado (clipsContent) |
 | `visibility: hidden` | ✅ Implementado (opacity: 0) |
 | `display: none` | ✅ Implementado (skip element) |
 | `@media queries` | ✅ Ignoradas gracefully |
@@ -202,7 +203,7 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 10. RESUMEN DE ESTADO
 
-### ✅ RESUELTOS (39 issues)
+### ✅ RESUELTOS (42 issues)
 1. Especificidad CSS
 2. Selector universal (*)
 3. Layout mode para inline elements
@@ -242,17 +243,17 @@ Aplica como `x`/`y` y configura constraints.
 37. Padding: 0 respetado
 38. Line-height unitless (1.5 → 150%)
 39. font-style: italic
+40. justify-content: space-evenly
+41. align-items: start, end, baseline
+42. overflow: hidden (clipsContent)
 
-### ⚠️ PENDIENTES (6 - baja prioridad)
+### ⚠️ PENDIENTES (3 - baja prioridad)
 1. **Orden de herencia** - cascada CSS completa
-2. **justify-content: space-evenly** - falta este valor
-3. **align-items completo** - algunos valores faltan
-4. **overflow: hidden** - clip de contenido
-5. **transform: scale/translate** - solo rotate implementado
-6. **filter/backdrop-filter/clip-path** - efectos visuales avanzados
+2. **transform: scale/translate** - solo rotate implementado
+3. **filter/backdrop-filter/clip-path** - efectos visuales avanzados
 
 ---
 
-## 📊 ESTADO: 39/45 (87% completo)
+## 📊 ESTADO: 42/45 (93% completo)
 
-Los 6 pendientes son de baja prioridad o limitaciones de Figma API.
+Los 3 pendientes son de baja prioridad o limitaciones de Figma API.
