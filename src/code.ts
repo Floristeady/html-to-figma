@@ -3044,7 +3044,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       const nodeStyles = { ...inheritedStyles, ...node.styles };
       node.styles = nodeStyles;
       
-      if (['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside'].includes(node.tagName)) {
+      if (['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside', 'blockquote', 'figure', 'figcaption', 'address', 'details', 'summary'].includes(node.tagName)) {
         const frame = figma.createFrame();
         frame.name = node.tagName.toUpperCase() + ' Frame';
         
@@ -3276,7 +3276,24 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           }
         } else if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
           try {
-            frame.layoutSizingHorizontal = 'FILL';
+            // FIX: In HORIZONTAL parent (flex row), children should HUG by default unless they have flex-grow
+            // Only apply FILL in VERTICAL parent or if element has flex-grow/flex: 1
+            const hasFlex = node.styles?.flex || node.styles?.['flex-grow'];
+            const flexValue = node.styles?.flex;
+            const flexGrowValue = node.styles?.['flex-grow'];
+            const shouldFillHorizontal = parentFrame.layoutMode === 'VERTICAL' ||
+                                         hasFlex === '1' || flexValue === '1' || flexGrowValue === '1' ||
+                                         node.styles?.['margin-right'] === 'auto'; // margin-right: auto in flexbox
+
+            if (shouldFillHorizontal) {
+              frame.layoutSizingHorizontal = 'FILL';
+            } else if (parentFrame.layoutMode === 'HORIZONTAL') {
+              // In horizontal flex, children should HUG to their content
+              frame.layoutSizingHorizontal = 'HUG';
+            } else {
+              frame.layoutSizingHorizontal = 'FILL';
+            }
+
             // Maintain vertical HUG for containers to grow with content
             if (!node.styles?.height) {
               frame.layoutSizingVertical = 'HUG';
@@ -3373,10 +3390,15 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         const thisHasWidth = Boolean(node.styles?.width);
         const parentHadWidth = inheritedStyles?.['_hasConstrainedWidth'] === true;
 
+        // FIX: In HORIZONTAL flex containers, children should NOT inherit width constraint
+        // because flex row children size to their content, not to parent width
+        const isHorizontalFlex = frame.layoutMode === 'HORIZONTAL';
+        const shouldPropagateWidthConstraint = isHorizontalFlex ? thisHasWidth : (thisHasWidth || parentHadWidth);
+
         const inheritableStyles = {
           ...inheritedStyles,
-          // CRITICAL: Propagate width constraint to all descendants
-          '_hasConstrainedWidth': thisHasWidth || parentHadWidth,
+          // CRITICAL: Propagate width constraint - but not through horizontal flex containers
+          '_hasConstrainedWidth': shouldPropagateWidthConstraint,
           // CRITICAL: Propagate FILL vertical for grid rows with multi-row spans
           '_shouldFillVertical': inheritedStyles?.['_shouldFillVertical'],
 
@@ -3446,7 +3468,15 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             frame.appendChild(textNode);
 
             // FIXED: Use FILL for text in auto-layout containers instead of hardcoded width
-            if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
+            // But if the parent is HORIZONTAL flex and this frame will HUG, text should expand naturally
+            const parentIsHorizontal = parentFrame && parentFrame.layoutMode === 'HORIZONTAL';
+            const frameHasNoExplicitWidth = !node.styles?.width;
+            const frameWillHugHorizontal = parentIsHorizontal && frameHasNoExplicitWidth && !node.styles?.flex && !node.styles?.['flex-grow'];
+
+            if (frameWillHugHorizontal) {
+              // Parent is horizontal flex and this frame will HUG - text should size naturally
+              textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+            } else if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
               // Text should fill the container width and wrap
               textNode.layoutSizingHorizontal = 'FILL';
               textNode.textAutoResize = 'HEIGHT';
@@ -4016,8 +4046,18 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           parentFrame.appendChild(text);
         }
         
-      } else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'label'].includes(node.tagName)) {
-        
+      } else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'label', 'strong', 'b', 'em', 'i', 'code', 'small', 'mark', 'del', 'ins', 'sub', 'sup', 'cite', 'q', 'abbr', 'time'].includes(node.tagName)) {
+
+        // FIX: If text element has children but no direct text, process children instead
+        const hasNoDirectText = !node.text || !node.text.trim();
+        const hasChildren = node.children && node.children.length > 0;
+
+        if (hasNoDirectText && hasChildren) {
+          // Process children instead of creating empty text
+          await createFigmaNodesFromStructure(node.children, parentFrame, startX, startY, inheritedStyles);
+          continue; // Skip the rest of this element's processing
+        }
+
         // Special handling for span elements with backgrounds (like badges)
         const hasBackground = node.styles?.['background'] || node.styles?.['background-color'];
         const isSpanWithBackground = node.tagName === 'span' && hasBackground && hasBackground !== 'transparent';
@@ -4082,7 +4122,52 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         if (node.tagName === 'a') {
           text.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.5, b: 1 } }];
         }
-        
+
+        // Inline element styling - bold
+        if (node.tagName === 'strong' || node.tagName === 'b') {
+          try {
+            await figma.loadFontAsync({ family: "Inter", style: "Bold" });
+            text.fontName = { family: "Inter", style: "Bold" };
+          } catch (e) {
+            // Fallback: keep regular font
+          }
+        }
+
+        // Inline element styling - italic
+        if (node.tagName === 'em' || node.tagName === 'i' || node.tagName === 'cite') {
+          try {
+            await figma.loadFontAsync({ family: "Inter", style: "Italic" });
+            text.fontName = { family: "Inter", style: "Italic" };
+          } catch (e) {
+            // Fallback: keep regular font
+          }
+        }
+
+        // Inline element styling - code (monospace)
+        if (node.tagName === 'code') {
+          try {
+            await figma.loadFontAsync({ family: "Roboto Mono", style: "Regular" });
+            text.fontName = { family: "Roboto Mono", style: "Regular" };
+          } catch (e) {
+            // Fallback: keep regular font
+          }
+        }
+
+        // Inline element styling - small
+        if (node.tagName === 'small') {
+          text.fontSize = Math.max(10, (text.fontSize as number) * 0.85);
+        }
+
+        // Inline element styling - strikethrough
+        if (node.tagName === 'del' || node.tagName === 's') {
+          text.textDecoration = 'STRIKETHROUGH';
+        }
+
+        // Inline element styling - underline
+        if (node.tagName === 'ins' || node.tagName === 'u') {
+          text.textDecoration = 'UNDERLINE';
+        }
+
         // Apply styles first (including new text properties)
         if (node.styles) {
           applyStylesToText(text, node.styles);

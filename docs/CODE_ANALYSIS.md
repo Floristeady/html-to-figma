@@ -203,7 +203,7 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 10. RESUMEN DE ESTADO
 
-### ✅ RESUELTOS (42 issues)
+### ✅ RESUELTOS (50 issues)
 1. Especificidad CSS
 2. Selector universal (*)
 3. Layout mode para inline elements
@@ -246,6 +246,14 @@ Aplica como `x`/`y` y configura constraints.
 40. justify-content: space-evenly
 41. align-items: start, end, baseline
 42. overflow: hidden (clipsContent)
+43. **blockquote, figure, figcaption** - elementos semánticos como frames ✅ NEW
+44. **Flex row children HUG** - hijos en flex horizontal usan HUG no FILL ✅ NEW
+45. **Text en contenedores HUG** - texto se adapta al contenido ✅ NEW
+46. **Propagación width constraint** - no se propaga en flex horizontal ✅ NEW
+47. **Elementos inline (strong, em, code, etc.)** - 14+ nuevos elementos ✅ NEW
+48. **Styling inline (bold, italic, mono)** - estilos automáticos ✅ NEW
+49. **Empty text fix** - elementos con hijos procesan hijos ✅ NEW
+50. **hexToRgb null guard** - previene crash con colores null ✅ NEW
 
 ### ⚠️ PENDIENTES (3 - baja prioridad)
 1. **Orden de herencia** - cascada CSS completa
@@ -254,6 +262,6 @@ Aplica como `x`/`y` y configura constraints.
 
 ---
 
-## 📊 ESTADO: 42/45 (93% completo)
+## 📊 ESTADO: 50/53 (94% completo)
 
 Los 3 pendientes son de baja prioridad o limitaciones de Figma API.

@@ -2933,7 +2933,7 @@ async function createGridLayout(children, parentFrame, columns, gap, inheritedSt
     }
 }
 async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0, startY = 0, inheritedStyles) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, _72, _73, _74, _75, _76, _77, _78, _79, _80, _81, _82, _83, _84, _85, _86, _87, _88, _89, _90, _91, _92, _93, _94, _95, _96, _97, _98, _99, _100, _101, _102, _103, _104, _105, _106, _107, _108, _109, _110, _111, _112, _113, _114, _115, _116, _117, _118, _119, _120, _121, _122, _123, _124, _125, _126, _127, _128, _129, _130, _131, _132, _133, _134, _135, _136, _137, _138, _139, _140, _141, _142, _143, _144, _145, _146;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, _72, _73, _74, _75, _76, _77, _78, _79, _80, _81, _82, _83, _84, _85, _86, _87, _88, _89, _90, _91, _92, _93, _94, _95, _96, _97, _98, _99, _100, _101, _102, _103, _104, _105, _106, _107, _108, _109, _110, _111, _112, _113, _114, _115, _116, _117, _118, _119, _120, _121, _122, _123, _124, _125, _126, _127, _128, _129, _130, _131, _132, _133, _134, _135, _136, _137, _138, _139, _140, _141, _142, _143, _144, _145, _146, _147, _148, _149, _150, _151, _152, _153, _154;
     debugLog('[NODE CREATION] Starting createFigmaNodesFromStructure');
     debugLog('[NODE CREATION] Structure:', structure);
     debugLog('[NODE CREATION] ParentFrame:', (parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) || 'none');
@@ -2957,7 +2957,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             // Merge inherited styles with node's own styles
             const nodeStyles = Object.assign(Object.assign({}, inheritedStyles), node.styles);
             node.styles = nodeStyles;
-            if (['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside'].includes(node.tagName)) {
+            if (['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside', 'blockquote', 'figure', 'figcaption', 'address', 'details', 'summary'].includes(node.tagName)) {
                 const frame = figma.createFrame();
                 frame.name = node.tagName.toUpperCase() + ' Frame';
                 // LAYOUT MODE: Aplicar display CSS directamente PRIMERO
@@ -3178,9 +3178,26 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 else if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
                     try {
-                        frame.layoutSizingHorizontal = 'FILL';
+                        // FIX: In HORIZONTAL parent (flex row), children should HUG by default unless they have flex-grow
+                        // Only apply FILL in VERTICAL parent or if element has flex-grow/flex: 1
+                        const hasFlex = ((_26 = node.styles) === null || _26 === void 0 ? void 0 : _26.flex) || ((_27 = node.styles) === null || _27 === void 0 ? void 0 : _27['flex-grow']);
+                        const flexValue = (_28 = node.styles) === null || _28 === void 0 ? void 0 : _28.flex;
+                        const flexGrowValue = (_29 = node.styles) === null || _29 === void 0 ? void 0 : _29['flex-grow'];
+                        const shouldFillHorizontal = parentFrame.layoutMode === 'VERTICAL' ||
+                            hasFlex === '1' || flexValue === '1' || flexGrowValue === '1' ||
+                            ((_30 = node.styles) === null || _30 === void 0 ? void 0 : _30['margin-right']) === 'auto'; // margin-right: auto in flexbox
+                        if (shouldFillHorizontal) {
+                            frame.layoutSizingHorizontal = 'FILL';
+                        }
+                        else if (parentFrame.layoutMode === 'HORIZONTAL') {
+                            // In horizontal flex, children should HUG to their content
+                            frame.layoutSizingHorizontal = 'HUG';
+                        }
+                        else {
+                            frame.layoutSizingHorizontal = 'FILL';
+                        }
                         // Maintain vertical HUG for containers to grow with content
-                        if (!((_26 = node.styles) === null || _26 === void 0 ? void 0 : _26.height)) {
+                        if (!((_31 = node.styles) === null || _31 === void 0 ? void 0 : _31.height)) {
                             frame.layoutSizingVertical = 'HUG';
                         }
                     }
@@ -3193,29 +3210,29 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     // Only resize if needed, don't force arbitrary widths
                     frame.resize(Math.max(frame.width, 300), frame.height);
                     // Allow vertical growth for containers
-                    if (!((_27 = node.styles) === null || _27 === void 0 ? void 0 : _27.height)) {
+                    if (!((_32 = node.styles) === null || _32 === void 0 ? void 0 : _32.height)) {
                         frame.layoutSizingVertical = 'HUG';
                     }
                 }
                 else if (hasExplicitDimensions) {
                 }
                 // Handle flex child height separately for ALL elements (including those with explicit width like sidebar)
-                if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !((_28 = node.styles) === null || _28 === void 0 ? void 0 : _28.height)) {
+                if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !((_33 = node.styles) === null || _33 === void 0 ? void 0 : _33.height)) {
                     try {
                         frame.layoutSizingVertical = 'FILL';
                         // Debug height filling for sidebar
-                        if (((_29 = node.styles) === null || _29 === void 0 ? void 0 : _29.className) === 'sidebar') {
+                        if (((_34 = node.styles) === null || _34 === void 0 ? void 0 : _34.className) === 'sidebar') {
                         }
                     }
                     catch (error) {
-                        console.error('Height fill error for', ((_30 = node.styles) === null || _30 === void 0 ? void 0 : _30.className) || 'element', error);
+                        console.error('Height fill error for', ((_35 = node.styles) === null || _35 === void 0 ? void 0 : _35.className) || 'element', error);
                     }
                 }
                 // FIXED: Apply max-width, min-width, max-height, min-height from CSS
-                const maxWidthValue = parseSize((_31 = node.styles) === null || _31 === void 0 ? void 0 : _31['max-width']);
-                const minWidthValue = parseSize((_32 = node.styles) === null || _32 === void 0 ? void 0 : _32['min-width']);
-                const maxHeightValue = parseSize((_33 = node.styles) === null || _33 === void 0 ? void 0 : _33['max-height']);
-                const minHeightValue = parseSize((_34 = node.styles) === null || _34 === void 0 ? void 0 : _34['min-height']);
+                const maxWidthValue = parseSize((_36 = node.styles) === null || _36 === void 0 ? void 0 : _36['max-width']);
+                const minWidthValue = parseSize((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37['min-width']);
+                const maxHeightValue = parseSize((_38 = node.styles) === null || _38 === void 0 ? void 0 : _38['max-height']);
+                const minHeightValue = parseSize((_39 = node.styles) === null || _39 === void 0 ? void 0 : _39['min-height']);
                 if (maxWidthValue !== null && maxWidthValue > 0) {
                     try {
                         frame.maxWidth = maxWidthValue;
@@ -3268,20 +3285,24 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 // Pass styles that should be inherited by children
                 // CRITICAL: Track if we're inside a width-constrained container
-                const thisHasWidth = Boolean((_35 = node.styles) === null || _35 === void 0 ? void 0 : _35.width);
+                const thisHasWidth = Boolean((_40 = node.styles) === null || _40 === void 0 ? void 0 : _40.width);
                 const parentHadWidth = (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_hasConstrainedWidth']) === true;
+                // FIX: In HORIZONTAL flex containers, children should NOT inherit width constraint
+                // because flex row children size to their content, not to parent width
+                const isHorizontalFlex = frame.layoutMode === 'HORIZONTAL';
+                const shouldPropagateWidthConstraint = isHorizontalFlex ? thisHasWidth : (thisHasWidth || parentHadWidth);
                 const inheritableStyles = Object.assign(Object.assign({}, inheritedStyles), { 
-                    // CRITICAL: Propagate width constraint to all descendants
-                    '_hasConstrainedWidth': thisHasWidth || parentHadWidth, 
+                    // CRITICAL: Propagate width constraint - but not through horizontal flex containers
+                    '_hasConstrainedWidth': shouldPropagateWidthConstraint, 
                     // CRITICAL: Propagate FILL vertical for grid rows with multi-row spans
                     '_shouldFillVertical': inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['_shouldFillVertical'], 
                     // TEXT PROPERTIES - CSS inherited properties
-                    color: ((_36 = node.styles) === null || _36 === void 0 ? void 0 : _36.color) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles.color), 'font-family': ((_37 = node.styles) === null || _37 === void 0 ? void 0 : _37['font-family']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-family']), 'font-size': ((_38 = node.styles) === null || _38 === void 0 ? void 0 : _38['font-size']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-size']), 'font-weight': ((_39 = node.styles) === null || _39 === void 0 ? void 0 : _39['font-weight']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-weight']), 'font-style': ((_40 = node.styles) === null || _40 === void 0 ? void 0 : _40['font-style']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-style']), 'line-height': ((_41 = node.styles) === null || _41 === void 0 ? void 0 : _41['line-height']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['line-height']), 'text-align': ((_42 = node.styles) === null || _42 === void 0 ? void 0 : _42['text-align']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['text-align']), 'letter-spacing': ((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43['letter-spacing']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['letter-spacing']), 'word-spacing': ((_44 = node.styles) === null || _44 === void 0 ? void 0 : _44['word-spacing']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['word-spacing']), 'text-transform': ((_45 = node.styles) === null || _45 === void 0 ? void 0 : _45['text-transform']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['text-transform']), 
+                    color: ((_41 = node.styles) === null || _41 === void 0 ? void 0 : _41.color) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles.color), 'font-family': ((_42 = node.styles) === null || _42 === void 0 ? void 0 : _42['font-family']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-family']), 'font-size': ((_43 = node.styles) === null || _43 === void 0 ? void 0 : _43['font-size']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-size']), 'font-weight': ((_44 = node.styles) === null || _44 === void 0 ? void 0 : _44['font-weight']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-weight']), 'font-style': ((_45 = node.styles) === null || _45 === void 0 ? void 0 : _45['font-style']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['font-style']), 'line-height': ((_46 = node.styles) === null || _46 === void 0 ? void 0 : _46['line-height']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['line-height']), 'text-align': ((_47 = node.styles) === null || _47 === void 0 ? void 0 : _47['text-align']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['text-align']), 'letter-spacing': ((_48 = node.styles) === null || _48 === void 0 ? void 0 : _48['letter-spacing']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['letter-spacing']), 'word-spacing': ((_49 = node.styles) === null || _49 === void 0 ? void 0 : _49['word-spacing']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['word-spacing']), 'text-transform': ((_50 = node.styles) === null || _50 === void 0 ? void 0 : _50['text-transform']) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['text-transform']), 
                     // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
-                    'parent-has-gradient': (((_46 = node.styles) === null || _46 === void 0 ? void 0 : _46['background']) && node.styles['background'].includes('linear-gradient')) ||
+                    'parent-has-gradient': (((_51 = node.styles) === null || _51 === void 0 ? void 0 : _51['background']) && node.styles['background'].includes('linear-gradient')) ||
                         (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-has-gradient']), 
                     // Pass parent class name to help with styling decisions
-                    'parent-class': ((_47 = node.styles) === null || _47 === void 0 ? void 0 : _47.className) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-class']) });
+                    'parent-class': ((_52 = node.styles) === null || _52 === void 0 ? void 0 : _52.className) || (inheritedStyles === null || inheritedStyles === void 0 ? void 0 : inheritedStyles['parent-class']) });
                 // FIXED: Handle mixed content (text interleaved with elements) in correct order
                 if (node.mixedContent && node.mixedContent.length > 0) {
                     // Process mixed content in order
@@ -3325,7 +3346,15 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                         applyStylesToText(textNode, Object.assign(Object.assign({}, inheritableStyles), node.styles));
                         frame.appendChild(textNode);
                         // FIXED: Use FILL for text in auto-layout containers instead of hardcoded width
-                        if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
+                        // But if the parent is HORIZONTAL flex and this frame will HUG, text should expand naturally
+                        const parentIsHorizontal = parentFrame && parentFrame.layoutMode === 'HORIZONTAL';
+                        const frameHasNoExplicitWidth = !((_53 = node.styles) === null || _53 === void 0 ? void 0 : _53.width);
+                        const frameWillHugHorizontal = parentIsHorizontal && frameHasNoExplicitWidth && !((_54 = node.styles) === null || _54 === void 0 ? void 0 : _54.flex) && !((_55 = node.styles) === null || _55 === void 0 ? void 0 : _55['flex-grow']);
+                        if (frameWillHugHorizontal) {
+                            // Parent is horizontal flex and this frame will HUG - text should size naturally
+                            textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+                        }
+                        else if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
                             // Text should fill the container width and wrap
                             textNode.layoutSizingHorizontal = 'FILL';
                             textNode.textAutoResize = 'HEIGHT';
@@ -3338,13 +3367,13 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     // Process children if they exist
                     if (node.children && node.children.length > 0) {
                         // Manejo de grid genérico
-                        if (((_48 = node.styles) === null || _48 === void 0 ? void 0 : _48.display) === 'grid') {
+                        if (((_56 = node.styles) === null || _56 === void 0 ? void 0 : _56.display) === 'grid') {
                             console.log('[GRID] Grid detected! Children:', node.children.length);
-                            const gridTemplateAreas = (_49 = node.styles) === null || _49 === void 0 ? void 0 : _49['grid-template-areas'];
-                            const gridTemplateColumns = (_50 = node.styles) === null || _50 === void 0 ? void 0 : _50['grid-template-columns'];
+                            const gridTemplateAreas = (_57 = node.styles) === null || _57 === void 0 ? void 0 : _57['grid-template-areas'];
+                            const gridTemplateColumns = (_58 = node.styles) === null || _58 === void 0 ? void 0 : _58['grid-template-columns'];
                             console.log('[GRID] template-areas:', gridTemplateAreas);
                             console.log('[GRID] template-columns:', gridTemplateColumns);
-                            const gap = parseSize((_51 = node.styles) === null || _51 === void 0 ? void 0 : _51.gap) || parseSize((parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('gridGap')) || '') || 12;
+                            const gap = parseSize((_59 = node.styles) === null || _59 === void 0 ? void 0 : _59.gap) || parseSize((parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.getPluginData('gridGap')) || '') || 12;
                             // Check if grid-template-areas is defined
                             const areaMap = parseGridTemplateAreas(gridTemplateAreas);
                             if (areaMap) {
@@ -3368,14 +3397,14 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // FIXED: Store z-index for later reordering
-                if ((_52 = node.styles) === null || _52 === void 0 ? void 0 : _52['z-index']) {
+                if ((_60 = node.styles) === null || _60 === void 0 ? void 0 : _60['z-index']) {
                     const zIndex = parseInt(node.styles['z-index'], 10);
                     if (!isNaN(zIndex)) {
                         frame.setPluginData('zIndex', zIndex.toString());
                     }
                 }
                 // Apply flex grow after appendChild for proper timing
-                if ((((_53 = node.styles) === null || _53 === void 0 ? void 0 : _53.flex) === '1' || ((_54 = node.styles) === null || _54 === void 0 ? void 0 : _54['flex-grow']) === '1') && parentFrame) {
+                if ((((_61 = node.styles) === null || _61 === void 0 ? void 0 : _61.flex) === '1' || ((_62 = node.styles) === null || _62 === void 0 ? void 0 : _62['flex-grow']) === '1') && parentFrame) {
                     if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
                         try {
                             frame.layoutGrow = 1;
@@ -3395,7 +3424,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     }
                 }
                 // FIXED: Apply align-self for individual item alignment within parent
-                if (((_55 = node.styles) === null || _55 === void 0 ? void 0 : _55['align-self']) && parentFrame) {
+                if (((_63 = node.styles) === null || _63 === void 0 ? void 0 : _63['align-self']) && parentFrame) {
                     try {
                         const alignSelf = node.styles['align-self'];
                         if (alignSelf === 'center') {
@@ -3424,12 +3453,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 form.primaryAxisSizingMode = 'AUTO';
                 form.counterAxisSizingMode = 'AUTO';
                 // FIXED: Only apply default padding/spacing if no CSS values
-                const basePadding = parseSize((_56 = node.styles) === null || _56 === void 0 ? void 0 : _56.padding);
-                form.paddingLeft = (_59 = (_58 = parseSize((_57 = node.styles) === null || _57 === void 0 ? void 0 : _57['padding-left'])) !== null && _58 !== void 0 ? _58 : basePadding) !== null && _59 !== void 0 ? _59 : 0;
-                form.paddingRight = (_62 = (_61 = parseSize((_60 = node.styles) === null || _60 === void 0 ? void 0 : _60['padding-right'])) !== null && _61 !== void 0 ? _61 : basePadding) !== null && _62 !== void 0 ? _62 : 0;
-                form.paddingTop = (_65 = (_64 = parseSize((_63 = node.styles) === null || _63 === void 0 ? void 0 : _63['padding-top'])) !== null && _64 !== void 0 ? _64 : basePadding) !== null && _65 !== void 0 ? _65 : 0;
-                form.paddingBottom = (_68 = (_67 = parseSize((_66 = node.styles) === null || _66 === void 0 ? void 0 : _66['padding-bottom'])) !== null && _67 !== void 0 ? _67 : basePadding) !== null && _68 !== void 0 ? _68 : 0;
-                form.itemSpacing = (_70 = parseSize((_69 = node.styles) === null || _69 === void 0 ? void 0 : _69.gap)) !== null && _70 !== void 0 ? _70 : 0;
+                const basePadding = parseSize((_64 = node.styles) === null || _64 === void 0 ? void 0 : _64.padding);
+                form.paddingLeft = (_67 = (_66 = parseSize((_65 = node.styles) === null || _65 === void 0 ? void 0 : _65['padding-left'])) !== null && _66 !== void 0 ? _66 : basePadding) !== null && _67 !== void 0 ? _67 : 0;
+                form.paddingRight = (_70 = (_69 = parseSize((_68 = node.styles) === null || _68 === void 0 ? void 0 : _68['padding-right'])) !== null && _69 !== void 0 ? _69 : basePadding) !== null && _70 !== void 0 ? _70 : 0;
+                form.paddingTop = (_73 = (_72 = parseSize((_71 = node.styles) === null || _71 === void 0 ? void 0 : _71['padding-top'])) !== null && _72 !== void 0 ? _72 : basePadding) !== null && _73 !== void 0 ? _73 : 0;
+                form.paddingBottom = (_76 = (_75 = parseSize((_74 = node.styles) === null || _74 === void 0 ? void 0 : _74['padding-bottom'])) !== null && _75 !== void 0 ? _75 : basePadding) !== null && _76 !== void 0 ? _76 : 0;
+                form.itemSpacing = (_78 = parseSize((_77 = node.styles) === null || _77 === void 0 ? void 0 : _77.gap)) !== null && _78 !== void 0 ? _78 : 0;
                 if (node.styles) {
                     applyStylesToFrame(form, node.styles);
                 }
@@ -3445,37 +3474,37 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             }
             else if (['input', 'textarea', 'select'].includes(node.tagName)) {
                 // Calcular alto y ancho
-                let inputWidth = parseSize((_71 = node.styles) === null || _71 === void 0 ? void 0 : _71.width);
+                let inputWidth = parseSize((_79 = node.styles) === null || _79 === void 0 ? void 0 : _79.width);
                 const inputHeight = node.tagName === 'textarea' ?
-                    (parseSize((_72 = node.attributes) === null || _72 === void 0 ? void 0 : _72.rows) || 3) * 20 + 20 :
-                    parseSize((_73 = node.styles) === null || _73 === void 0 ? void 0 : _73.height) || 40;
+                    (parseSize((_80 = node.attributes) === null || _80 === void 0 ? void 0 : _80.rows) || 3) * 20 + 20 :
+                    parseSize((_81 = node.styles) === null || _81 === void 0 ? void 0 : _81.height) || 40;
                 const input = figma.createFrame();
                 // Fondo y borde: usar CSS si está, si no, fallback blanco/gris
                 let bgColor = { r: 1, g: 1, b: 1 };
-                if (((_74 = node.styles) === null || _74 === void 0 ? void 0 : _74['background']) && node.styles['background'] !== 'transparent') {
+                if (((_82 = node.styles) === null || _82 === void 0 ? void 0 : _82['background']) && node.styles['background'] !== 'transparent') {
                     const bgParsed = hexToRgb(node.styles['background']);
                     if (bgParsed)
                         bgColor = bgParsed;
                 }
-                else if (((_75 = node.styles) === null || _75 === void 0 ? void 0 : _75['background-color']) && node.styles['background-color'] !== 'transparent') {
+                else if (((_83 = node.styles) === null || _83 === void 0 ? void 0 : _83['background-color']) && node.styles['background-color'] !== 'transparent') {
                     const bgParsed = hexToRgb(node.styles['background-color']);
                     if (bgParsed)
                         bgColor = bgParsed;
                 }
                 input.fills = [{ type: 'SOLID', color: bgColor }];
                 let borderColor = { r: 0.8, g: 0.8, b: 0.8 };
-                if (((_76 = node.styles) === null || _76 === void 0 ? void 0 : _76['border']) || ((_77 = node.styles) === null || _77 === void 0 ? void 0 : _77['border-color'])) {
+                if (((_84 = node.styles) === null || _84 === void 0 ? void 0 : _84['border']) || ((_85 = node.styles) === null || _85 === void 0 ? void 0 : _85['border-color'])) {
                     const borderParsed = hexToRgb(node.styles['border-color'] || extractBorderColor(node.styles['border']));
                     if (borderParsed)
                         borderColor = borderParsed;
                 }
                 input.strokes = [{ type: 'SOLID', color: borderColor }];
-                input.strokeWeight = parseSize((_78 = node.styles) === null || _78 === void 0 ? void 0 : _78['border-width']) || 1;
-                input.cornerRadius = parseSize((_79 = node.styles) === null || _79 === void 0 ? void 0 : _79['border-radius']) || 4;
+                input.strokeWeight = parseSize((_86 = node.styles) === null || _86 === void 0 ? void 0 : _86['border-width']) || 1;
+                input.cornerRadius = parseSize((_87 = node.styles) === null || _87 === void 0 ? void 0 : _87['border-radius']) || 4;
                 input.name = node.tagName.toUpperCase();
                 input.layoutMode = 'HORIZONTAL';
                 // Solo centrar si el CSS lo especifica (no hardcodear centrado)
-                if (((_80 = node.styles) === null || _80 === void 0 ? void 0 : _80['text-align']) === 'center') {
+                if (((_88 = node.styles) === null || _88 === void 0 ? void 0 : _88['text-align']) === 'center') {
                     input.primaryAxisAlignItems = 'CENTER'; // Horizontal center
                     input.counterAxisAlignItems = 'CENTER'; // Vertical center
                 }
@@ -3483,13 +3512,13 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     input.primaryAxisAlignItems = 'MIN'; // Alineado a la izquierda horizontalmente (eje principal)
                     input.counterAxisAlignItems = 'CENTER'; // Centrado verticalmente (eje perpendicular)
                 }
-                input.paddingLeft = parseSize((_81 = node.styles) === null || _81 === void 0 ? void 0 : _81['padding-left']) || 12;
-                input.paddingRight = parseSize((_82 = node.styles) === null || _82 === void 0 ? void 0 : _82['padding-right']) || 12;
+                input.paddingLeft = parseSize((_89 = node.styles) === null || _89 === void 0 ? void 0 : _89['padding-left']) || 12;
+                input.paddingRight = parseSize((_90 = node.styles) === null || _90 === void 0 ? void 0 : _90['padding-right']) || 12;
                 // Detectar si el parent es auto-layout
                 const parentIsAutoLayout = parentFrame && parentFrame.type === 'FRAME' && parentFrame.layoutMode && parentFrame.layoutMode !== 'NONE';
                 // Soporte width: 100% (FILL) si el CSS lo pide y el parent es auto-layout
                 let useFill = false;
-                if (((_83 = node.styles) === null || _83 === void 0 ? void 0 : _83.width) === '100%') {
+                if (((_91 = node.styles) === null || _91 === void 0 ? void 0 : _91.width) === '100%') {
                     if (parentIsAutoLayout) {
                         useFill = true;
                         // NO setear FILL aquí - lo haremos después de appendChild
@@ -3511,17 +3540,17 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Add placeholder or value text
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const inputText = figma.createText();
-                const displayText = ((_84 = node.attributes) === null || _84 === void 0 ? void 0 : _84.value) || ((_85 = node.attributes) === null || _85 === void 0 ? void 0 : _85.placeholder) ||
+                const displayText = ((_92 = node.attributes) === null || _92 === void 0 ? void 0 : _92.value) || ((_93 = node.attributes) === null || _93 === void 0 ? void 0 : _93.placeholder) ||
                     (node.tagName === 'select' ? 'Select option ▼' : 'Input field');
                 inputText.characters = displayText;
                 // Color de texto: usar CSS si está, si no, gris claro para placeholder
                 let textColor = { r: 0.2, g: 0.2, b: 0.2 };
-                if ((_86 = node.styles) === null || _86 === void 0 ? void 0 : _86.color) {
+                if ((_94 = node.styles) === null || _94 === void 0 ? void 0 : _94.color) {
                     const colorParsed = hexToRgb(node.styles.color);
                     if (colorParsed)
                         textColor = colorParsed;
                 }
-                else if (!((_87 = node.attributes) === null || _87 === void 0 ? void 0 : _87.value)) {
+                else if (!((_95 = node.attributes) === null || _95 === void 0 ? void 0 : _95.value)) {
                     textColor = { r: 0.6, g: 0.6, b: 0.6 };
                 }
                 inputText.fills = [{ type: 'SOLID', color: textColor }];
@@ -3551,7 +3580,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'table') {
-                const tableWidth = parseSize((_88 = node.styles) === null || _88 === void 0 ? void 0 : _88.width) || 500; // Increased default width
+                const tableWidth = parseSize((_96 = node.styles) === null || _96 === void 0 ? void 0 : _96.width) || 500; // Increased default width
                 let tableHeight = 60; // Base height for header
                 // Calculate table height based on rows
                 const bodyRows = node.children.filter((c) => c.tagName === 'tbody' || c.tagName === 'tr');
@@ -3623,11 +3652,11 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             else if (['td', 'th'].includes(node.tagName)) {
                 const cell = figma.createFrame();
                 // FIXED: Use CSS dimensions or auto-size
-                const cellWidth = parseSize((_89 = node.styles) === null || _89 === void 0 ? void 0 : _89.width) || 100; // Reasonable default
-                const cellHeight = parseSize((_90 = node.styles) === null || _90 === void 0 ? void 0 : _90.height) || 40;
+                const cellWidth = parseSize((_97 = node.styles) === null || _97 === void 0 ? void 0 : _97.width) || 100; // Reasonable default
+                const cellHeight = parseSize((_98 = node.styles) === null || _98 === void 0 ? void 0 : _98.height) || 40;
                 cell.resize(cellWidth, cellHeight);
                 // FIXED: Use CSS background-color or transparent
-                const bgColor = ((_91 = node.styles) === null || _91 === void 0 ? void 0 : _91['background-color']) || ((_92 = node.styles) === null || _92 === void 0 ? void 0 : _92.background);
+                const bgColor = ((_99 = node.styles) === null || _99 === void 0 ? void 0 : _99['background-color']) || ((_100 = node.styles) === null || _100 === void 0 ? void 0 : _100.background);
                 if (bgColor && bgColor !== 'transparent') {
                     const parsedBg = hexToRgb(bgColor);
                     cell.fills = parsedBg ? [{ type: 'SOLID', color: parsedBg }] : [];
@@ -3636,7 +3665,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     cell.fills = [];
                 }
                 // FIXED: Use CSS border or light default
-                const borderColor = (_93 = node.styles) === null || _93 === void 0 ? void 0 : _93['border-color'];
+                const borderColor = (_101 = node.styles) === null || _101 === void 0 ? void 0 : _101['border-color'];
                 if (borderColor) {
                     const parsedBorder = hexToRgb(borderColor);
                     cell.strokes = parsedBorder ? [{ type: 'SOLID', color: parsedBorder }] : [];
@@ -3644,17 +3673,17 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 else {
                     cell.strokes = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
                 }
-                cell.strokeWeight = (_95 = parseSize((_94 = node.styles) === null || _94 === void 0 ? void 0 : _94['border-width'])) !== null && _95 !== void 0 ? _95 : 0.5;
+                cell.strokeWeight = (_103 = parseSize((_102 = node.styles) === null || _102 === void 0 ? void 0 : _102['border-width'])) !== null && _103 !== void 0 ? _103 : 0.5;
                 cell.name = node.tagName.toUpperCase();
                 cell.layoutMode = 'HORIZONTAL';
                 cell.primaryAxisAlignItems = 'CENTER';
                 cell.counterAxisAlignItems = 'CENTER';
                 // FIXED: Use CSS padding
-                const basePadding = parseSize((_96 = node.styles) === null || _96 === void 0 ? void 0 : _96.padding);
-                cell.paddingLeft = (_99 = (_98 = parseSize((_97 = node.styles) === null || _97 === void 0 ? void 0 : _97['padding-left'])) !== null && _98 !== void 0 ? _98 : basePadding) !== null && _99 !== void 0 ? _99 : 8;
-                cell.paddingRight = (_102 = (_101 = parseSize((_100 = node.styles) === null || _100 === void 0 ? void 0 : _100['padding-right'])) !== null && _101 !== void 0 ? _101 : basePadding) !== null && _102 !== void 0 ? _102 : 8;
-                cell.paddingTop = (_105 = (_104 = parseSize((_103 = node.styles) === null || _103 === void 0 ? void 0 : _103['padding-top'])) !== null && _104 !== void 0 ? _104 : basePadding) !== null && _105 !== void 0 ? _105 : 4;
-                cell.paddingBottom = (_108 = (_107 = parseSize((_106 = node.styles) === null || _106 === void 0 ? void 0 : _106['padding-bottom'])) !== null && _107 !== void 0 ? _107 : basePadding) !== null && _108 !== void 0 ? _108 : 4;
+                const basePadding = parseSize((_104 = node.styles) === null || _104 === void 0 ? void 0 : _104.padding);
+                cell.paddingLeft = (_107 = (_106 = parseSize((_105 = node.styles) === null || _105 === void 0 ? void 0 : _105['padding-left'])) !== null && _106 !== void 0 ? _106 : basePadding) !== null && _107 !== void 0 ? _107 : 8;
+                cell.paddingRight = (_110 = (_109 = parseSize((_108 = node.styles) === null || _108 === void 0 ? void 0 : _108['padding-right'])) !== null && _109 !== void 0 ? _109 : basePadding) !== null && _110 !== void 0 ? _110 : 8;
+                cell.paddingTop = (_113 = (_112 = parseSize((_111 = node.styles) === null || _111 === void 0 ? void 0 : _111['padding-top'])) !== null && _112 !== void 0 ? _112 : basePadding) !== null && _113 !== void 0 ? _113 : 4;
+                cell.paddingBottom = (_116 = (_115 = parseSize((_114 = node.styles) === null || _114 === void 0 ? void 0 : _114['padding-bottom'])) !== null && _115 !== void 0 ? _115 : basePadding) !== null && _116 !== void 0 ? _116 : 4;
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const cellText = figma.createText();
                 // Get text content from node or its children
@@ -3674,7 +3703,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
                 cellText.characters = textContent || '';
                 // FIXED: Use CSS color or default to black, let CSS override
-                const textColor = (_109 = node.styles) === null || _109 === void 0 ? void 0 : _109.color;
+                const textColor = (_117 = node.styles) === null || _117 === void 0 ? void 0 : _117.color;
                 if (textColor) {
                     const parsedColor = hexToRgb(textColor);
                     cellText.fills = parsedColor ? [{ type: 'SOLID', color: parsedColor }] : [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
@@ -3696,12 +3725,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Check if parent has text-align center and inherit it
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                     // If parent container has text-align center, apply it to this text
-                    if (!((_110 = node.styles) === null || _110 === void 0 ? void 0 : _110['text-align'])) {
+                    if (!((_118 = node.styles) === null || _118 === void 0 ? void 0 : _118['text-align'])) {
                         cellText.textAlignHorizontal = 'CENTER';
                     }
                 }
                 // Special debug for detail elements
-                if ((_112 = (_111 = node.styles) === null || _111 === void 0 ? void 0 : _111.className) === null || _112 === void 0 ? void 0 : _112.includes('detail')) {
+                if ((_120 = (_119 = node.styles) === null || _119 === void 0 ? void 0 : _119.className) === null || _120 === void 0 ? void 0 : _120.includes('detail')) {
                 }
                 if (!parentFrame) {
                     cell.x = startX;
@@ -3713,12 +3742,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'button') {
-                const buttonWidth = parseSize((_113 = node.styles) === null || _113 === void 0 ? void 0 : _113.width) || Math.max(120, (((_114 = node.text) === null || _114 === void 0 ? void 0 : _114.length) || 6) * 12);
-                const buttonHeight = parseSize((_115 = node.styles) === null || _115 === void 0 ? void 0 : _115.height) || 44;
+                const buttonWidth = parseSize((_121 = node.styles) === null || _121 === void 0 ? void 0 : _121.width) || Math.max(120, (((_122 = node.text) === null || _122 === void 0 ? void 0 : _122.length) || 6) * 12);
+                const buttonHeight = parseSize((_123 = node.styles) === null || _123 === void 0 ? void 0 : _123.height) || 44;
                 const frame = figma.createFrame();
                 frame.resize(buttonWidth, buttonHeight);
                 // FIXED: Use CSS background-color or default to transparent (browser default)
-                const bgColor = ((_116 = node.styles) === null || _116 === void 0 ? void 0 : _116['background-color']) || ((_117 = node.styles) === null || _117 === void 0 ? void 0 : _117.background);
+                const bgColor = ((_124 = node.styles) === null || _124 === void 0 ? void 0 : _124['background-color']) || ((_125 = node.styles) === null || _125 === void 0 ? void 0 : _125.background);
                 if (bgColor) {
                     const parsedColor = hexToRgb(bgColor);
                     if (parsedColor) {
@@ -3733,7 +3762,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     frame.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
                 }
                 // FIXED: Use CSS border-radius or default to small radius
-                const borderRadius = (_119 = parseSize((_118 = node.styles) === null || _118 === void 0 ? void 0 : _118['border-radius'])) !== null && _119 !== void 0 ? _119 : 4;
+                const borderRadius = (_127 = parseSize((_126 = node.styles) === null || _126 === void 0 ? void 0 : _126['border-radius'])) !== null && _127 !== void 0 ? _127 : 4;
                 frame.cornerRadius = borderRadius;
                 frame.name = 'Button';
                 // Enable auto-layout for centering
@@ -3741,11 +3770,11 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 frame.primaryAxisAlignItems = 'CENTER';
                 frame.counterAxisAlignItems = 'CENTER';
                 // FIXED: Use CSS padding or sensible defaults
-                const basePadding = parseSize((_120 = node.styles) === null || _120 === void 0 ? void 0 : _120.padding);
-                frame.paddingLeft = (_123 = (_122 = parseSize((_121 = node.styles) === null || _121 === void 0 ? void 0 : _121['padding-left'])) !== null && _122 !== void 0 ? _122 : basePadding) !== null && _123 !== void 0 ? _123 : 16;
-                frame.paddingRight = (_126 = (_125 = parseSize((_124 = node.styles) === null || _124 === void 0 ? void 0 : _124['padding-right'])) !== null && _125 !== void 0 ? _125 : basePadding) !== null && _126 !== void 0 ? _126 : 16;
-                frame.paddingTop = (_129 = (_128 = parseSize((_127 = node.styles) === null || _127 === void 0 ? void 0 : _127['padding-top'])) !== null && _128 !== void 0 ? _128 : basePadding) !== null && _129 !== void 0 ? _129 : 8;
-                frame.paddingBottom = (_132 = (_131 = parseSize((_130 = node.styles) === null || _130 === void 0 ? void 0 : _130['padding-bottom'])) !== null && _131 !== void 0 ? _131 : basePadding) !== null && _132 !== void 0 ? _132 : 8;
+                const basePadding = parseSize((_128 = node.styles) === null || _128 === void 0 ? void 0 : _128.padding);
+                frame.paddingLeft = (_131 = (_130 = parseSize((_129 = node.styles) === null || _129 === void 0 ? void 0 : _129['padding-left'])) !== null && _130 !== void 0 ? _130 : basePadding) !== null && _131 !== void 0 ? _131 : 16;
+                frame.paddingRight = (_134 = (_133 = parseSize((_132 = node.styles) === null || _132 === void 0 ? void 0 : _132['padding-right'])) !== null && _133 !== void 0 ? _133 : basePadding) !== null && _134 !== void 0 ? _134 : 16;
+                frame.paddingTop = (_137 = (_136 = parseSize((_135 = node.styles) === null || _135 === void 0 ? void 0 : _135['padding-top'])) !== null && _136 !== void 0 ? _136 : basePadding) !== null && _137 !== void 0 ? _137 : 8;
+                frame.paddingBottom = (_140 = (_139 = parseSize((_138 = node.styles) === null || _138 === void 0 ? void 0 : _138['padding-bottom'])) !== null && _139 !== void 0 ? _139 : basePadding) !== null && _140 !== void 0 ? _140 : 8;
                 // Apply styles (including new CSS properties)
                 if (node.styles) {
                     applyStylesToFrame(frame, node.styles);
@@ -3755,7 +3784,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 const buttonText = figma.createText();
                 buttonText.characters = node.text || 'Button';
                 // FIXED: Use CSS color or default to dark text (for light background default)
-                const textColor = (_133 = node.styles) === null || _133 === void 0 ? void 0 : _133.color;
+                const textColor = (_141 = node.styles) === null || _141 === void 0 ? void 0 : _141.color;
                 if (textColor) {
                     const parsedTextColor = hexToRgb(textColor);
                     if (parsedTextColor) {
@@ -3783,12 +3812,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 }
             }
             else if (node.tagName === 'img') {
-                const width = parseSize((_134 = node.styles) === null || _134 === void 0 ? void 0 : _134.width) || 200;
-                const height = parseSize((_135 = node.styles) === null || _135 === void 0 ? void 0 : _135.height) || 150;
+                const width = parseSize((_142 = node.styles) === null || _142 === void 0 ? void 0 : _142.width) || 200;
+                const height = parseSize((_143 = node.styles) === null || _143 === void 0 ? void 0 : _143.height) || 150;
                 const frame = figma.createFrame();
                 frame.resize(width, height);
                 frame.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
-                frame.name = 'Image: ' + (((_136 = node.attributes) === null || _136 === void 0 ? void 0 : _136.alt) || 'Unnamed');
+                frame.name = 'Image: ' + (((_144 = node.attributes) === null || _144 === void 0 ? void 0 : _144.alt) || 'Unnamed');
                 // Center the placeholder text
                 frame.layoutMode = 'HORIZONTAL';
                 frame.primaryAxisAlignItems = 'CENTER';
@@ -3796,7 +3825,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Add placeholder text
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const placeholderText = figma.createText();
-                placeholderText.characters = ((_137 = node.attributes) === null || _137 === void 0 ? void 0 : _137.alt) || 'Image';
+                placeholderText.characters = ((_145 = node.attributes) === null || _145 === void 0 ? void 0 : _145.alt) || 'Image';
                 placeholderText.fills = [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }];
                 frame.appendChild(placeholderText);
                 if (!parentFrame) {
@@ -3838,7 +3867,7 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
             else if (node.tagName === 'li') {
                 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
                 const text = figma.createText();
-                const parentList = ((_138 = parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) === null || _138 === void 0 ? void 0 : _138.includes('OL')) ? 'OL' : 'UL';
+                const parentList = ((_146 = parentFrame === null || parentFrame === void 0 ? void 0 : parentFrame.name) === null || _146 === void 0 ? void 0 : _146.includes('OL')) ? 'OL' : 'UL';
                 const bullet = parentList === 'OL' ? '1. ' : '• ';
                 text.characters = bullet + (node.text || 'List item');
                 text.name = 'List Item';
@@ -3849,12 +3878,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                 // Check if parent has text-align center and inherit it
                 if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                     // If parent container has text-align center, apply it to this text
-                    if (!((_139 = node.styles) === null || _139 === void 0 ? void 0 : _139['text-align'])) {
+                    if (!((_147 = node.styles) === null || _147 === void 0 ? void 0 : _147['text-align'])) {
                         text.textAlignHorizontal = 'CENTER';
                     }
                 }
                 // Special debug for detail elements
-                if ((_141 = (_140 = node.styles) === null || _140 === void 0 ? void 0 : _140.className) === null || _141 === void 0 ? void 0 : _141.includes('detail')) {
+                if ((_149 = (_148 = node.styles) === null || _148 === void 0 ? void 0 : _148.className) === null || _149 === void 0 ? void 0 : _149.includes('detail')) {
                 }
                 if (!parentFrame) {
                     text.x = startX;
@@ -3865,9 +3894,17 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     parentFrame.appendChild(text);
                 }
             }
-            else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'label'].includes(node.tagName)) {
+            else if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'label', 'strong', 'b', 'em', 'i', 'code', 'small', 'mark', 'del', 'ins', 'sub', 'sup', 'cite', 'q', 'abbr', 'time'].includes(node.tagName)) {
+                // FIX: If text element has children but no direct text, process children instead
+                const hasNoDirectText = !node.text || !node.text.trim();
+                const hasChildren = node.children && node.children.length > 0;
+                if (hasNoDirectText && hasChildren) {
+                    // Process children instead of creating empty text
+                    await createFigmaNodesFromStructure(node.children, parentFrame, startX, startY, inheritedStyles);
+                    continue; // Skip the rest of this element's processing
+                }
                 // Special handling for span elements with backgrounds (like badges)
-                const hasBackground = ((_142 = node.styles) === null || _142 === void 0 ? void 0 : _142['background']) || ((_143 = node.styles) === null || _143 === void 0 ? void 0 : _143['background-color']);
+                const hasBackground = ((_150 = node.styles) === null || _150 === void 0 ? void 0 : _150['background']) || ((_151 = node.styles) === null || _151 === void 0 ? void 0 : _151['background-color']);
                 const isSpanWithBackground = node.tagName === 'span' && hasBackground && hasBackground !== 'transparent';
                 if (isSpanWithBackground) {
                     // Create span with background as FrameNode (like a badge)
@@ -3922,6 +3959,48 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     if (node.tagName === 'a') {
                         text.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.5, b: 1 } }];
                     }
+                    // Inline element styling - bold
+                    if (node.tagName === 'strong' || node.tagName === 'b') {
+                        try {
+                            await figma.loadFontAsync({ family: "Inter", style: "Bold" });
+                            text.fontName = { family: "Inter", style: "Bold" };
+                        }
+                        catch (e) {
+                            // Fallback: keep regular font
+                        }
+                    }
+                    // Inline element styling - italic
+                    if (node.tagName === 'em' || node.tagName === 'i' || node.tagName === 'cite') {
+                        try {
+                            await figma.loadFontAsync({ family: "Inter", style: "Italic" });
+                            text.fontName = { family: "Inter", style: "Italic" };
+                        }
+                        catch (e) {
+                            // Fallback: keep regular font
+                        }
+                    }
+                    // Inline element styling - code (monospace)
+                    if (node.tagName === 'code') {
+                        try {
+                            await figma.loadFontAsync({ family: "Roboto Mono", style: "Regular" });
+                            text.fontName = { family: "Roboto Mono", style: "Regular" };
+                        }
+                        catch (e) {
+                            // Fallback: keep regular font
+                        }
+                    }
+                    // Inline element styling - small
+                    if (node.tagName === 'small') {
+                        text.fontSize = Math.max(10, text.fontSize * 0.85);
+                    }
+                    // Inline element styling - strikethrough
+                    if (node.tagName === 'del' || node.tagName === 's') {
+                        text.textDecoration = 'STRIKETHROUGH';
+                    }
+                    // Inline element styling - underline
+                    if (node.tagName === 'ins' || node.tagName === 'u') {
+                        text.textDecoration = 'UNDERLINE';
+                    }
                     // Apply styles first (including new text properties)
                     if (node.styles) {
                         applyStylesToText(text, node.styles);
@@ -3929,12 +4008,12 @@ async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0,
                     // Check if parent has text-align center and inherit it
                     if (parentFrame && parentFrame.getPluginData('textAlign') === 'center') {
                         // If parent container has text-align center, apply it to this text
-                        if (!((_144 = node.styles) === null || _144 === void 0 ? void 0 : _144['text-align'])) {
+                        if (!((_152 = node.styles) === null || _152 === void 0 ? void 0 : _152['text-align'])) {
                             text.textAlignHorizontal = 'CENTER';
                         }
                     }
                     // Special debug for detail elements
-                    if ((_146 = (_145 = node.styles) === null || _145 === void 0 ? void 0 : _145.className) === null || _146 === void 0 ? void 0 : _146.includes('detail')) {
+                    if ((_154 = (_153 = node.styles) === null || _153 === void 0 ? void 0 : _153.className) === null || _154 === void 0 ? void 0 : _154.includes('detail')) {
                     }
                     // Better text positioning and width
                     if (!parentFrame) {
