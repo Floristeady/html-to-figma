@@ -306,6 +306,66 @@ Estos problemas causan que diseños complejos no se vean como el original:
 **Impacto:** Textos con colores inline usan color incorrecto.
 **Solución:** Aplicar inline styles después de CSS de clases.
 
+### 11.9 Ancho del diseño fijo en 1440px ❌ ALTO
+**Problema:** Todos los diseños se renderizan a 1440px de ancho, pero algunos necesitan ser más pequeños (mobile: 375px, tablet: 768px) o más grandes (1920px, full-width).
+**Impacto:** Diseños mobile se ven estirados, diseños para pantallas grandes se ven comprimidos.
+
+**Estrategias posibles (en orden de prioridad):**
+
+#### Opción A: Detección automática desde CSS ⭐ RECOMENDADA
+1. Buscar `max-width` en contenedores principales (`.container`, `.wrapper`, `main`, `body`)
+2. Buscar `width` explícito en `html` o `body`
+3. Si encuentra valores como `375px`, `768px`, `1200px`, `1920px` → usar ese ancho
+4. Fallback a 1440px si no hay indicadores
+
+```typescript
+// Ejemplo de detección
+function detectDesignWidth(styles: Map<string, CSSStyles>): number {
+  const containerSelectors = ['.container', '.wrapper', 'main', 'body', 'html'];
+  for (const selector of containerSelectors) {
+    const style = styles.get(selector);
+    if (style?.maxWidth) return parseSize(style.maxWidth);
+    if (style?.width && !style.width.includes('%')) return parseSize(style.width);
+  }
+  return 1440; // default
+}
+```
+
+#### Opción B: Meta tag personalizado
+Permitir que el usuario especifique el ancho en el HTML:
+```html
+<meta name="figma-width" content="375">
+<!-- o -->
+<meta name="figma-viewport" content="mobile">
+```
+
+**Presets de viewport:**
+| Preset | Ancho |
+|--------|-------|
+| `mobile` | 375px |
+| `tablet` | 768px |
+| `desktop` | 1440px |
+| `large` | 1600px |
+| `wide` | 1920px |
+
+#### Opción C: Comentario HTML
+```html
+<!-- figma-width: 1920 -->
+```
+
+#### Opción D: Detección por media queries
+Analizar `@media` queries para inferir breakpoints objetivo:
+- Si hay `@media (max-width: 768px)` → probablemente es diseño desktop
+- Si hay `@media (min-width: 769px)` → probablemente es diseño mobile
+
+#### Opción E: Parámetro en MCP
+Pasar el ancho como parámetro al importar:
+```typescript
+mcp_html_to_design_import-html({ html, width: 375 })
+```
+
+**Recomendación:** Implementar Opción A (detección automática) + Opción B (meta tag) como override.
+
 ---
 
 ## 12. PRIORIZACIÓN DE FIXES
@@ -322,6 +382,7 @@ Estos problemas causan que diseños complejos no se vean como el original:
 |---|----------|----------|---------|
 | 4 | RGBA backgrounds | Medio | Medio - transparencias |
 | 5 | Grid fr decimales | Bajo | Medio - proporciones |
+| 9 | Ancho fijo 1440px | Medio | Alto - mobile/responsive |
 
 ### 🟡 MEDIOS (Mejoran fidelidad)
 | # | Problema | Esfuerzo | Impacto |
@@ -336,10 +397,10 @@ Estos problemas causan que diseños complejos no se vean como el original:
 
 ---
 
-## 📊 ESTADO ACTUALIZADO: 50/61 (82% completo)
+## 📊 ESTADO ACTUALIZADO: 50/62 (81% completo)
 
 - ✅ Resueltos: 50
 - ❌ Críticos pendientes: 3
-- ⚠️ Altos pendientes: 2
+- ⚠️ Altos pendientes: 3
 - 🔶 Medios pendientes: 2
 - 🔷 Bajos pendientes: 4

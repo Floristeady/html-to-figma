@@ -1063,6 +1063,88 @@ function extractCSS(htmlStr) {
   return cssRules;
 }
 
+// Viewport presets for design width detection (UI context)
+var VIEWPORT_PRESETS_UI = {
+  'mobile': 375,
+  'tablet': 768,
+  'desktop': 1440,
+  'large': 1600,
+  'wide': 1920
+};
+
+// Container selectors to check for max-width
+var CONTAINER_SELECTORS_UI = ['.container', '.wrapper', '.main-container', '.page-container', 'main', '.content', 'body', 'html'];
+
+// Detect design width from HTML meta tags and CSS (UI context version)
+function detectDesignWidthFromHTML(htmlStr) {
+  // 1. Check for meta tag: <meta name="figma-width" content="375"> (flexible order)
+  var widthMatch1 = htmlStr.match(/<meta[^>]+name=["']figma-width["'][^>]+content=["'](\d+)["'][^>]*>/i);
+  var widthMatch2 = htmlStr.match(/<meta[^>]+content=["'](\d+)["'][^>]+name=["']figma-width["'][^>]*>/i);
+  var widthMetaMatch = widthMatch1 || widthMatch2;
+  if (widthMetaMatch) {
+    var width = parseInt(widthMetaMatch[1], 10);
+    if (!isNaN(width) && width > 0) {
+      console.log('[WIDTH-UI] Detected from meta figma-width:', width);
+      return width;
+    }
+  }
+
+  // 2. Check for viewport preset: <meta name="figma-viewport" content="mobile"> (flexible order)
+  var vpMatch1 = htmlStr.match(/<meta[^>]+name=["']figma-viewport["'][^>]+content=["'](\w+)["'][^>]*>/i);
+  var vpMatch2 = htmlStr.match(/<meta[^>]+content=["'](\w+)["'][^>]+name=["']figma-viewport["'][^>]*>/i);
+  var viewportMetaMatch = vpMatch1 || vpMatch2;
+  if (viewportMetaMatch) {
+    var preset = viewportMetaMatch[1].toLowerCase();
+    if (VIEWPORT_PRESETS_UI[preset]) {
+      console.log('[WIDTH-UI] Detected from meta figma-viewport:', preset, '=', VIEWPORT_PRESETS_UI[preset]);
+      return VIEWPORT_PRESETS_UI[preset];
+    }
+  }
+
+  // 3. Check for HTML comment: <!-- figma-width: 1920 -->
+  var commentMatch = htmlStr.match(/<!--\s*figma-width:\s*(\d+)\s*-->/i);
+  if (commentMatch) {
+    var width = parseInt(commentMatch[1], 10);
+    if (!isNaN(width) && width > 0) {
+      console.log('[WIDTH-UI] Detected from HTML comment:', width);
+      return width;
+    }
+  }
+
+  // 4. Check for max-width on container selectors from CSS
+  var cssRules = extractCSS(htmlStr);
+  for (var i = 0; i < CONTAINER_SELECTORS_UI.length; i++) {
+    var selector = CONTAINER_SELECTORS_UI[i];
+    var rule = cssRules[selector];
+    if (rule) {
+      // Check max-width first (more reliable indicator of design width)
+      if (rule['max-width']) {
+        var maxWidthStr = rule['max-width'];
+        var maxWidth = parseFloat(maxWidthStr);
+        if (!isNaN(maxWidth) && maxWidth > 0 && maxWidth < 3000) {
+          console.log('[WIDTH-UI] Detected from CSS max-width on', selector, ':', maxWidth);
+          // Add typical padding/margins to container max-width for full page width
+          return maxWidth + 80; // Container + padding compensation
+        }
+      }
+
+      // Check explicit width (non-percentage)
+      if (rule['width'] && rule['width'].indexOf('%') === -1) {
+        var widthStr = rule['width'];
+        var width = parseFloat(widthStr);
+        if (!isNaN(width) && width > 100 && width < 3000) {
+          console.log('[WIDTH-UI] Detected from CSS width on', selector, ':', width);
+          return width;
+        }
+      }
+    }
+  }
+
+  // 5. No width detected
+  console.log('[WIDTH-UI] No explicit width detected');
+  return null;
+}
+
 // HTML parsing function - COMPLETE VERSION with CSS specificity support
 function simpleParseHTML(htmlStr) {
   var parser = new DOMParser();
@@ -1487,12 +1569,15 @@ document.getElementById('send-btn').onclick = function() {
     alert('Please paste some HTML code first.');
     return;
   }
-  
+
   var structure = simpleParseHTML(htmlValue);
+  var detectedWidth = detectDesignWidthFromHTML(htmlValue);
+
   parent.postMessage({
     pluginMessage: {
       type: 'html-structure',
-      structure: structure
+      structure: structure,
+      detectedWidth: detectedWidth
     }
   }, '*');
 };
@@ -1747,7 +1832,11 @@ function handleSSEMCPRequest(data) {
       debugLog('[SSE] Calling simpleParseHTML directly...');
       var structure = simpleParseHTML(htmlContent);
       debugLog('[SSE] HTML parsed, structure length:', structure?.length || 0);
-      
+
+      // Detect design width from meta tags and CSS
+      var detectedWidth = detectDesignWidthFromHTML(htmlContent);
+      debugLog('[SSE] Detected design width:', detectedWidth);
+
       // Send html-structure directly to main handler (skip parse-mcp-html)
       parent.postMessage({
         pluginMessage: {
@@ -1757,7 +1846,8 @@ function handleSSEMCPRequest(data) {
           fromMCP: true,
           mcpSource: 'sse',
           requestId: data.requestId,
-          timestamp: data.timestamp
+          timestamp: data.timestamp,
+          detectedWidth: detectedWidth  // Pass detected width
         }
       }, '*');
       
@@ -1919,6 +2009,18 @@ const CSS_CONFIG = {
   viewportWidth: 1440  // 100vw = 1440px (reasonable desktop width)
 };
 
+// Viewport presets for design width detection
+const VIEWPORT_PRESETS: { [key: string]: number } = {
+  'mobile': 375,
+  'tablet': 768,
+  'desktop': 1440,
+  'large': 1600,
+  'wide': 1920
+};
+
+// Container selectors to check for max-width (in order of priority)
+const CONTAINER_SELECTORS = ['.container', '.wrapper', '.main-container', '.page-container', 'main', '.content', 'body', 'html'];
+
 function parseSize(value: string): number | null {
   if (!value || value === 'auto' || value === 'inherit' || value === 'initial') return null;
 
@@ -2035,6 +2137,71 @@ function calculatePercentageWidth(widthValue: string, parentFrame: FrameNode | n
   // Calculate available width (parent width minus padding)
   const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
   return Math.round((percentage / 100) * availableWidth);
+}
+
+// Detect design width from HTML meta tags and CSS
+function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): number | null {
+  const DEFAULT_WIDTH = 1440;
+
+  // 1. Check for meta tag: <meta name="figma-width" content="375">
+  const widthMetaMatch = htmlStr.match(/<meta\s+name=["']figma-width["']\s+content=["'](\d+)["']/i);
+  if (widthMetaMatch) {
+    const width = parseInt(widthMetaMatch[1], 10);
+    if (!isNaN(width) && width > 0) {
+      console.log('[WIDTH] Detected from meta figma-width:', width);
+      return width;
+    }
+  }
+
+  // 2. Check for viewport preset: <meta name="figma-viewport" content="mobile">
+  const viewportMetaMatch = htmlStr.match(/<meta\s+name=["']figma-viewport["']\s+content=["'](\w+)["']/i);
+  if (viewportMetaMatch) {
+    const preset = viewportMetaMatch[1].toLowerCase();
+    if (VIEWPORT_PRESETS[preset]) {
+      console.log('[WIDTH] Detected from meta figma-viewport:', preset, '=', VIEWPORT_PRESETS[preset]);
+      return VIEWPORT_PRESETS[preset];
+    }
+  }
+
+  // 3. Check for HTML comment: <!-- figma-width: 1920 -->
+  const commentMatch = htmlStr.match(/<!--\s*figma-width:\s*(\d+)\s*-->/i);
+  if (commentMatch) {
+    const width = parseInt(commentMatch[1], 10);
+    if (!isNaN(width) && width > 0) {
+      console.log('[WIDTH] Detected from HTML comment:', width);
+      return width;
+    }
+  }
+
+  // 4. Check for max-width on container selectors from CSS
+  for (const selector of CONTAINER_SELECTORS) {
+    const rule = cssRules[selector];
+    if (rule) {
+      // Check max-width first (more reliable indicator of design width)
+      if (rule['max-width']) {
+        const maxWidth = parseSize(rule['max-width']);
+        if (maxWidth && maxWidth > 0 && maxWidth < 3000) {
+          console.log('[WIDTH] Detected from CSS max-width on', selector, ':', maxWidth);
+          // Add typical padding/margins to container max-width for full page width
+          // Most designs have ~20-40px padding on sides
+          return maxWidth + 80; // Container + padding compensation
+        }
+      }
+
+      // Check explicit width (non-percentage)
+      if (rule['width'] && !rule['width'].includes('%')) {
+        const width = parseSize(rule['width']);
+        if (width && width > 100 && width < 3000) {
+          console.log('[WIDTH] Detected from CSS width on', selector, ':', width);
+          return width;
+        }
+      }
+    }
+  }
+
+  // 5. No width detected, return null (caller will use default)
+  console.log('[WIDTH] No explicit width detected, will use default');
+  return null;
 }
 
 function parseMargin(marginValue: string): {top: number, right: number, bottom: number, left: number} {
@@ -2306,28 +2473,52 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
   // Background: Improved gradient support
   if (styles['background'] && styles['background'].includes('linear-gradient')) {
     const gradient = parseLinearGradient(styles['background']);
-    
+
     if (gradient && gradient.gradientStops && gradient.gradientStops.length >= 2) {
+      // FIX: Create proper gradient fills with opacity support
       frame.fills = [{
         type: 'GRADIENT_LINEAR',
         gradientTransform: [
           [1, 0, 0],
           [0, 1, 0]
         ],
-        gradientStops: gradient.gradientStops
+        gradientStops: gradient.gradientStops.map((stop: any) => ({
+          position: stop.position,
+          color: { r: stop.color.r, g: stop.color.g, b: stop.color.b, a: stop.color.a || 1 }
+        }))
       }];
-
+    } else if (gradient && gradient.fallbackColor) {
+      // FIX: Use fallback color when gradient can't be fully parsed
+      const fallbackRgba = hexToRgba(gradient.fallbackColor);
+      if (fallbackRgba) {
+        frame.fills = [{
+          type: 'SOLID',
+          color: { r: fallbackRgba.r, g: fallbackRgba.g, b: fallbackRgba.b },
+          opacity: fallbackRgba.a
+        }];
+      }
+    } else {
+      // FIX: Try to extract any fallback color from the background string
+      const fallbackColor = extractFallbackColor(styles['background']);
+      if (fallbackColor) {
+        const fallbackRgba = hexToRgba(fallbackColor);
+        if (fallbackRgba) {
+          frame.fills = [{
+            type: 'SOLID',
+            color: { r: fallbackRgba.r, g: fallbackRgba.g, b: fallbackRgba.b },
+            opacity: fallbackRgba.a
+          }];
+        }
+      }
     }
-  } else if ((styles['background-color'] && styles['background-color'] !== 'transparent') || 
+  } else if ((styles['background-color'] && styles['background-color'] !== 'transparent') ||
              (styles['background'] && !styles['background'].includes('gradient') && styles['background'] !== 'transparent')) {
     // Handle both background-color and background (shorthand) properties
     const bgColorValue = styles['background-color'] || styles['background'];
-    
+
     // Use hexToRgba to preserve alpha/opacity for semi-transparent backgrounds
     const bgColorWithAlpha = hexToRgba(bgColorValue);
-    
 
-    
     if (bgColorWithAlpha) {
       // Use RGBA format to preserve opacity
       frame.fills = [{
@@ -4583,6 +4774,15 @@ figma.ui.onmessage = async (msg) => {
     markRequestProcessed(requestId);
     console.log(`[HTML] ✅ Passed dedup check, proceeding with requestId: ${requestId}`);
 
+    // ✅ DESIGN WIDTH DETECTION: Use width detected by UI (from meta tags and CSS)
+    const detectedDesignWidth: number | null = msg.detectedWidth || null;
+    if (detectedDesignWidth) {
+      // Update CSS_CONFIG.viewportWidth for vw calculations
+      (CSS_CONFIG as any).viewportWidth = detectedDesignWidth;
+      console.log('[WIDTH] Using detected width from UI:', detectedDesignWidth);
+      console.log('[WIDTH] Updated CSS_CONFIG.viewportWidth to:', detectedDesignWidth);
+    }
+
     // Detect full page layout pattern (sidebar + main content, grid layouts, etc.)
     const detectFullPageLayout = (structure: any[]): boolean => {
       if (!structure || structure.length === 0) return false;
@@ -4713,9 +4913,10 @@ figma.ui.onmessage = async (msg) => {
       return null;
     };
 
-    const explicitWidth = calculateDynamicWidth(msg.structure);
+    const structureWidth = calculateDynamicWidth(msg.structure);
     debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
-    debugLog('[MAIN HANDLER] Explicit width from CSS:', explicitWidth);
+    debugLog('[MAIN HANDLER] Detected design width (meta/CSS):', detectedDesignWidth);
+    debugLog('[MAIN HANDLER] Structure-based width:', structureWidth);
 
     // Create a main container frame for all HTML content
     const mainContainer = figma.createFrame();
@@ -4727,8 +4928,12 @@ figma.ui.onmessage = async (msg) => {
     mainContainer.layoutMode = 'VERTICAL';
     mainContainer.primaryAxisSizingMode = 'AUTO';
 
-    // Determine container width: explicit CSS width > full page default > auto
-    const containerWidth = explicitWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
+    // Determine container width priority:
+    // 1. Meta tag / CSS detection (most reliable - explicit user intent)
+    // 2. Structure-based detection (sidebar patterns, explicit widths)
+    // 3. Full page layout default
+    // 4. Auto (null)
+    const containerWidth = detectedDesignWidth || structureWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
 
     if (containerWidth) {
       mainContainer.counterAxisSizingMode = 'FIXED';

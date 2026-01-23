@@ -1,3 +1,4 @@
+"use strict";
 /// <reference types="@figma/plugin-typings" />
 const html = `<html>
 <head>
@@ -1062,6 +1063,88 @@ function extractCSS(htmlStr) {
   return cssRules;
 }
 
+// Viewport presets for design width detection (UI context)
+var VIEWPORT_PRESETS_UI = {
+  'mobile': 375,
+  'tablet': 768,
+  'desktop': 1440,
+  'large': 1600,
+  'wide': 1920
+};
+
+// Container selectors to check for max-width
+var CONTAINER_SELECTORS_UI = ['.container', '.wrapper', '.main-container', '.page-container', 'main', '.content', 'body', 'html'];
+
+// Detect design width from HTML meta tags and CSS (UI context version)
+function detectDesignWidthFromHTML(htmlStr) {
+  // 1. Check for meta tag: <meta name="figma-width" content="375"> (flexible order)
+  var widthMatch1 = htmlStr.match(/<meta[^>]+name=["']figma-width["'][^>]+content=["'](\d+)["'][^>]*>/i);
+  var widthMatch2 = htmlStr.match(/<meta[^>]+content=["'](\d+)["'][^>]+name=["']figma-width["'][^>]*>/i);
+  var widthMetaMatch = widthMatch1 || widthMatch2;
+  if (widthMetaMatch) {
+    var width = parseInt(widthMetaMatch[1], 10);
+    if (!isNaN(width) && width > 0) {
+      console.log('[WIDTH-UI] Detected from meta figma-width:', width);
+      return width;
+    }
+  }
+
+  // 2. Check for viewport preset: <meta name="figma-viewport" content="mobile"> (flexible order)
+  var vpMatch1 = htmlStr.match(/<meta[^>]+name=["']figma-viewport["'][^>]+content=["'](\w+)["'][^>]*>/i);
+  var vpMatch2 = htmlStr.match(/<meta[^>]+content=["'](\w+)["'][^>]+name=["']figma-viewport["'][^>]*>/i);
+  var viewportMetaMatch = vpMatch1 || vpMatch2;
+  if (viewportMetaMatch) {
+    var preset = viewportMetaMatch[1].toLowerCase();
+    if (VIEWPORT_PRESETS_UI[preset]) {
+      console.log('[WIDTH-UI] Detected from meta figma-viewport:', preset, '=', VIEWPORT_PRESETS_UI[preset]);
+      return VIEWPORT_PRESETS_UI[preset];
+    }
+  }
+
+  // 3. Check for HTML comment: <!-- figma-width: 1920 -->
+  var commentMatch = htmlStr.match(/<!--\s*figma-width:\s*(\d+)\s*-->/i);
+  if (commentMatch) {
+    var width = parseInt(commentMatch[1], 10);
+    if (!isNaN(width) && width > 0) {
+      console.log('[WIDTH-UI] Detected from HTML comment:', width);
+      return width;
+    }
+  }
+
+  // 4. Check for max-width on container selectors from CSS
+  var cssRules = extractCSS(htmlStr);
+  for (var i = 0; i < CONTAINER_SELECTORS_UI.length; i++) {
+    var selector = CONTAINER_SELECTORS_UI[i];
+    var rule = cssRules[selector];
+    if (rule) {
+      // Check max-width first (more reliable indicator of design width)
+      if (rule['max-width']) {
+        var maxWidthStr = rule['max-width'];
+        var maxWidth = parseFloat(maxWidthStr);
+        if (!isNaN(maxWidth) && maxWidth > 0 && maxWidth < 3000) {
+          console.log('[WIDTH-UI] Detected from CSS max-width on', selector, ':', maxWidth);
+          // Add typical padding/margins to container max-width for full page width
+          return maxWidth + 80; // Container + padding compensation
+        }
+      }
+
+      // Check explicit width (non-percentage)
+      if (rule['width'] && rule['width'].indexOf('%') === -1) {
+        var widthStr = rule['width'];
+        var width = parseFloat(widthStr);
+        if (!isNaN(width) && width > 100 && width < 3000) {
+          console.log('[WIDTH-UI] Detected from CSS width on', selector, ':', width);
+          return width;
+        }
+      }
+    }
+  }
+
+  // 5. No width detected
+  console.log('[WIDTH-UI] No explicit width detected');
+  return null;
+}
+
 // HTML parsing function - COMPLETE VERSION with CSS specificity support
 function simpleParseHTML(htmlStr) {
   var parser = new DOMParser();
@@ -1486,12 +1569,15 @@ document.getElementById('send-btn').onclick = function() {
     alert('Please paste some HTML code first.');
     return;
   }
-  
+
   var structure = simpleParseHTML(htmlValue);
+  var detectedWidth = detectDesignWidthFromHTML(htmlValue);
+
   parent.postMessage({
     pluginMessage: {
       type: 'html-structure',
-      structure: structure
+      structure: structure,
+      detectedWidth: detectedWidth
     }
   }, '*');
 };
@@ -1746,7 +1832,11 @@ function handleSSEMCPRequest(data) {
       debugLog('[SSE] Calling simpleParseHTML directly...');
       var structure = simpleParseHTML(htmlContent);
       debugLog('[SSE] HTML parsed, structure length:', structure?.length || 0);
-      
+
+      // Detect design width from meta tags and CSS
+      var detectedWidth = detectDesignWidthFromHTML(htmlContent);
+      debugLog('[SSE] Detected design width:', detectedWidth);
+
       // Send html-structure directly to main handler (skip parse-mcp-html)
       parent.postMessage({
         pluginMessage: {
@@ -1756,7 +1846,8 @@ function handleSSEMCPRequest(data) {
           fromMCP: true,
           mcpSource: 'sse',
           requestId: data.requestId,
-          timestamp: data.timestamp
+          timestamp: data.timestamp,
+          detectedWidth: detectedWidth  // Pass detected width
         }
       }, '*');
       
@@ -1898,6 +1989,22 @@ function hexToRgba(color) {
     // Default alpha 1 for all other colors
     return Object.assign(Object.assign({}, rgb), { a: 1 });
 }
+// Configuration for unit conversion
+const CSS_CONFIG = {
+    remBase: 16, // 1rem = 16px (browser default)
+    viewportHeight: 900, // 100vh = 900px (reasonable desktop height)
+    viewportWidth: 1440 // 100vw = 1440px (reasonable desktop width)
+};
+// Viewport presets for design width detection
+const VIEWPORT_PRESETS = {
+    'mobile': 375,
+    'tablet': 768,
+    'desktop': 1440,
+    'large': 1600,
+    'wide': 1920
+};
+// Container selectors to check for max-width (in order of priority)
+const CONTAINER_SELECTORS = ['.container', '.wrapper', '.main-container', '.page-container', 'main', '.content', 'body', 'html'];
 function parseSize(value) {
     if (!value || value === 'auto' || value === 'inherit' || value === 'initial')
         return null;
@@ -1912,6 +2019,38 @@ function parseSize(value) {
             return 999; // Special marker for "make it circular"
         }
         return null; // Other percentages handled by special logic
+    }
+    // FIX: Handle rem units (relative to root font-size, default 16px)
+    if (value.includes('rem')) {
+        const remValue = parseFloat(value);
+        if (!isNaN(remValue)) {
+            return remValue * CSS_CONFIG.remBase;
+        }
+        return null;
+    }
+    // FIX: Handle em units (treat same as rem for simplicity)
+    if (value.includes('em') && !value.includes('rem')) {
+        const emValue = parseFloat(value);
+        if (!isNaN(emValue)) {
+            return emValue * CSS_CONFIG.remBase;
+        }
+        return null;
+    }
+    // FIX: Handle viewport height units (vh)
+    if (value.includes('vh')) {
+        const vhValue = parseFloat(value);
+        if (!isNaN(vhValue)) {
+            return (vhValue / 100) * CSS_CONFIG.viewportHeight;
+        }
+        return null;
+    }
+    // FIX: Handle viewport width units (vw)
+    if (value.includes('vw')) {
+        const vwValue = parseFloat(value);
+        if (!isNaN(vwValue)) {
+            return (vwValue / 100) * CSS_CONFIG.viewportWidth;
+        }
+        return null;
     }
     const numericValue = parseFloat(value);
     return isNaN(numericValue) ? null : numericValue;
@@ -1973,6 +2112,64 @@ function calculatePercentageWidth(widthValue, parentFrame) {
     // Calculate available width (parent width minus padding)
     const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
     return Math.round((percentage / 100) * availableWidth);
+}
+// Detect design width from HTML meta tags and CSS
+function detectDesignWidth(htmlStr, cssRules) {
+    const DEFAULT_WIDTH = 1440;
+    // 1. Check for meta tag: <meta name="figma-width" content="375">
+    const widthMetaMatch = htmlStr.match(/<meta\s+name=["']figma-width["']\s+content=["'](\d+)["']/i);
+    if (widthMetaMatch) {
+        const width = parseInt(widthMetaMatch[1], 10);
+        if (!isNaN(width) && width > 0) {
+            console.log('[WIDTH] Detected from meta figma-width:', width);
+            return width;
+        }
+    }
+    // 2. Check for viewport preset: <meta name="figma-viewport" content="mobile">
+    const viewportMetaMatch = htmlStr.match(/<meta\s+name=["']figma-viewport["']\s+content=["'](\w+)["']/i);
+    if (viewportMetaMatch) {
+        const preset = viewportMetaMatch[1].toLowerCase();
+        if (VIEWPORT_PRESETS[preset]) {
+            console.log('[WIDTH] Detected from meta figma-viewport:', preset, '=', VIEWPORT_PRESETS[preset]);
+            return VIEWPORT_PRESETS[preset];
+        }
+    }
+    // 3. Check for HTML comment: <!-- figma-width: 1920 -->
+    const commentMatch = htmlStr.match(/<!--\s*figma-width:\s*(\d+)\s*-->/i);
+    if (commentMatch) {
+        const width = parseInt(commentMatch[1], 10);
+        if (!isNaN(width) && width > 0) {
+            console.log('[WIDTH] Detected from HTML comment:', width);
+            return width;
+        }
+    }
+    // 4. Check for max-width on container selectors from CSS
+    for (const selector of CONTAINER_SELECTORS) {
+        const rule = cssRules[selector];
+        if (rule) {
+            // Check max-width first (more reliable indicator of design width)
+            if (rule['max-width']) {
+                const maxWidth = parseSize(rule['max-width']);
+                if (maxWidth && maxWidth > 0 && maxWidth < 3000) {
+                    console.log('[WIDTH] Detected from CSS max-width on', selector, ':', maxWidth);
+                    // Add typical padding/margins to container max-width for full page width
+                    // Most designs have ~20-40px padding on sides
+                    return maxWidth + 80; // Container + padding compensation
+                }
+            }
+            // Check explicit width (non-percentage)
+            if (rule['width'] && !rule['width'].includes('%')) {
+                const width = parseSize(rule['width']);
+                if (width && width > 100 && width < 3000) {
+                    console.log('[WIDTH] Detected from CSS width on', selector, ':', width);
+                    return width;
+                }
+            }
+        }
+    }
+    // 5. No width detected, return null (caller will use default)
+    console.log('[WIDTH] No explicit width detected, will use default');
+    return null;
 }
 function parseMargin(marginValue) {
     const values = marginValue.split(' ').map(v => parseSize(v) || 0);
@@ -2107,33 +2304,89 @@ function extractGradientColor(bg) {
         return keyword[0];
     return null;
 }
-// Simplified gradient parsing function with minimal logging
+// FIX: Extract fallback color from background with gradient
+// e.g., "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), #e5e5e5" -> "#e5e5e5"
+function extractFallbackColor(bgStr) {
+    if (!bgStr)
+        return null;
+    // Look for color after the gradient (after the last closing paren of gradient)
+    // Pattern: ...gradient(...)), COLOR
+    const afterGradient = bgStr.match(/\)\s*\)\s*,\s*(#[a-fA-F0-9]{3,6}|rgba?\([^)]+\)|[a-z]+)/i);
+    if (afterGradient) {
+        return afterGradient[1];
+    }
+    // Also try simpler pattern: gradient(...), COLOR
+    const simpleMatch = bgStr.match(/gradient\([^)]+\)\s*,\s*(#[a-fA-F0-9]{3,6})/i);
+    if (simpleMatch) {
+        return simpleMatch[1];
+    }
+    return null;
+}
+// FIX: Improved gradient parsing that handles rgba() inside gradients
 function parseLinearGradient(gradientStr) {
     try {
         if (!gradientStr || !gradientStr.includes('linear-gradient')) {
             return null;
         }
-        const match = gradientStr.match(/linear-gradient\(([^)]+)\)/);
-        if (!match) {
+        // FIX: Use a smarter regex that handles nested parentheses (rgba inside gradient)
+        // Find the start of linear-gradient and then match balanced parentheses
+        const startIndex = gradientStr.indexOf('linear-gradient(');
+        if (startIndex === -1)
             return null;
+        let depth = 0;
+        let endIndex = startIndex + 16; // length of 'linear-gradient('
+        for (let i = endIndex; i < gradientStr.length; i++) {
+            if (gradientStr[i] === '(')
+                depth++;
+            else if (gradientStr[i] === ')') {
+                if (depth === 0) {
+                    endIndex = i;
+                    break;
+                }
+                depth--;
+            }
         }
-        const content = match[1];
-        const parts = content.split(',').map(s => s.trim());
+        const content = gradientStr.substring(startIndex + 16, endIndex);
+        // Split by comma but respect parentheses (don't split inside rgba())
+        const parts = [];
+        let current = '';
+        let parenDepth = 0;
+        for (let i = 0; i < content.length; i++) {
+            const char = content[i];
+            if (char === '(')
+                parenDepth++;
+            else if (char === ')')
+                parenDepth--;
+            else if (char === ',' && parenDepth === 0) {
+                parts.push(current.trim());
+                current = '';
+                continue;
+            }
+            current += char;
+        }
+        if (current.trim())
+            parts.push(current.trim());
         if (parts.length < 2) {
             return null;
         }
         const stops = [];
         let position = 0;
-        const increment = 1 / Math.max(1, parts.length - 2);
-        for (let i = 1; i < parts.length; i++) {
-            const part = parts[i];
+        // Skip first part if it's a direction (e.g., "90deg", "to right")
+        let startIdx = 0;
+        if (parts[0].includes('deg') || parts[0].includes('to ')) {
+            startIdx = 1;
+        }
+        const colorParts = parts.slice(startIdx);
+        const increment = colorParts.length > 1 ? 1 / (colorParts.length - 1) : 1;
+        for (let i = 0; i < colorParts.length; i++) {
+            const part = colorParts[i];
             const color = extractGradientColor(part);
             if (color) {
                 const rgba = hexToRgba(color);
                 if (rgba) {
                     stops.push({
                         position: position,
-                        color: rgba
+                        color: { r: rgba.r, g: rgba.g, b: rgba.b, a: rgba.a }
                     });
                     position += increment;
                 }
@@ -2141,10 +2394,13 @@ function parseLinearGradient(gradientStr) {
         }
         if (stops.length >= 2) {
             // Ensure last stop is at position 1
-            if (stops.length > 0) {
-                stops[stops.length - 1].position = 1;
-            }
+            stops[stops.length - 1].position = 1;
             return { gradientStops: stops };
+        }
+        // FIX: If gradient parsing failed, try to extract fallback color
+        const fallback = extractFallbackColor(gradientStr);
+        if (fallback) {
+            return { fallbackColor: fallback };
         }
         return null;
     }
@@ -2163,14 +2419,43 @@ function applyStylesToFrame(frame, styles) {
     if (styles['background'] && styles['background'].includes('linear-gradient')) {
         const gradient = parseLinearGradient(styles['background']);
         if (gradient && gradient.gradientStops && gradient.gradientStops.length >= 2) {
+            // FIX: Create proper gradient fills with opacity support
             frame.fills = [{
                     type: 'GRADIENT_LINEAR',
                     gradientTransform: [
                         [1, 0, 0],
                         [0, 1, 0]
                     ],
-                    gradientStops: gradient.gradientStops
+                    gradientStops: gradient.gradientStops.map((stop) => ({
+                        position: stop.position,
+                        color: { r: stop.color.r, g: stop.color.g, b: stop.color.b, a: stop.color.a || 1 }
+                    }))
                 }];
+        }
+        else if (gradient && gradient.fallbackColor) {
+            // FIX: Use fallback color when gradient can't be fully parsed
+            const fallbackRgba = hexToRgba(gradient.fallbackColor);
+            if (fallbackRgba) {
+                frame.fills = [{
+                        type: 'SOLID',
+                        color: { r: fallbackRgba.r, g: fallbackRgba.g, b: fallbackRgba.b },
+                        opacity: fallbackRgba.a
+                    }];
+            }
+        }
+        else {
+            // FIX: Try to extract any fallback color from the background string
+            const fallbackColor = extractFallbackColor(styles['background']);
+            if (fallbackColor) {
+                const fallbackRgba = hexToRgba(fallbackColor);
+                if (fallbackRgba) {
+                    frame.fills = [{
+                            type: 'SOLID',
+                            color: { r: fallbackRgba.r, g: fallbackRgba.g, b: fallbackRgba.b },
+                            opacity: fallbackRgba.a
+                        }];
+                }
+            }
         }
     }
     else if ((styles['background-color'] && styles['background-color'] !== 'transparent') ||
@@ -4278,6 +4563,14 @@ figma.ui.onmessage = async (msg) => {
         // Mark as processed immediately to prevent any race conditions
         markRequestProcessed(requestId);
         console.log(`[HTML] ✅ Passed dedup check, proceeding with requestId: ${requestId}`);
+        // ✅ DESIGN WIDTH DETECTION: Use width detected by UI (from meta tags and CSS)
+        const detectedDesignWidth = msg.detectedWidth || null;
+        if (detectedDesignWidth) {
+            // Update CSS_CONFIG.viewportWidth for vw calculations
+            CSS_CONFIG.viewportWidth = detectedDesignWidth;
+            console.log('[WIDTH] Using detected width from UI:', detectedDesignWidth);
+            console.log('[WIDTH] Updated CSS_CONFIG.viewportWidth to:', detectedDesignWidth);
+        }
         // Detect full page layout pattern (sidebar + main content, grid layouts, etc.)
         const detectFullPageLayout = (structure) => {
             if (!structure || structure.length === 0)
@@ -4400,9 +4693,10 @@ figma.ui.onmessage = async (msg) => {
             }
             return null;
         };
-        const explicitWidth = calculateDynamicWidth(msg.structure);
+        const structureWidth = calculateDynamicWidth(msg.structure);
         debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
-        debugLog('[MAIN HANDLER] Explicit width from CSS:', explicitWidth);
+        debugLog('[MAIN HANDLER] Detected design width (meta/CSS):', detectedDesignWidth);
+        debugLog('[MAIN HANDLER] Structure-based width:', structureWidth);
         // Create a main container frame for all HTML content
         const mainContainer = figma.createFrame();
         const containerName = msg.fromMCP ? `${msg.name || 'MCP Import'}` : 'HTML Import Container';
@@ -4411,8 +4705,12 @@ figma.ui.onmessage = async (msg) => {
         // Enable auto-layout - el body controlará el layout interno
         mainContainer.layoutMode = 'VERTICAL';
         mainContainer.primaryAxisSizingMode = 'AUTO';
-        // Determine container width: explicit CSS width > full page default > auto
-        const containerWidth = explicitWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
+        // Determine container width priority:
+        // 1. Meta tag / CSS detection (most reliable - explicit user intent)
+        // 2. Structure-based detection (sidebar patterns, explicit widths)
+        // 3. Full page layout default
+        // 4. Auto (null)
+        const containerWidth = detectedDesignWidth || structureWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
         if (containerWidth) {
             mainContainer.counterAxisSizingMode = 'FIXED';
             mainContainer.resize(containerWidth, mainContainer.height);
