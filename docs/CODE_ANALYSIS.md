@@ -32,12 +32,19 @@
 Ahora soporta:
 - `.parent .child` (descendant)
 - `.class1.class2` (combined classes)
-- `.parent > .child` (child directo) ✅ NEW
-- `.parent + .sibling` (adjacent sibling) ✅ NEW
-- `.parent ~ .sibling` (general sibling) ✅ NEW
+- `.parent > .child` (child directo)
+- `.parent + .sibling` (adjacent sibling)
+- `.parent ~ .sibling` (general sibling)
+- `.class1, .class2` (selectores con coma)
 
 NO soporta:
 - `:hover`, `:focus`, `:first-child`, etc. (pseudo-classes)
+
+### 1.4 Múltiples Style Tags ✅ RESUELTO
+Extrae y combina CSS de todos los `<style>` tags en el HTML.
+
+### 1.5 Gap/Padding Zero ✅ RESUELTO
+`gap: 0` y `padding: 0` ahora se respetan correctamente (antes 0 era tratado como falsy y se aplicaba default).
 
 ---
 
@@ -116,6 +123,12 @@ Implementado soporte para `white-space: nowrap`, `pre`, `pre-wrap`.
 ### 4.4 text-overflow ✅ RESUELTO
 Implementado soporte para `text-overflow: ellipsis` con `textTruncation`.
 
+### 4.5 Line-height Unitless ✅ RESUELTO
+`line-height: 1.5` (sin unidad) ahora se convierte a porcentaje (150%).
+
+### 4.6 font-style: italic ✅ RESUELTO
+Soporte para texto en itálica con carga de fuente "Inter Italic".
+
 ---
 
 ## 5. PROBLEMAS DE HERENCIA
@@ -131,11 +144,12 @@ Ahora hereda 10+ propiedades:
 
 ## 6. PROBLEMAS DE ALINEACIÓN
 
-### 6.1 justify-content Incompleto ⚠️ PARCIAL
+### 6.1 justify-content ⚠️ PARCIAL
 Soporta: `center`, `flex-end`, `space-between`
-Falta: `space-evenly`, `flex-start` como MIN
+Falta: `space-evenly`
 
 ### 6.2 align-items ⚠️ PARCIAL
+Soporta valores básicos, faltan algunos edge cases.
 
 ### 6.3 align-self ✅ RESUELTO
 Usa `frame.layoutAlign` para center, flex-start, flex-end, stretch.
@@ -188,7 +202,7 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 10. RESUMEN DE ESTADO
 
-### ✅ RESUELTOS (33 de 33) - 100% COMPLETO
+### ✅ RESUELTOS (39 issues)
 1. Especificidad CSS
 2. Selector universal (*)
 3. Layout mode para inline elements
@@ -217,17 +231,28 @@ Aplica como `x`/`y` y configura constraints.
 26. white-space
 27. text-overflow
 28. z-index
-29. grid-template-areas ✅ NEW
-30. grid-column/row span ✅ NEW
-31. width: 100% → FILL en auto-layout ✅ NEW
-32. Detección dinámica de ancho (sidebar + main) ✅ NEW
-33. Propagación FILL vertical para grid rows ✅ NEW
+29. grid-template-areas
+30. grid-column/row span
+31. width: 100% → FILL en auto-layout
+32. Detección dinámica de ancho (sidebar + main)
+33. Propagación FILL vertical para grid rows
+34. Selectores con coma (.class1, .class2)
+35. Múltiples `<style>` tags
+36. Gap: 0 respetado
+37. Padding: 0 respetado
+38. Line-height unitless (1.5 → 150%)
+39. font-style: italic
 
-### ❌ PENDIENTES (0)
-¡Todos los issues identificados han sido resueltos!
+### ⚠️ PENDIENTES (6 - baja prioridad)
+1. **Orden de herencia** - cascada CSS completa
+2. **justify-content: space-evenly** - falta este valor
+3. **align-items completo** - algunos valores faltan
+4. **overflow: hidden** - clip de contenido
+5. **transform: scale/translate** - solo rotate implementado
+6. **filter/backdrop-filter/clip-path** - efectos visuales avanzados
 
 ---
 
-## 🎉 PROYECTO COMPLETO
+## 📊 ESTADO: 39/45 (87% completo)
 
-Todos los 33 issues identificados han sido implementados.
+Los 6 pendientes son de baja prioridad o limitaciones de Figma API.
