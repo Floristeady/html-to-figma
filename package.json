@@ -8,10 +8,9 @@
     "dev": "npm run build:dev",
     "build": "tsc",
     "build:dev": "tsc --watch",
-    "sse-server": "node sse-server.js",
-    "mcp-server": "node mcp-server.js",
-    "start-sse": "node sse-server.js",
-    "test-mcp": "echo 'Testing MCP connection...' && node mcp-server.js"
+    "start": "node sse-server.js",
+    "diagnose": "node scripts/test-mcp-status.js",
+    "generate-config": "node scripts/generate-mcp-config.js"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.65.0",

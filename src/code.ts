@@ -1912,6 +1912,13 @@ function hexToRgba(color: string): {r: number, g: number, b: number, a: number} 
   return { ...rgb, a: 1 };
 }
 
+// Configuration for unit conversion
+const CSS_CONFIG = {
+  remBase: 16,        // 1rem = 16px (browser default)
+  viewportHeight: 900, // 100vh = 900px (reasonable desktop height)
+  viewportWidth: 1440  // 100vw = 1440px (reasonable desktop width)
+};
+
 function parseSize(value: string): number | null {
   if (!value || value === 'auto' || value === 'inherit' || value === 'initial') return null;
 
@@ -1927,6 +1934,42 @@ function parseSize(value: string): number | null {
       return 999; // Special marker for "make it circular"
     }
     return null; // Other percentages handled by special logic
+  }
+
+  // FIX: Handle rem units (relative to root font-size, default 16px)
+  if (value.includes('rem')) {
+    const remValue = parseFloat(value);
+    if (!isNaN(remValue)) {
+      return remValue * CSS_CONFIG.remBase;
+    }
+    return null;
+  }
+
+  // FIX: Handle em units (treat same as rem for simplicity)
+  if (value.includes('em') && !value.includes('rem')) {
+    const emValue = parseFloat(value);
+    if (!isNaN(emValue)) {
+      return emValue * CSS_CONFIG.remBase;
+    }
+    return null;
+  }
+
+  // FIX: Handle viewport height units (vh)
+  if (value.includes('vh')) {
+    const vhValue = parseFloat(value);
+    if (!isNaN(vhValue)) {
+      return (vhValue / 100) * CSS_CONFIG.viewportHeight;
+    }
+    return null;
+  }
+
+  // FIX: Handle viewport width units (vw)
+  if (value.includes('vw')) {
+    const vwValue = parseFloat(value);
+    if (!isNaN(vwValue)) {
+      return (vwValue / 100) * CSS_CONFIG.viewportWidth;
+    }
+    return null;
   }
 
   const numericValue = parseFloat(value);
@@ -2133,54 +2176,117 @@ function extractGradientColor(bg: string): string | null {
   return null;
 }
 
-// Simplified gradient parsing function with minimal logging
+// FIX: Extract fallback color from background with gradient
+// e.g., "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), #e5e5e5" -> "#e5e5e5"
+function extractFallbackColor(bgStr: string): string | null {
+  if (!bgStr) return null;
+
+  // Look for color after the gradient (after the last closing paren of gradient)
+  // Pattern: ...gradient(...)), COLOR
+  const afterGradient = bgStr.match(/\)\s*\)\s*,\s*(#[a-fA-F0-9]{3,6}|rgba?\([^)]+\)|[a-z]+)/i);
+  if (afterGradient) {
+    return afterGradient[1];
+  }
+
+  // Also try simpler pattern: gradient(...), COLOR
+  const simpleMatch = bgStr.match(/gradient\([^)]+\)\s*,\s*(#[a-fA-F0-9]{3,6})/i);
+  if (simpleMatch) {
+    return simpleMatch[1];
+  }
+
+  return null;
+}
+
+// FIX: Improved gradient parsing that handles rgba() inside gradients
 function parseLinearGradient(gradientStr: string): any {
   try {
     if (!gradientStr || !gradientStr.includes('linear-gradient')) {
       return null;
     }
-    
-    const match = gradientStr.match(/linear-gradient\(([^)]+)\)/);
-    if (!match) {
-      return null;
+
+    // FIX: Use a smarter regex that handles nested parentheses (rgba inside gradient)
+    // Find the start of linear-gradient and then match balanced parentheses
+    const startIndex = gradientStr.indexOf('linear-gradient(');
+    if (startIndex === -1) return null;
+
+    let depth = 0;
+    let endIndex = startIndex + 16; // length of 'linear-gradient('
+
+    for (let i = endIndex; i < gradientStr.length; i++) {
+      if (gradientStr[i] === '(') depth++;
+      else if (gradientStr[i] === ')') {
+        if (depth === 0) {
+          endIndex = i;
+          break;
+        }
+        depth--;
+      }
     }
-    
-    const content = match[1];
-    const parts = content.split(',').map(s => s.trim());
-    
+
+    const content = gradientStr.substring(startIndex + 16, endIndex);
+
+    // Split by comma but respect parentheses (don't split inside rgba())
+    const parts: string[] = [];
+    let current = '';
+    let parenDepth = 0;
+
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i];
+      if (char === '(') parenDepth++;
+      else if (char === ')') parenDepth--;
+      else if (char === ',' && parenDepth === 0) {
+        parts.push(current.trim());
+        current = '';
+        continue;
+      }
+      current += char;
+    }
+    if (current.trim()) parts.push(current.trim());
+
     if (parts.length < 2) {
       return null;
     }
-    
+
     const stops: any[] = [];
     let position = 0;
-    const increment = 1 / Math.max(1, parts.length - 2);
-    
-    for (let i = 1; i < parts.length; i++) {
-      const part = parts[i];
+
+    // Skip first part if it's a direction (e.g., "90deg", "to right")
+    let startIdx = 0;
+    if (parts[0].includes('deg') || parts[0].includes('to ')) {
+      startIdx = 1;
+    }
+
+    const colorParts = parts.slice(startIdx);
+    const increment = colorParts.length > 1 ? 1 / (colorParts.length - 1) : 1;
+
+    for (let i = 0; i < colorParts.length; i++) {
+      const part = colorParts[i];
       const color = extractGradientColor(part);
-      
+
       if (color) {
         const rgba = hexToRgba(color);
         if (rgba) {
           stops.push({
             position: position,
-            color: rgba
+            color: { r: rgba.r, g: rgba.g, b: rgba.b, a: rgba.a }
           });
           position += increment;
         }
       }
     }
-    
+
     if (stops.length >= 2) {
       // Ensure last stop is at position 1
-      if (stops.length > 0) {
-        stops[stops.length - 1].position = 1;
-      }
-      
+      stops[stops.length - 1].position = 1;
       return { gradientStops: stops };
     }
-    
+
+    // FIX: If gradient parsing failed, try to extract fallback color
+    const fallback = extractFallbackColor(gradientStr);
+    if (fallback) {
+      return { fallbackColor: fallback };
+    }
+
     return null;
   } catch (error) {
     return null;

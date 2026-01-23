@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "html-to-figma": {
-      "command": "node",
-      "args": ["/REPLACE/WITH/YOUR/PATH/html-to-figma/mcp-server.js"]
-    }
-  }
-}

@@ -255,13 +255,91 @@ Aplica como `x`/`y` y configura constraints.
 49. **Empty text fix** - elementos con hijos procesan hijos ✅ NEW
 50. **hexToRgb null guard** - previene crash con colores null ✅ NEW
 
-### ⚠️ PENDIENTES (3 - baja prioridad)
+### ⚠️ PENDIENTES - BAJA PRIORIDAD (3)
 1. **Orden de herencia** - cascada CSS completa
 2. **transform: scale/translate** - solo rotate implementado
 3. **filter/backdrop-filter/clip-path** - efectos visuales avanzados
 
 ---
 
-## 📊 ESTADO: 50/53 (94% completo)
+## 11. PROBLEMAS CRÍTICOS IDENTIFICADOS (2026-01-23)
 
-Los 3 pendientes son de baja prioridad o limitaciones de Figma API.
+Estos problemas causan que diseños complejos no se vean como el original:
+
+### 11.1 Unidades REM no se calculan correctamente ❌ CRÍTICO
+**Problema:** `font-size: 3.5rem` debería ser 56px (asumiendo base 16px), pero se renderiza muy pequeño.
+**Impacto:** Todos los títulos y textos con unidades `rem` se ven diminutos.
+**Solución:** Implementar conversión `rem → px` con base configurable (default 16px).
+
+### 11.2 Viewport Units (vh, vw) no soportadas ❌ CRÍTICO
+**Problema:** `height: 100vh` no tiene sentido en Figma estático.
+**Impacto:** Hero banners y secciones full-height colapsan.
+**Solución:** Convertir `100vh` a altura fija configurable (ej: 800px o 900px).
+
+### 11.3 linear-gradient() en backgrounds ❌ CRÍTICO
+**Problema:** `background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), #e5e5e5` no se parsea.
+**Impacto:** Hero banners y overlays pierden sus gradientes/colores.
+**Solución:** Parsear gradientes y crear fills de Figma con gradientPaint o al menos extraer el color fallback.
+
+### 11.4 Colores RGBA no se aplican a fondos ❌ ALTO
+**Problema:** `background: rgba(255,255,255,0.1)` no se convierte correctamente.
+**Impacto:** Fondos semi-transparentes se ven sólidos o desaparecen.
+**Solución:** Parsear rgba() y aplicar tanto color como opacity al fill.
+
+### 11.5 Grid con fracciones decimales (1.3fr 2.7fr) ❌ ALTO
+**Problema:** `grid-template-columns: 1.3fr 2.7fr` no respeta proporciones exactas.
+**Impacto:** Layouts asimétricos se ven desbalanceados.
+**Solución:** Calcular porcentajes exactos: 1.3/(1.3+2.7) = 32.5%, 2.7/(1.3+2.7) = 67.5%.
+
+### 11.6 position: fixed no se renderiza arriba ❌ MEDIO
+**Problema:** Headers con `position: fixed` no aparecen en su posición correcta.
+**Impacto:** Navegación fija desaparece o se posiciona mal.
+**Solución:** Detectar `position: fixed` con `top: 0` y posicionar al inicio del frame raíz.
+
+### 11.7 border-radius grandes (20px+) ❌ BAJO
+**Problema:** `border-radius: 20px` puede no aplicarse a todos los corners.
+**Impacto:** Cards y botones no tienen bordes redondeados uniformes.
+**Solución:** Verificar que cornerRadius se aplica correctamente en todos los casos.
+
+### 11.8 Colores en inline styles no tienen prioridad ❌ MEDIO
+**Problema:** `style="color: #666"` inline debería sobreescribir CSS de clase.
+**Impacto:** Textos con colores inline usan color incorrecto.
+**Solución:** Aplicar inline styles después de CSS de clases.
+
+---
+
+## 12. PRIORIZACIÓN DE FIXES
+
+### 🔴 CRÍTICOS (Bloquean uso en producción)
+| # | Problema | Esfuerzo | Impacto |
+|---|----------|----------|---------|
+| 1 | REM units | Medio | Alto - afecta todo el texto |
+| 2 | Viewport units (vh/vw) | Bajo | Alto - hero sections rotas |
+| 3 | linear-gradient() | Alto | Alto - fondos de secciones |
+
+### 🟠 ALTOS (Degradan significativamente)
+| # | Problema | Esfuerzo | Impacto |
+|---|----------|----------|---------|
+| 4 | RGBA backgrounds | Medio | Medio - transparencias |
+| 5 | Grid fr decimales | Bajo | Medio - proporciones |
+
+### 🟡 MEDIOS (Mejoran fidelidad)
+| # | Problema | Esfuerzo | Impacto |
+|---|----------|----------|---------|
+| 6 | position: fixed | Medio | Medio - headers |
+| 8 | Inline style priority | Bajo | Bajo - casos específicos |
+
+### 🟢 BAJOS (Nice to have)
+| # | Problema | Esfuerzo | Impacto |
+|---|----------|----------|---------|
+| 7 | border-radius uniformes | Bajo | Bajo - estético |
+
+---
+
+## 📊 ESTADO ACTUALIZADO: 50/61 (82% completo)
+
+- ✅ Resueltos: 50
+- ❌ Críticos pendientes: 3
+- ⚠️ Altos pendientes: 2
+- 🔶 Medios pendientes: 2
+- 🔷 Bajos pendientes: 4
