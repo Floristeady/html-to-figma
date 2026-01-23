@@ -108,21 +108,30 @@ Allow the plugin to process HTML with internal `<style>` blocks, not just inline
 #### Objective
 Replace localhost with a server accessible to the entire team.
 
+#### Environment Strategy
+The server URL will be **pre-configured in the plugin code** (not user-configurable):
+- **Development**: `http://localhost:3003`
+- **Production**: `https://figma-server.your-team.com`
+
+This simplifies deployment - users don't need to configure anything. The team distributes the correct plugin version for each environment.
+
 #### Tasks
 
-- [ ] **2.1** Modify SSE Server for configurable URL
-  - Add environment variable `SERVER_URL`
+- [ ] **2.1** Modify SSE Server for production
+  - Add environment variable `SERVER_URL` for server-side config
   - Support HTTPS for secure connections
   - Add basic authentication (team API key)
+  - Configure CORS for production domain
 
-- [ ] **2.2** Modify Plugin to connect to remote server
-  - Change hardcoded URL to configurable
-  - Add field in UI for server URL
-  - Save configuration in plugin storage
+- [ ] **2.2** Create environment-based plugin builds
+  - Development build: connects to `localhost:3003`
+  - Production build: connects to production server URL
+  - Use build script or environment flag to switch URLs
 
 - [ ] **2.3** Modify MCP Server for remote server
   - Connect to central server instead of writing local file
   - Use HTTP/WebSocket for communication
+  - Environment variable for server URL
 
 - [ ] **2.4** Server deployment options
   - **Option A**: Script for internal machine (Docker or direct Node)
@@ -279,11 +288,15 @@ Simplify the interface for users with minimal technical knowledge.
 }
 ```
 
-### Plugin URL (configure once)
-```
-Server URL: https://figma-server.your-team.com/mcp-stream
-API Key: your-team-api-key
-```
+### Plugin Configuration (pre-built)
+The Figma plugin comes **pre-configured** with the server URL. No user configuration needed.
+
+| Environment | Server URL | Plugin Version |
+|-------------|------------|----------------|
+| Development | `http://localhost:3003` | `plugin-dev.zip` |
+| Production | `https://figma-server.your-team.com` | `plugin-prod.zip` |
+
+Team members simply install the production plugin - the URL is already embedded in the code.
 
 ---
 
@@ -333,4 +346,4 @@ API Key: your-team-api-key
 
 ---
 
-**Last updated**: January 19, 2026
+**Last updated**: January 23, 2026

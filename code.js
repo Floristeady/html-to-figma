@@ -1,4 +1,3 @@
-"use strict";
 /// <reference types="@figma/plugin-typings" />
 const html = `<html>
 <head>
@@ -2412,10 +2411,10 @@ function applyStylesToText(text, styles) {
     }
     // SIEMPRE aplicar el color (nunca dejar undefined)
     text.fills = [{ type: 'SOLID', color: textColor }];
-    // Font size
+    // Font size - Figma requires fontSize >= 1
     const fontSize = parseSize(styles['font-size']);
     if (fontSize) {
-        text.fontSize = fontSize;
+        text.fontSize = Math.max(1, fontSize);
     }
     // Line height ESTRATEGIA ROBUSTA
     if (styles['line-height']) {

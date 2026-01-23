@@ -11,7 +11,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SERVER_CONFIG, getMCPTriggerURL } from './config/server-config.js';
+import { SERVER_CONFIG } from './config/server-config.js';
 
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

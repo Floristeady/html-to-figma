@@ -21,16 +21,7 @@ export const SERVER_CONFIG = {
   
   // Timeouts and intervals
   TIMEOUTS: {
-    HEARTBEAT: 30000,        // 30 seconds
-    CONNECTION: 2000,        // 2 seconds  
-    RETRY: 5000,            // 5 seconds
-    SHUTDOWN: 2000          // 2 seconds
-  },
-  
-  // Connection limits
-  LIMITS: {
-    MAX_RECONNECT_ATTEMPTS: 5,
-    MAX_SSE_CONNECTIONS: 10
+    HEARTBEAT: 30000         // 30 seconds - used by SSE server for keep-alive
   }
 };
 
@@ -41,10 +32,6 @@ export const getFullURL = (endpoint = '') => {
 
 export const getSSEStreamURL = () => {
   return getFullURL(SERVER_CONFIG.ENDPOINTS.SSE_STREAM);
-};
-
-export const getMCPTriggerURL = () => {
-  return getFullURL(SERVER_CONFIG.ENDPOINTS.MCP_TRIGGER);
 };
 
 export const getHealthURL = () => {

@@ -15,8 +15,6 @@
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.65.0",
-    "copyfiles": "^2.4.1",
-    "eventsource": "^4.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {

@@ -15,10 +15,6 @@ function getSSEUrl() {
     return UI_CONFIG.SSE_BASE_URL + UI_CONFIG.SSE_ENDPOINT;
 }
 
-// Global variables
-var currentHTML = '';
-var currentMCPName = '';
-
 // SSE (Server-Sent Events) variables
 var eventSource = null;
 var sseConnected = false;
@@ -278,7 +274,6 @@ window.onmessage = (event) => {
     if (type === 'parse-html') {
         try {
             displayHTML(html);
-            currentHTML = html;
             document.querySelector('.convert-btn').disabled = false;
         } catch (error) {
             console.error('Error displaying HTML:', error);
@@ -320,15 +315,6 @@ window.onmessage = (event) => {
 // EXISTING HELPER FUNCTIONS (Enhanced)
 // ===============================================
 
-// Helper functions for MCP status messages
-function showMCPSuccess(message) {
-    updateMCPStatus(message, 'success');
-}
-
-function showMCPError(message) {
-    updateMCPStatus(message, 'error');
-}
-
 function updateMCPStatus(message, type) {
     // Update ONLY MCP status elements - no duplication
     const statusEl = document.getElementById('mcp-status-text');
@@ -362,8 +348,6 @@ window.updateMCPStatusGlobal = updateMCPStatus;
 // HTML display function
 function displayHTML(html) {
     // This would be the function to preview HTML in the UI
-    // For now, just store it
-    currentHTML = html;
     console.log('HTML loaded for conversion:', html.substring(0, 100) + '...');
 }
 
