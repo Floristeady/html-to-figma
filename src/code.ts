@@ -1804,6 +1804,9 @@ window.addEventListener('message', function(event) {
 figma.showUI(html, { width: 360, height: 380 });
 
 function hexToRgb(color: string): {r: number, g: number, b: number} | null {
+  // Guard against null/undefined
+  if (!color) return null;
+
   // First handle CSS color keywords
   const colorKeywords: {[key: string]: {r: number, g: number, b: number}} = {
     'white': { r: 1, g: 1, b: 1 },
