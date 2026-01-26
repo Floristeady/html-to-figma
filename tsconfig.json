@@ -2,11 +2,12 @@
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["ES2017", "DOM"],
-    "outDir": "./",
-    "rootDir": "src",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "noEmit": true,
     "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
   },
   "include": ["src/**/*"],

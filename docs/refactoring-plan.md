@@ -1518,6 +1518,41 @@ describe('parseColor', () => {
 
 ---
 
+## Known Issues to Fix During Refactoring
+
+These are existing bugs that should be addressed during the refactoring process:
+
+### Critical
+
+| Issue | Description | Affected Module | Priority |
+|-------|-------------|-----------------|----------|
+| **Container width defaults to 100px** | When HTML is sent via MCP/SSE, the root container frame is created with 100px width and HUG content mode, causing content to be clipped | `renderer/figma-nodes.ts` | **HIGH** |
+| **REM units not properly converted** | `font-size: 3.5rem` renders too small, base font size calculation is incorrect | `utils/css-units.ts` | HIGH |
+| **Viewport units (vh/vw) not working** | `height: 100vh` doesn't apply correctly | `utils/css-units.ts` | HIGH |
+
+### High
+
+| Issue | Description | Affected Module | Priority |
+|-------|-------------|-----------------|----------|
+| **Fixed 1440px design width** | All designs render at 1440px regardless of content or meta tags | `utils/design-detection.ts` | Medium |
+| **position: fixed** | Elements with `position: fixed` don't position correctly | `converter/layout.ts` | Medium |
+| **Inline style priority** | Some inline styles don't override CSS rules properly | `parser/css-cascade.ts` | Medium |
+
+### Medium
+
+| Issue | Description | Affected Module | Priority |
+|-------|-------------|-----------------|----------|
+| **Grid decimal fractions** | `1.3fr 2.7fr` doesn't respect exact proportions | `converter/layout.ts` | Low |
+| **Complex calc() expressions** | `calc()` with mixed units fails | `utils/css-units.ts` | Low |
+
+### Investigation Needed
+
+- [ ] Root cause of 100px default width - is it in `createFigmaNodesFromStructure` or in message handler?
+- [ ] Check if design width detection is being called for MCP requests
+- [ ] Verify sizing mode (HUG vs FILL vs FIXED) logic for root container
+
+---
+
 ## Final Notes
 
 ### Why not migrate to the proposed Python architecture?

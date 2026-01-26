@@ -5,9 +5,11 @@
   "type": "module",
   "main": "code.js",
   "scripts": {
-    "dev": "npm run build:dev",
-    "build": "tsc",
-    "build:dev": "tsc --watch",
+    "dev": "npm run build:watch",
+    "build": "esbuild src/code.ts --bundle --outfile=code.js --target=es2017 --format=iife",
+    "build:watch": "esbuild src/code.ts --bundle --outfile=code.js --target=es2017 --format=iife --watch",
+    "build:tsc": "tsc",
+    "typecheck": "tsc --noEmit",
     "start": "node sse-server.js",
     "diagnose": "node scripts/test-mcp-status.js",
     "generate-config": "node scripts/generate-mcp-config.js"
