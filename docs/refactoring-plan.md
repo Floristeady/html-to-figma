@@ -1526,7 +1526,7 @@ These are existing bugs that should be addressed during the refactoring process:
 
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
-| **Container width defaults to 100px** | When HTML is sent via MCP/SSE, the root container frame is created with 100px width and HUG content mode, causing content to be clipped | `renderer/figma-nodes.ts` | **HIGH** |
+| ~~**Container width defaults to 100px**~~ | ~~When HTML is sent via MCP/SSE, the root container frame is created with 100px width and HUG content mode, causing content to be clipped~~ | ~~`renderer/figma-nodes.ts`~~ | ✅ **FIXED** (commit 8b6c969) |
 | **REM units not properly converted** | `font-size: 3.5rem` renders too small, base font size calculation is incorrect | `utils/css-units.ts` | HIGH |
 | **Viewport units (vh/vw) not working** | `height: 100vh` doesn't apply correctly | `utils/css-units.ts` | HIGH |
 
@@ -1574,3 +1574,29 @@ These are existing bugs that should be addressed during the refactoring process:
 
 *Document created: 2025-01-26*
 *Last updated: 2025-01-26*
+
+---
+
+## Current Status (Session Notes)
+
+### Completed
+- ✅ **Phase 0**: esbuild configured and working (build in 14ms, 156kb output)
+- ✅ **Width bug fixed**: MCP/SSE imports now detect inline width or fallback to 400px
+
+### Next Steps (Resume Here)
+1. **Phase 1**: Extract types/IR to `src/types/`
+   - Create `figma-ir.ts`, `css.ts`, `parsed-element.ts`
+   - Define explicit interfaces for intermediate representation
+
+2. **Remaining issues to investigate**:
+   - REM units not properly converted
+   - Viewport units (vh/vw) not working
+   - Consider making fallback width configurable (currently hardcoded 400px)
+
+### Commands Reference
+```bash
+npm run build        # Build with esbuild
+npm run build:watch  # Watch mode
+npm run typecheck    # Type check only
+node start-servers.js # Start MCP + SSE servers
+```
