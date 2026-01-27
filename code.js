@@ -150,8 +150,7 @@
     return null;
   }
 
-  // src/code.ts
-  figma.showUI(__html__, { width: 360, height: 380 });
+  // src/utils/css-units.ts
   var CSS_CONFIG = {
     remBase: 16,
     // 1rem = 16px (browser default)
@@ -234,13 +233,6 @@
     }
     return null;
   }
-  function calculatePercentageWidth(widthValue, parentFrame) {
-    if (!parentFrame || !widthValue) return null;
-    const percentage = parsePercentage(widthValue);
-    if (percentage === null) return null;
-    const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
-    return Math.round(percentage / 100 * availableWidth);
-  }
   function parseMargin(marginValue) {
     const values = marginValue.split(" ").map((v) => parseSize(v) || 0);
     if (values.length === 1) {
@@ -266,6 +258,16 @@
       return { top: values[0], right: values[1], bottom: values[2], left: values[3] };
     }
     return { top: 0, right: 0, bottom: 0, left: 0 };
+  }
+
+  // src/code.ts
+  figma.showUI(__html__, { width: 360, height: 380 });
+  function calculatePercentageWidth(widthValue, parentFrame) {
+    if (!parentFrame || !widthValue) return null;
+    const percentage = parsePercentage(widthValue);
+    if (percentage === null) return null;
+    const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
+    return Math.round(percentage / 100 * availableWidth);
   }
   function parseBoxShadow(shadowValue) {
     const match = shadowValue.match(/(-?\d+(?:\.\d+)?(?:px)?)\s+(-?\d+(?:\.\d+)?(?:px)?)\s+(-?\d+(?:\.\d+)?(?:px)?)?\s*(-?\d+(?:\.\d+)?(?:px)?)?\s*(rgba?\([^)]+\)|#[a-fA-F0-9]{6}|#[a-fA-F0-9]{3})?/);

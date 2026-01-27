@@ -4,129 +4,16 @@
 import { VIEWPORT_PRESETS, CONTAINER_SELECTORS } from './parser/css-constants';
 // Import color utilities
 import { hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractFallbackColor } from './utils/colors';
+// Import CSS unit utilities
+import { CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePadding } from './utils/css-units';
 
 // __html__ is injected by Figma when using a separate ui.html file
 figma.showUI(__html__, { width: 360, height: 380 });
 
-// hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractFallbackColor
-// are now imported from ./utils/colors
-
-// Configuration for unit conversion
-const CSS_CONFIG = {
-  remBase: 16,        // 1rem = 16px (browser default)
-  viewportHeight: 900, // 100vh = 900px (reasonable desktop height)
-  viewportWidth: 1440  // 100vw = 1440px (reasonable desktop width)
-};
-
+// Color utilities imported from ./utils/colors
+// CSS unit utilities (CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePadding)
+// imported from ./utils/css-units
 // VIEWPORT_PRESETS and CONTAINER_SELECTORS imported from ./parser/css-constants
-
-function parseSize(value: string): number | null {
-  if (!value || value === 'auto' || value === 'inherit' || value === 'initial') return null;
-
-  // FIXED: Handle calc() expressions
-  if (value.includes('calc(')) {
-    return parseCalc(value);
-  }
-
-  // Handle percentage values for border-radius specially
-  if (value.includes('%')) {
-    // For border-radius: 50%, we should return a special value
-    if (value === '50%') {
-      return 999; // Special marker for "make it circular"
-    }
-    return null; // Other percentages handled by special logic
-  }
-
-  // FIX: Handle rem units (relative to root font-size, default 16px)
-  if (value.includes('rem')) {
-    const remValue = parseFloat(value);
-    if (!isNaN(remValue)) {
-      return remValue * CSS_CONFIG.remBase;
-    }
-    return null;
-  }
-
-  // FIX: Handle em units (treat same as rem for simplicity)
-  if (value.includes('em') && !value.includes('rem')) {
-    const emValue = parseFloat(value);
-    if (!isNaN(emValue)) {
-      return emValue * CSS_CONFIG.remBase;
-    }
-    return null;
-  }
-
-  // FIX: Handle viewport height units (vh)
-  if (value.includes('vh')) {
-    const vhValue = parseFloat(value);
-    if (!isNaN(vhValue)) {
-      return (vhValue / 100) * CSS_CONFIG.viewportHeight;
-    }
-    return null;
-  }
-
-  // FIX: Handle viewport width units (vw)
-  if (value.includes('vw')) {
-    const vwValue = parseFloat(value);
-    if (!isNaN(vwValue)) {
-      return (vwValue / 100) * CSS_CONFIG.viewportWidth;
-    }
-    return null;
-  }
-
-  const numericValue = parseFloat(value);
-  return isNaN(numericValue) ? null : numericValue;
-}
-
-// FIXED: Parse calc() expressions - handles simple cases like calc(100px - 20px), calc(50% - 10px)
-function parseCalc(value: string): number | null {
-  // Extract content inside calc()
-  const match = value.match(/calc\(([^)]+)\)/);
-  if (!match) return null;
-
-  const expression = match[1].trim();
-
-  // Handle simple addition/subtraction: "100px - 20px" or "50px + 10px"
-  // Split by + or - while keeping the operator
-  const parts = expression.split(/\s*([+-])\s*/);
-
-  if (parts.length === 1) {
-    // Single value inside calc
-    return parseFloat(parts[0]) || null;
-  }
-
-  if (parts.length === 3) {
-    // Simple binary operation: value operator value
-    const left = parseFloat(parts[0]);
-    const operator = parts[1];
-    const right = parseFloat(parts[2]);
-
-    if (isNaN(left) || isNaN(right)) {
-      // One operand might be percentage - just return the px value if one exists
-      if (parts[0].includes('px')) return parseFloat(parts[0]);
-      if (parts[2].includes('px')) return parseFloat(parts[2]);
-      return null;
-    }
-
-    if (operator === '+') return left + right;
-    if (operator === '-') return left - right;
-  }
-
-  // For complex expressions, try to extract first numeric value
-  const numMatch = expression.match(/(\d+(?:\.\d+)?)\s*px/);
-  if (numMatch) return parseFloat(numMatch[1]);
-
-  return null;
-}
-
-// FIXED: Parse percentage values and calculate based on parent size
-function parsePercentage(value: string): number | null {
-  if (!value || !value.includes('%')) return null;
-  const match = value.match(/^([0-9.]+)%$/);
-  if (match) {
-    return parseFloat(match[1]);
-  }
-  return null;
-}
 
 function calculatePercentageWidth(widthValue: string, parentFrame: FrameNode | null): number | null {
   if (!parentFrame || !widthValue) return null;
@@ -203,37 +90,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
   return null;
 }
 
-function parseMargin(marginValue: string): {top: number, right: number, bottom: number, left: number} {
-  const values = marginValue.split(' ').map(v => parseSize(v) || 0);
-  
-  if (values.length === 1) {
-    return { top: values[0], right: values[0], bottom: values[0], left: values[0] };
-  } else if (values.length === 2) {
-    return { top: values[0], right: values[1], bottom: values[0], left: values[1] };
-  } else if (values.length === 3) {
-    return { top: values[0], right: values[1], bottom: values[2], left: values[1] };
-  } else if (values.length === 4) {
-    return { top: values[0], right: values[1], bottom: values[2], left: values[3] };
-  }
-  
-  return { top: 0, right: 0, bottom: 0, left: 0 };
-}
-
-function parsePadding(paddingValue: string): {top: number, right: number, bottom: number, left: number} {
-  const values = paddingValue.split(' ').map(v => parseSize(v) || 0);
-  
-  if (values.length === 1) {
-    return { top: values[0], right: values[0], bottom: values[0], left: values[0] };
-  } else if (values.length === 2) {
-    return { top: values[0], right: values[1], bottom: values[0], left: values[1] };
-  } else if (values.length === 3) {
-    return { top: values[0], right: values[1], bottom: values[2], left: values[1] };
-  } else if (values.length === 4) {
-    return { top: values[0], right: values[1], bottom: values[2], left: values[3] };
-  }
-  
-  return { top: 0, right: 0, bottom: 0, left: 0 };
-}
+// parseMargin and parsePadding imported from ./utils/css-units
 
 function parseBoxShadow(shadowValue: string): any {
   // Parse box-shadow: offset-x offset-y blur-radius spread-radius color
