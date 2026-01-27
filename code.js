@@ -20,42 +20,41 @@
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 
-  // src/code.ts
-  figma.showUI(__html__, { width: 360, height: 380 });
+  // src/utils/colors.ts
+  var COLOR_KEYWORDS = {
+    "white": { r: 1, g: 1, b: 1 },
+    "black": { r: 0, g: 0, b: 0 },
+    "red": { r: 1, g: 0, b: 0 },
+    "green": { r: 0, g: 0.5, b: 0 },
+    "blue": { r: 0, g: 0, b: 1 },
+    "yellow": { r: 1, g: 1, b: 0 },
+    "cyan": { r: 0, g: 1, b: 1 },
+    "magenta": { r: 1, g: 0, b: 1 },
+    "orange": { r: 1, g: 0.647, b: 0 },
+    "purple": { r: 0.5, g: 0, b: 0.5 },
+    "pink": { r: 1, g: 0.753, b: 0.796 },
+    "brown": { r: 0.647, g: 0.165, b: 0.165 },
+    "gray": { r: 0.5, g: 0.5, b: 0.5 },
+    "grey": { r: 0.5, g: 0.5, b: 0.5 },
+    "lightgray": { r: 0.827, g: 0.827, b: 0.827 },
+    "lightgrey": { r: 0.827, g: 0.827, b: 0.827 },
+    "darkgray": { r: 0.663, g: 0.663, b: 0.663 },
+    "darkgrey": { r: 0.663, g: 0.663, b: 0.663 },
+    "lightblue": { r: 0.678, g: 0.847, b: 1 },
+    "lightgreen": { r: 0.565, g: 0.933, b: 0.565 },
+    "lightcyan": { r: 0.878, g: 1, b: 1 },
+    "lightyellow": { r: 1, g: 1, b: 0.878 },
+    "lightpink": { r: 1, g: 0.714, b: 0.757 },
+    "darkred": { r: 0.545, g: 0, b: 0 },
+    "darkblue": { r: 0, g: 0, b: 0.545 },
+    "darkgreen": { r: 0, g: 0.392, b: 0 },
+    "transparent": { r: 0, g: 0, b: 0 }
+  };
   function hexToRgb(color) {
     if (!color) return null;
-    const colorKeywords = {
-      "white": { r: 1, g: 1, b: 1 },
-      "black": { r: 0, g: 0, b: 0 },
-      "red": { r: 1, g: 0, b: 0 },
-      "green": { r: 0, g: 0.5, b: 0 },
-      "blue": { r: 0, g: 0, b: 1 },
-      "yellow": { r: 1, g: 1, b: 0 },
-      "cyan": { r: 0, g: 1, b: 1 },
-      "magenta": { r: 1, g: 0, b: 1 },
-      "orange": { r: 1, g: 0.647, b: 0 },
-      "purple": { r: 0.5, g: 0, b: 0.5 },
-      "pink": { r: 1, g: 0.753, b: 0.796 },
-      "brown": { r: 0.647, g: 0.165, b: 0.165 },
-      "gray": { r: 0.5, g: 0.5, b: 0.5 },
-      "grey": { r: 0.5, g: 0.5, b: 0.5 },
-      "lightgray": { r: 0.827, g: 0.827, b: 0.827 },
-      "lightgrey": { r: 0.827, g: 0.827, b: 0.827 },
-      "darkgray": { r: 0.663, g: 0.663, b: 0.663 },
-      "darkgrey": { r: 0.663, g: 0.663, b: 0.663 },
-      "lightblue": { r: 0.678, g: 0.847, b: 1 },
-      "lightgreen": { r: 0.565, g: 0.933, b: 0.565 },
-      "lightcyan": { r: 0.878, g: 1, b: 1 },
-      "lightyellow": { r: 1, g: 1, b: 0.878 },
-      "lightpink": { r: 1, g: 0.714, b: 0.757 },
-      "darkred": { r: 0.545, g: 0, b: 0 },
-      "darkblue": { r: 0, g: 0, b: 0.545 },
-      "darkgreen": { r: 0, g: 0.392, b: 0 },
-      "transparent": { r: 0, g: 0, b: 0 }
-    };
     const lowerColor = color.toLowerCase().trim();
-    if (colorKeywords[lowerColor]) {
-      return colorKeywords[lowerColor];
+    if (COLOR_KEYWORDS[lowerColor]) {
+      return COLOR_KEYWORDS[lowerColor];
     }
     const rgbMatch = color.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
     if (rgbMatch) {
@@ -108,6 +107,51 @@
     }
     return __spreadProps(__spreadValues({}, rgb), { a: 1 });
   }
+  function extractBorderColor(borderValue) {
+    if (!borderValue) return null;
+    const hexMatch = borderValue.match(/#[0-9a-fA-F]{3,6}/);
+    if (hexMatch) return hexMatch[0];
+    const rgbMatch = borderValue.match(/rgba?\([^)]+\)/i);
+    if (rgbMatch) return rgbMatch[0];
+    const parts = borderValue.split(/\s+/);
+    for (const part of parts) {
+      if (COLOR_KEYWORDS[part.toLowerCase()]) {
+        return part;
+      }
+    }
+    return null;
+  }
+  function extractGradientColor(bg) {
+    if (!bg) return null;
+    const hexMatch = bg.match(/#[0-9a-fA-F]{3,6}/);
+    if (hexMatch) return hexMatch[0];
+    const rgbMatch = bg.match(/rgba?\([^)]+\)/i);
+    if (rgbMatch) return rgbMatch[0];
+    return null;
+  }
+  function extractFallbackColor(bgStr) {
+    if (!bgStr) return null;
+    const afterGradient = bgStr.match(/\)\s*\)\s*,\s*(#[a-fA-F0-9]{3,6}|rgba?\([^)]+\)|[a-z]+)/i);
+    if (afterGradient) {
+      return afterGradient[1];
+    }
+    const simpleMatch = bgStr.match(/gradient\([^)]+\)\s*,\s*(#[a-fA-F0-9]{3,6})/i);
+    if (simpleMatch) {
+      return simpleMatch[1];
+    }
+    if (bgStr.includes("gradient")) {
+      return extractGradientColor(bgStr);
+    }
+    if (bgStr.includes("url(")) {
+      return null;
+    }
+    const rgb = hexToRgb(bgStr);
+    if (rgb) return bgStr;
+    return null;
+  }
+
+  // src/code.ts
+  figma.showUI(__html__, { width: 360, height: 380 });
   var CSS_CONFIG = {
     remBase: 16,
     // 1rem = 16px (browser default)
@@ -282,38 +326,6 @@
       result.translateY = parseSize(translateMatch[2]) || 0;
     }
     return result;
-  }
-  function extractBorderColor(borderValue) {
-    if (!borderValue) return null;
-    const hex = borderValue.match(/#([a-fA-F0-9]{3,6})/);
-    if (hex) return hex[0];
-    const rgb = borderValue.match(/rgba?\([^\)]+\)/);
-    if (rgb) return rgb[0];
-    const keyword = borderValue.match(/\b(white|black|red|blue|green|yellow|orange|purple|pink|brown|gray|grey)\b/i);
-    if (keyword) return keyword[0];
-    return null;
-  }
-  function extractGradientColor(bg) {
-    if (!bg) return null;
-    const hex = bg.match(/#([a-fA-F0-9]{3,6})/);
-    if (hex) return hex[0];
-    const rgb = bg.match(/rgba?\([^\)]+\)/);
-    if (rgb) return rgb[0];
-    const keyword = bg.match(/\b(white|black|red|blue|green|yellow|orange|purple|pink|brown|gray|grey)\b/i);
-    if (keyword) return keyword[0];
-    return null;
-  }
-  function extractFallbackColor(bgStr) {
-    if (!bgStr) return null;
-    const afterGradient = bgStr.match(/\)\s*\)\s*,\s*(#[a-fA-F0-9]{3,6}|rgba?\([^)]+\)|[a-z]+)/i);
-    if (afterGradient) {
-      return afterGradient[1];
-    }
-    const simpleMatch = bgStr.match(/gradient\([^)]+\)\s*,\s*(#[a-fA-F0-9]{3,6})/i);
-    if (simpleMatch) {
-      return simpleMatch[1];
-    }
-    return null;
   }
   function parseLinearGradient(gradientStr) {
     try {

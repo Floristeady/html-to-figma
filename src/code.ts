@@ -2,118 +2,14 @@
 
 // Import constants from parser module
 import { VIEWPORT_PRESETS, CONTAINER_SELECTORS } from './parser/css-constants';
+// Import color utilities
+import { hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractFallbackColor } from './utils/colors';
 
 // __html__ is injected by Figma when using a separate ui.html file
 figma.showUI(__html__, { width: 360, height: 380 });
 
-function hexToRgb(color: string): {r: number, g: number, b: number} | null {
-  // Guard against null/undefined
-  if (!color) return null;
-
-  // First handle CSS color keywords
-  const colorKeywords: {[key: string]: {r: number, g: number, b: number}} = {
-    'white': { r: 1, g: 1, b: 1 },
-    'black': { r: 0, g: 0, b: 0 },
-    'red': { r: 1, g: 0, b: 0 },
-    'green': { r: 0, g: 0.5, b: 0 },
-    'blue': { r: 0, g: 0, b: 1 },
-    'yellow': { r: 1, g: 1, b: 0 },
-    'cyan': { r: 0, g: 1, b: 1 },
-    'magenta': { r: 1, g: 0, b: 1 },
-    'orange': { r: 1, g: 0.647, b: 0 },
-    'purple': { r: 0.5, g: 0, b: 0.5 },
-    'pink': { r: 1, g: 0.753, b: 0.796 },
-    'brown': { r: 0.647, g: 0.165, b: 0.165 },
-    'gray': { r: 0.5, g: 0.5, b: 0.5 },
-    'grey': { r: 0.5, g: 0.5, b: 0.5 },
-    'lightgray': { r: 0.827, g: 0.827, b: 0.827 },
-    'lightgrey': { r: 0.827, g: 0.827, b: 0.827 },
-    'darkgray': { r: 0.663, g: 0.663, b: 0.663 },
-    'darkgrey': { r: 0.663, g: 0.663, b: 0.663 },
-    'lightblue': { r: 0.678, g: 0.847, b: 1 },
-    'lightgreen': { r: 0.565, g: 0.933, b: 0.565 },
-    'lightcyan': { r: 0.878, g: 1, b: 1 },
-    'lightyellow': { r: 1, g: 1, b: 0.878 },
-    'lightpink': { r: 1, g: 0.714, b: 0.757 },
-    'darkred': { r: 0.545, g: 0, b: 0 },
-    'darkblue': { r: 0, g: 0, b: 0.545 },
-    'darkgreen': { r: 0, g: 0.392, b: 0 },
-    'transparent': { r: 0, g: 0, b: 0 }
-  };
-  
-  const lowerColor = color.toLowerCase().trim();
-  
-  // Check for color keywords first
-  if (colorKeywords[lowerColor]) {
-    return colorKeywords[lowerColor];
-  }
-  
-  // Handle rgb() format
-  const rgbMatch = color.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
-  if (rgbMatch) {
-    return {
-      r: parseInt(rgbMatch[1]) / 255,
-      g: parseInt(rgbMatch[2]) / 255,
-      b: parseInt(rgbMatch[3]) / 255
-    };
-  }
-  
-  // Handle rgba() format
-  const rgbaMatch = color.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([0-9.]+)\s*\)/i);
-  if (rgbaMatch) {
-    return {
-      r: parseInt(rgbaMatch[1]) / 255,
-      g: parseInt(rgbaMatch[2]) / 255,
-      b: parseInt(rgbaMatch[3]) / 255
-    };
-  }
-  
-  // Handle hexadecimal colors (original functionality)
-  const hexResult = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(color);
-  if (hexResult) {
-    return {
-      r: parseInt(hexResult[1], 16) / 255,
-      g: parseInt(hexResult[2], 16) / 255,
-      b: parseInt(hexResult[3], 16) / 255
-    };
-  }
-  
-  // Handle 3-digit hex colors
-  const shortHexResult = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(color);
-  if (shortHexResult) {
-    return {
-      r: parseInt(shortHexResult[1] + shortHexResult[1], 16) / 255,
-      g: parseInt(shortHexResult[2] + shortHexResult[2], 16) / 255,
-      b: parseInt(shortHexResult[3] + shortHexResult[3], 16) / 255
-    };
-  }
-  
-  return null;
-}
-
-function hexToRgba(color: string): {r: number, g: number, b: number, a: number} | null {
-  const rgb = hexToRgb(color);
-  if (!rgb) return null;
-  
-  // Handle rgba() format with alpha
-  const rgbaMatch = color.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([0-9.]+)\s*\)/i);
-  if (rgbaMatch) {
-    return {
-      r: parseInt(rgbaMatch[1]) / 255,
-      g: parseInt(rgbaMatch[2]) / 255,
-      b: parseInt(rgbaMatch[3]) / 255,
-      a: parseFloat(rgbaMatch[4])
-    };
-  }
-  
-  // For transparent, return alpha 0
-  if (color.toLowerCase().trim() === 'transparent') {
-    return { r: 0, g: 0, b: 0, a: 0 };
-  }
-  
-  // Default alpha 1 for all other colors
-  return { ...rgb, a: 1 };
-}
+// hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractFallbackColor
+// are now imported from ./utils/colors
 
 // Configuration for unit conversion
 const CSS_CONFIG = {
@@ -419,53 +315,7 @@ function parseTransform(transformValue: string): {rotation?: number, scaleX?: nu
   return result;
 }
 
-function extractBorderColor(borderValue: string): string | null {
-  // Busca un color en la propiedad border (hex, rgb, rgba, palabra clave)
-  if (!borderValue) return null;
-  // Hex
-  const hex = borderValue.match(/#([a-fA-F0-9]{3,6})/);
-  if (hex) return hex[0];
-  // rgb/rgba
-  const rgb = borderValue.match(/rgba?\([^\)]+\)/);
-  if (rgb) return rgb[0];
-  // Palabra clave (ej: 'red', 'blue', 'black', 'white', 'gray', 'grey', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown')
-  const keyword = borderValue.match(/\b(white|black|red|blue|green|yellow|orange|purple|pink|brown|gray|grey)\b/i);
-  if (keyword) return keyword[0];
-  return null;
-}
-
-function extractGradientColor(bg: string): string | null {
-  if (!bg) return null;
-  // linear-gradient(90deg, #2c3e50 60%, #2980b9 100%)
-  const hex = bg.match(/#([a-fA-F0-9]{3,6})/);
-  if (hex) return hex[0];
-  const rgb = bg.match(/rgba?\([^\)]+\)/);
-  if (rgb) return rgb[0];
-  const keyword = bg.match(/\b(white|black|red|blue|green|yellow|orange|purple|pink|brown|gray|grey)\b/i);
-  if (keyword) return keyword[0];
-  return null;
-}
-
-// FIX: Extract fallback color from background with gradient
-// e.g., "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), #e5e5e5" -> "#e5e5e5"
-function extractFallbackColor(bgStr: string): string | null {
-  if (!bgStr) return null;
-
-  // Look for color after the gradient (after the last closing paren of gradient)
-  // Pattern: ...gradient(...)), COLOR
-  const afterGradient = bgStr.match(/\)\s*\)\s*,\s*(#[a-fA-F0-9]{3,6}|rgba?\([^)]+\)|[a-z]+)/i);
-  if (afterGradient) {
-    return afterGradient[1];
-  }
-
-  // Also try simpler pattern: gradient(...), COLOR
-  const simpleMatch = bgStr.match(/gradient\([^)]+\)\s*,\s*(#[a-fA-F0-9]{3,6})/i);
-  if (simpleMatch) {
-    return simpleMatch[1];
-  }
-
-  return null;
-}
+// extractBorderColor, extractGradientColor, extractFallbackColor imported from ./utils/colors
 
 // FIX: Improved gradient parsing that handles rgba() inside gradients
 function parseLinearGradient(gradientStr: string): any {
