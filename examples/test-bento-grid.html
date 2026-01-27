@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bento Grid Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8f8f8;
+            padding: 40px;
+        }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            max-width: 1200px;
+        }
+
+        .bento-item {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        /* Featured item spans 2x2 */
+        .bento-item.featured {
+            grid-column: span 2;
+            grid-row: span 2;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .bento-item.wide {
+            grid-column: span 2;
+        }
+
+        .bento-item h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .bento-item p {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .bento-item.featured p {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .tag {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+
+        .bento-item.featured .tag {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="bento-grid">
+        <!-- Featured: 2x2 -->
+        <div class="bento-item featured">
+            <span class="tag">Featured</span>
+            <h3>Featured Theme of the Week</h3>
+            <p>Explore our curated collection of minimalist design resources and inspiration for modern interfaces.</p>
+        </div>
+
+        <!-- Regular items -->
+        <div class="bento-item">
+            <span class="tag">Quote</span>
+            <h3>Quote of the Day</h3>
+            <p>"Design is not just what it looks like, design is how it works."</p>
+        </div>
+
+        <div class="bento-item">
+            <span class="tag">Book</span>
+            <h3>Book of the Week</h3>
+            <p>The Design of Everyday Things by Don Norman</p>
+        </div>
+
+        <!-- Wide item: span 2 columns -->
+        <div class="bento-item wide">
+            <span class="tag">Article</span>
+            <h3>Latest Article</h3>
+            <p>Understanding the principles of visual hierarchy in modern web design.</p>
+        </div>
+
+        <div class="bento-item">
+            <span class="tag">Tool</span>
+            <h3>Tool Spotlight</h3>
+            <p>Figma plugins that boost your productivity</p>
+        </div>
+
+        <div class="bento-item">
+            <span class="tag">Tip</span>
+            <h3>Design Tip</h3>
+            <p>Use consistent spacing for visual rhythm</p>
+        </div>
+    </div>
+</body>
+</html>

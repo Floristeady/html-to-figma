@@ -539,6 +539,13 @@ function applyStylesToText(text: TextNode, styles: any) {
 // FIXED: Reorder children by z-index (higher z-index = later in children array = on top)
 function reorderChildrenByZIndex(parentFrame: FrameNode) {
   try {
+    // FIXED: Don't reorder children in auto-layout frames
+    // Z-index in CSS is about stacking, but in Figma auto-layout, order affects flow position
+    // Only apply z-index reordering for absolute positioning (layoutMode: 'NONE')
+    if (parentFrame.layoutMode !== 'NONE') {
+      return; // Skip reordering for auto-layout frames
+    }
+
     const children = [...parentFrame.children];
     const childrenWithZIndex: { node: SceneNode, zIndex: number }[] = [];
 
@@ -610,6 +617,10 @@ async function calculateContentSize(children: any[]): Promise<{width: number, he
 // (parseGridColumns, parseGridTemplateAreas, getGridRowCount, getGridColCount)
 
 // Create grid layout using grid-template-areas
+// ============================================
+// Grid Layout with Named Areas (grid-template-areas)
+// Uses native Figma Grid mode
+// ============================================
 async function createGridLayoutWithAreas(
   children: any[],
   parentFrame: FrameNode,
@@ -619,13 +630,116 @@ async function createGridLayoutWithAreas(
   gap: number,
   inheritedStyles?: any
 ) {
-  // Check if any area spans multiple rows (for height synchronization)
-  const hasMultiRowSpans = Object.values(areaMap).some(bounds => (bounds.rowEnd - bounds.rowStart) > 1);
+  console.log('[GRID-AREAS] createGridLayoutWithAreas:', numRows, 'rows x', numCols, 'cols');
+  console.log('[GRID-AREAS] Area map:', JSON.stringify(areaMap));
 
-  // Create a 2D array to track which cells are occupied
-  const grid: (FrameNode | null)[][] = [];
-  for (let r = 0; r < numRows; r++) {
-    grid[r] = new Array(numCols).fill(null);
+  // Map children to their grid areas
+  const childrenByArea: { [key: string]: any } = {};
+  for (const child of children) {
+    const gridArea = child.styles?.['grid-area'];
+    if (gridArea && areaMap[gridArea]) {
+      childrenByArea[gridArea] = child;
+      console.log(`[GRID-AREAS] Child mapped to area "${gridArea}"`);
+    }
+  }
+
+  // Configure parent as native Figma Grid
+  try {
+    parentFrame.layoutMode = 'GRID';
+    parentFrame.gridColumnCount = numCols;
+    parentFrame.gridRowCount = numRows;
+    parentFrame.gridColumnGap = gap;
+    parentFrame.gridRowGap = gap;
+
+    // Set all columns to FLEX (equal width)
+    for (let i = 0; i < parentFrame.gridColumnSizes.length; i++) {
+      parentFrame.gridColumnSizes[i].type = 'FLEX';
+    }
+
+    // Set all rows to FLEX
+    for (let i = 0; i < parentFrame.gridRowSizes.length; i++) {
+      parentFrame.gridRowSizes[i].type = 'FLEX';
+    }
+
+    console.log('[GRID-AREAS] Configured native grid:', numCols, 'cols x', numRows, 'rows');
+  } catch (error) {
+    console.error('[GRID-AREAS] Error configuring native grid, using fallback:', error);
+    await createGridLayoutWithAreasFallback(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles);
+    return;
+  }
+
+  // Process each unique area and place children
+  const processedAreas = new Set<string>();
+
+  for (const [areaName, bounds] of Object.entries(areaMap)) {
+    if (processedAreas.has(areaName)) continue;
+    processedAreas.add(areaName);
+
+    const child = childrenByArea[areaName];
+    const colSpan = bounds.colEnd - bounds.colStart;
+    const rowSpan = bounds.rowEnd - bounds.rowStart;
+
+    // Create wrapper for the grid item
+    const wrapper = figma.createFrame();
+    wrapper.name = child ? `Grid Area: ${areaName}` : `${areaName} (empty)`;
+    wrapper.fills = [];
+    wrapper.layoutMode = 'VERTICAL';
+    wrapper.primaryAxisSizingMode = 'AUTO';
+    wrapper.counterAxisSizingMode = 'AUTO';
+
+    // Append to parent first
+    parentFrame.appendChild(wrapper);
+
+    // Set grid position and span
+    try {
+      wrapper.gridColumnAnchorIndex = bounds.colStart;
+      wrapper.gridRowAnchorIndex = bounds.rowStart;
+      wrapper.gridColumnSpan = colSpan;
+      wrapper.gridRowSpan = rowSpan;
+      wrapper.layoutSizingHorizontal = 'FILL';
+      wrapper.layoutSizingVertical = 'FILL';
+
+      console.log(`[GRID-AREAS] Area "${areaName}": positioned at (${bounds.colStart}, ${bounds.rowStart}) span ${colSpan}x${rowSpan}`);
+    } catch (error) {
+      console.error(`[GRID-AREAS] Error positioning area "${areaName}":`, error);
+    }
+
+    // Render child content if exists
+    if (child) {
+      const gridInheritedStyles = {
+        ...inheritedStyles,
+        '_hasConstrainedWidth': true,
+        '_isGridChild': true
+      };
+      await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
+    }
+  }
+
+  console.log('[GRID-AREAS] Grid layout complete');
+}
+
+// Fallback for createGridLayoutWithAreas using horizontal rows
+async function createGridLayoutWithAreasFallback(
+  children: any[],
+  parentFrame: FrameNode,
+  areaMap: { [key: string]: { rowStart: number, rowEnd: number, colStart: number, colEnd: number } },
+  numRows: number,
+  numCols: number,
+  gap: number,
+  inheritedStyles?: any
+) {
+  console.log('[GRID-AREAS-FALLBACK] Using row-based fallback');
+
+  parentFrame.layoutMode = 'VERTICAL';
+  parentFrame.itemSpacing = gap;
+
+  // Map children to their grid areas
+  const childrenByArea: { [key: string]: any } = {};
+  for (const child of children) {
+    const gridArea = child.styles?.['grid-area'];
+    if (gridArea && areaMap[gridArea]) {
+      childrenByArea[gridArea] = child;
+    }
   }
 
   // Create row frames
@@ -639,24 +753,13 @@ async function createGridLayoutWithAreas(
     rowFrame.counterAxisSizingMode = 'AUTO';
     rowFrame.itemSpacing = gap;
     parentFrame.appendChild(rowFrame);
-    if (parentFrame.layoutMode !== 'NONE') {
-      try {
-        rowFrame.layoutSizingHorizontal = 'FILL';
-      } catch (error) {}
-    }
+    try {
+      rowFrame.layoutSizingHorizontal = 'FILL';
+    } catch (e) {}
     rowFrames.push(rowFrame);
   }
 
-  // Map children to their grid areas
-  const childrenByArea: { [key: string]: any } = {};
-  for (const child of children) {
-    const gridArea = child.styles?.['grid-area'];
-    if (gridArea && areaMap[gridArea]) {
-      childrenByArea[gridArea] = child;
-    }
-  }
-
-  // Process each unique area and place children
+  // Process each unique area
   const processedAreas = new Set<string>();
 
   for (let r = 0; r < numRows; r++) {
@@ -671,18 +774,16 @@ async function createGridLayoutWithAreas(
       }
 
       if (!cellArea) {
-        // Empty cell - create placeholder
+        // Empty cell
         const placeholder = figma.createFrame();
-        placeholder.name = `Empty Cell ${r}-${c}`;
+        placeholder.name = `Empty`;
         placeholder.fills = [];
         placeholder.resize(10, 10);
         rowFrames[r].appendChild(placeholder);
-        // Set layout properties AFTER appending to parent
         try {
           placeholder.layoutGrow = 1;
           placeholder.layoutSizingHorizontal = 'FILL';
-          placeholder.layoutSizingVertical = 'HUG';
-        } catch (error) {}
+        } catch (e) {}
         continue;
       }
 
@@ -691,166 +792,464 @@ async function createGridLayoutWithAreas(
 
       if (isFirstCellOfArea && !processedAreas.has(cellArea)) {
         processedAreas.add(cellArea);
-
-        // Create the child in this position
         const child = childrenByArea[cellArea];
+        const colSpan = bounds.colEnd - bounds.colStart;
+
+        const wrapper = figma.createFrame();
+        wrapper.name = cellArea;
+        wrapper.fills = [];
+        wrapper.layoutMode = 'VERTICAL';
+        wrapper.primaryAxisSizingMode = 'AUTO';
+        wrapper.counterAxisSizingMode = 'AUTO';
+        rowFrames[r].appendChild(wrapper);
+
+        try {
+          wrapper.layoutGrow = colSpan;
+          wrapper.layoutSizingHorizontal = 'FILL';
+        } catch (e) {}
+
         if (child) {
-          const colSpan = bounds.colEnd - bounds.colStart;
-          const rowSpan = bounds.rowEnd - bounds.rowStart;
+          await createFigmaNodesFromStructure([child], wrapper, 0, 0, {
+            ...inheritedStyles,
+            '_hasConstrainedWidth': true
+          });
+        }
 
-          // Create a wrapper frame if the element spans multiple rows
-          if (rowSpan > 1) {
-            // For multi-row spans, create wrapper in first row
-            const wrapper = figma.createFrame();
-            wrapper.name = `${cellArea} (spans ${rowSpan} rows, ${colSpan} cols)`;
-            wrapper.fills = [];
-            wrapper.layoutMode = 'VERTICAL';
-            wrapper.primaryAxisSizingMode = 'AUTO';
-            wrapper.counterAxisSizingMode = 'AUTO';
-            rowFrames[r].appendChild(wrapper);
-            // Set layout properties AFTER appending
-            try {
-              wrapper.layoutGrow = 1;
-              wrapper.layoutSizingHorizontal = 'FILL';
-            } catch (error) {}
-
-            const gridInheritedStyles = { ...inheritedStyles, '_hasConstrainedWidth': true };
-            await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
-
-            // Add placeholders for remaining columns in first row
-            for (let cc = 1; cc < colSpan; cc++) {
-              const placeholder = figma.createFrame();
-              placeholder.name = `${cellArea} span ${cc}`;
-              placeholder.fills = [];
-              placeholder.resize(1, 1);
-              placeholder.visible = false;
-              rowFrames[r].appendChild(placeholder);
-              try {
-                placeholder.layoutGrow = 1;
-                placeholder.layoutSizingHorizontal = 'FILL';
-              } catch (error) {}
-            }
-          } else {
-            // Single row - simpler case
-            const wrapper = figma.createFrame();
-            wrapper.name = `${cellArea} (${colSpan} cols)`;
-            wrapper.fills = [];
-            wrapper.layoutMode = 'VERTICAL';
-            wrapper.primaryAxisSizingMode = 'AUTO';
-            wrapper.counterAxisSizingMode = 'AUTO';
-            rowFrames[r].appendChild(wrapper);
-            // Set layout properties AFTER appending
-            try {
-              wrapper.layoutGrow = 1;
-              wrapper.layoutSizingHorizontal = 'FILL';
-              // Fill vertical height when there are multi-row spans in the grid
-              if (hasMultiRowSpans) {
-                wrapper.layoutSizingVertical = 'FILL';
-              }
-            } catch (error) {}
-
-            // Pass flag to children to also use FILL vertical
-            const gridInheritedStyles = {
-              ...inheritedStyles,
-              '_hasConstrainedWidth': true,
-              '_shouldFillVertical': hasMultiRowSpans
-            };
-            await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
-
-            // Add placeholders for remaining columns
-            for (let cc = 1; cc < colSpan; cc++) {
-              const placeholder = figma.createFrame();
-              placeholder.name = `${cellArea} span ${cc}`;
-              placeholder.fills = [];
-              placeholder.resize(1, 1);
-              placeholder.visible = false;
-              rowFrames[r].appendChild(placeholder);
-              try {
-                placeholder.layoutGrow = 1;
-                placeholder.layoutSizingHorizontal = 'FILL';
-              } catch (error) {}
-            }
-          }
-        } else {
-          // Area exists but no child matches - create placeholder
+        // Placeholders for remaining columns
+        for (let cc = 1; cc < colSpan; cc++) {
           const placeholder = figma.createFrame();
-          placeholder.name = `${cellArea} (empty)`;
+          placeholder.name = `span`;
           placeholder.fills = [];
-          placeholder.resize(10, 10);
+          placeholder.resize(1, 1);
+          placeholder.visible = false;
           rowFrames[r].appendChild(placeholder);
           try {
             placeholder.layoutGrow = 1;
             placeholder.layoutSizingHorizontal = 'FILL';
-            placeholder.layoutSizingVertical = 'HUG';
-          } catch (error) {}
+          } catch (e) {}
         }
-      } else if (!isFirstCellOfArea) {
-        // This cell is part of a multi-cell area but not the first cell
-        // For subsequent rows of multi-row areas, add invisible placeholders
-        if (r > bounds.rowStart && c === bounds.colStart) {
-          // First column of a subsequent row in a multi-row span
-          // Add placeholders for each column the area spans
-          const colSpan = bounds.colEnd - bounds.colStart;
-          for (let cc = 0; cc < colSpan; cc++) {
-            const placeholder = figma.createFrame();
-            placeholder.name = `${cellArea} row-span placeholder ${cc}`;
-            placeholder.fills = [];
-            placeholder.resize(1, 1);
-            placeholder.visible = false;
-            rowFrames[r].appendChild(placeholder);
-            try {
-              placeholder.layoutGrow = 1;
-              placeholder.layoutSizingHorizontal = 'FILL';
-            } catch (error) {}
-          }
+      } else if (!isFirstCellOfArea && r > bounds.rowStart && c === bounds.colStart) {
+        // Subsequent row placeholders
+        const colSpan = bounds.colEnd - bounds.colStart;
+        for (let cc = 0; cc < colSpan; cc++) {
+          const placeholder = figma.createFrame();
+          placeholder.name = `row-span`;
+          placeholder.fills = [];
+          placeholder.resize(1, 1);
+          placeholder.visible = false;
+          rowFrames[r].appendChild(placeholder);
+          try {
+            placeholder.layoutGrow = 1;
+            placeholder.layoutSizingHorizontal = 'FILL';
+          } catch (e) {}
         }
-        // Skip other cells in the span
       }
     }
   }
 }
 
-// Grid layout genérico para N columnas
-async function createGridLayout(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
-  console.log('[GRID] createGridLayout called with', children.length, 'children,', columns, 'columns');
+// Parse grid-column span value (e.g., "span 2" -> 2)
+function parseGridSpan(value: string | undefined): number {
+  if (!value) return 1;
+  const match = value.match(/span\s+(\d+)/);
+  return match ? parseInt(match[1], 10) : 1;
+}
 
-  if (!children || children.length === 0) {
-    console.log('[GRID] No children to process!');
+// Check if any children have grid-column or grid-row spans > 1
+function hasGridSpans(children: any[]): boolean {
+  for (const child of children) {
+    const colSpan = parseGridSpan(child.styles?.['grid-column']);
+    const rowSpan = parseGridSpan(child.styles?.['grid-row']);
+    if (colSpan > 1 || rowSpan > 1) return true;
+  }
+  return false;
+}
+
+// ============================================
+// Native Grid Layout using Figma's layoutMode: 'GRID'
+// This properly handles CSS Grid with column/row spans
+// ============================================
+async function createGridLayoutWithSpans(
+  children: any[],
+  parentFrame: FrameNode,
+  columns: number,
+  gap: number,
+  inheritedStyles?: any
+) {
+  console.log('[GRID-NATIVE] createGridLayoutWithSpans with', children.length, 'children,', columns, 'columns');
+
+  if (!children || children.length === 0) return;
+
+  // Step 1: Calculate positions for all children using CSS Grid auto-placement
+  const grid: (number | null)[][] = []; // Virtual grid to track cell occupancy
+  const childPositions: { row: number; col: number; rowSpan: number; colSpan: number }[] = [];
+
+  // Log and place each child
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    const colSpan = parseGridSpan(child.styles?.['grid-column']);
+    const rowSpan = parseGridSpan(child.styles?.['grid-row']);
+    console.log(`[GRID-NATIVE] Child ${i}: colSpan=${colSpan}, rowSpan=${rowSpan}`);
+
+    // Find next available position
+    let placed = false;
+    let row = 0;
+
+    while (!placed) {
+      // Ensure rows exist
+      while (grid.length <= row + rowSpan - 1) {
+        grid.push(new Array(columns).fill(null));
+      }
+
+      for (let col = 0; col <= columns - colSpan; col++) {
+        // Check if all needed cells are empty
+        let canPlace = true;
+        for (let r = 0; r < rowSpan && canPlace; r++) {
+          for (let c = 0; c < colSpan && canPlace; c++) {
+            if (grid[row + r][col + c] !== null) {
+              canPlace = false;
+            }
+          }
+        }
+
+        if (canPlace) {
+          // Mark cells as occupied
+          for (let r = 0; r < rowSpan; r++) {
+            for (let c = 0; c < colSpan; c++) {
+              grid[row + r][col + c] = i;
+            }
+          }
+          childPositions[i] = { row, col, rowSpan, colSpan };
+          console.log(`[GRID-NATIVE] Placed child ${i} at row=${row}, col=${col}, spans ${colSpan}x${rowSpan}`);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) row++;
+    }
+  }
+
+  const numRows = grid.length;
+  console.log('[GRID-NATIVE] Grid dimensions:', numRows, 'rows x', columns, 'columns');
+  console.log('[GRID-NATIVE] Grid layout:\n' + grid.map(row => row.map(c => c === null ? '.' : c).join(' ')).join('\n'));
+
+  // Step 2: Check if native Grid API is available BEFORE modifying parent
+  let useNativeGrid = false;
+
+  // Test native Grid support using a temporary test frame
+  const testParent = figma.createFrame();
+  testParent.name = '__grid_test_parent__';
+
+  try {
+    // Test if GRID mode is supported
+    testParent.layoutMode = 'GRID';
+
+    // Check if gridColumnCount exists and is settable
+    if (typeof testParent.gridColumnCount === 'undefined') {
+      throw new Error('Grid properties not available');
+    }
+
+    testParent.gridColumnCount = 2;
+    testParent.gridRowCount = 1;
+
+    // Test if child positioning properties work
+    const testChild = figma.createFrame();
+    testChild.name = '__grid_test_child__';
+    testParent.appendChild(testChild);
+
+    // Check if gridColumnAnchorIndex is settable
+    if (typeof (testChild as any).gridColumnAnchorIndex === 'undefined') {
+      throw new Error('Grid child positioning not available');
+    }
+
+    // Try to set the property
+    (testChild as any).gridColumnAnchorIndex = 0;
+
+    // Clean up test frames
+    testChild.remove();
+    testParent.remove();
+
+    useNativeGrid = true;
+    console.log('[GRID-NATIVE] Native Grid API fully available');
+  } catch (error) {
+    // Clean up test frame
+    testParent.remove();
+    console.log('[GRID-NATIVE] Native Grid API not available, using fallback. Reason:', error);
+    await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
     return;
   }
 
+  // Step 3: Configure parent frame as native Figma Grid (only if test passed)
+  try {
+    parentFrame.layoutMode = 'GRID';
+    parentFrame.gridColumnCount = columns;
+    parentFrame.gridRowCount = numRows;
+    parentFrame.gridColumnGap = gap;
+    parentFrame.gridRowGap = gap;
+
+    // Set all columns to FLEX (equivalent to CSS 1fr)
+    for (let i = 0; i < parentFrame.gridColumnSizes.length; i++) {
+      parentFrame.gridColumnSizes[i].type = 'FLEX';
+    }
+
+    // Set all rows to FLEX for equal height distribution
+    for (let i = 0; i < parentFrame.gridRowSizes.length; i++) {
+      parentFrame.gridRowSizes[i].type = 'FLEX';
+    }
+
+    console.log('[GRID-NATIVE] Parent configured as GRID with', columns, 'cols x', numRows, 'rows');
+  } catch (error) {
+    console.error('[GRID-NATIVE] Error configuring grid after test passed:', error);
+    parentFrame.layoutMode = 'VERTICAL';
+    await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
+    return;
+  }
+
+  // Step 3: Create and position each child in the grid (native mode)
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    const pos = childPositions[i];
+
+    // Create wrapper frame for the grid item
+    const wrapper = figma.createFrame();
+    wrapper.name = child.styles?.['class']
+      ? `Grid Item: ${child.styles['class'].split(' ')[0]}`
+      : `Grid Item ${i + 1}`;
+    wrapper.fills = [];
+    wrapper.layoutMode = 'VERTICAL';
+    wrapper.primaryAxisSizingMode = 'AUTO';
+    wrapper.counterAxisSizingMode = 'AUTO';
+
+    // Append to parent first (required before setting grid properties)
+    parentFrame.appendChild(wrapper);
+
+    // Set grid position and span
+    try {
+      (wrapper as any).gridColumnAnchorIndex = pos.col;
+      (wrapper as any).gridRowAnchorIndex = pos.row;
+      (wrapper as any).gridColumnSpan = pos.colSpan;
+      (wrapper as any).gridRowSpan = pos.rowSpan;
+      wrapper.layoutSizingHorizontal = 'FILL';
+      wrapper.layoutSizingVertical = 'FILL';
+
+      console.log(`[GRID-NATIVE] Item ${i}: positioned at (${pos.col}, ${pos.row}) span ${pos.colSpan}x${pos.rowSpan}`);
+    } catch (error) {
+      console.error(`[GRID-NATIVE] Error positioning item ${i}:`, error);
+    }
+
+    // Render child content inside wrapper
+    const gridInheritedStyles = {
+      ...inheritedStyles,
+      '_hasConstrainedWidth': true,
+      '_isGridChild': true
+    };
+    await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
+  }
+
+  console.log('[GRID-NATIVE] Grid layout complete');
+}
+
+// Fallback function using HORIZONTAL rows (for older Figma versions or errors)
+async function createGridLayoutWithSpansFallback(
+  children: any[],
+  parentFrame: FrameNode,
+  columns: number,
+  gap: number,
+  inheritedStyles?: any
+) {
+  console.log('[GRID-FALLBACK] Using horizontal row fallback');
+
+  // Calculate column width based on parent
+  const parentWidth = parentFrame.width || 1200;
+  const totalGaps = (columns - 1) * gap;
+  const columnWidth = Math.floor((parentWidth - totalGaps) / columns);
+  console.log('[GRID-FALLBACK] Parent width:', parentWidth, 'Column width:', columnWidth);
+
+  // Reset parent to vertical layout
+  parentFrame.layoutMode = 'VERTICAL';
+  parentFrame.itemSpacing = gap;
+  parentFrame.counterAxisSizingMode = 'FIXED';
+  parentFrame.primaryAxisSizingMode = 'AUTO';
+
+  // Build virtual grid
+  const grid: (number | null)[][] = [];
+  const childPositions: { row: number; col: number; rowSpan: number; colSpan: number }[] = [];
+
+  for (let i = 0; i < children.length; i++) {
+    const colSpan = parseGridSpan(children[i].styles?.['grid-column']);
+    const rowSpan = parseGridSpan(children[i].styles?.['grid-row']);
+
+    let placed = false;
+    let row = 0;
+
+    while (!placed) {
+      while (grid.length <= row + rowSpan - 1) {
+        grid.push(new Array(columns).fill(null));
+      }
+
+      for (let col = 0; col <= columns - colSpan; col++) {
+        let canPlace = true;
+        for (let r = 0; r < rowSpan && canPlace; r++) {
+          for (let c = 0; c < colSpan && canPlace; c++) {
+            if (grid[row + r][col + c] !== null) canPlace = false;
+          }
+        }
+
+        if (canPlace) {
+          for (let r = 0; r < rowSpan; r++) {
+            for (let c = 0; c < colSpan; c++) {
+              grid[row + r][col + c] = i;
+            }
+          }
+          childPositions[i] = { row, col, rowSpan, colSpan };
+          console.log(`[GRID-FALLBACK] Placed child ${i} at row=${row}, col=${col}, spans ${colSpan}x${rowSpan}`);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) row++;
+    }
+  }
+
+  const numRows = grid.length;
+  console.log('[GRID-FALLBACK] Grid:', numRows, 'rows x', columns, 'cols');
+
+  // Create row frames
+  const rowFrames: FrameNode[] = [];
+  for (let r = 0; r < numRows; r++) {
+    const rowFrame = figma.createFrame();
+    rowFrame.name = `Grid Row ${r + 1}`;
+    rowFrame.fills = [];
+    rowFrame.layoutMode = 'HORIZONTAL';
+    rowFrame.primaryAxisSizingMode = 'FIXED';
+    rowFrame.counterAxisSizingMode = 'AUTO';
+    rowFrame.itemSpacing = gap;
+    rowFrame.resize(parentWidth, 100);
+    parentFrame.appendChild(rowFrame);
+    try {
+      rowFrame.layoutSizingHorizontal = 'FILL';
+    } catch (e) {}
+    rowFrames.push(rowFrame);
+  }
+
+  // Add items to rows with calculated widths
+  for (let r = 0; r < numRows; r++) {
+    let c = 0;
+    while (c < columns) {
+      const childIndex = grid[r][c];
+
+      if (childIndex === null) {
+        // Empty cell - create placeholder with exact column width
+        const placeholder = figma.createFrame();
+        placeholder.name = `Empty`;
+        placeholder.fills = [];
+        placeholder.resize(columnWidth, 10);
+        rowFrames[r].appendChild(placeholder);
+        try {
+          placeholder.layoutGrow = 1;
+          placeholder.layoutSizingHorizontal = 'FILL';
+        } catch (e) {}
+        c++;
+      } else {
+        const pos = childPositions[childIndex];
+        if (r === pos.row) {
+          // Calculate item width: colSpan columns + (colSpan - 1) gaps between them
+          const itemWidth = columnWidth * pos.colSpan + gap * (pos.colSpan - 1);
+
+          const wrapper = figma.createFrame();
+          wrapper.name = `Grid Item (${pos.colSpan} cols)`;
+          wrapper.fills = [];
+          wrapper.layoutMode = 'VERTICAL';
+          wrapper.primaryAxisSizingMode = 'AUTO';
+          wrapper.counterAxisSizingMode = 'FIXED';
+          wrapper.resize(itemWidth, 100);
+          rowFrames[r].appendChild(wrapper);
+
+          try {
+            wrapper.layoutGrow = pos.colSpan;
+            wrapper.layoutSizingHorizontal = 'FILL';
+          } catch (e) {}
+
+          console.log(`[GRID-FALLBACK] Row ${r}: Item ${childIndex} width=${itemWidth}px (${pos.colSpan} cols)`);
+
+          await createFigmaNodesFromStructure([children[childIndex]], wrapper, 0, 0, {
+            ...inheritedStyles,
+            '_hasConstrainedWidth': true,
+            '_gridItemWidth': itemWidth
+          });
+        } else {
+          // Subsequent row for multi-row item - add transparent placeholder (must be visible to take space)
+          const itemWidth = columnWidth * pos.colSpan + gap * (pos.colSpan - 1);
+          const placeholder = figma.createFrame();
+          placeholder.name = `RowSpan placeholder (${pos.colSpan} cols)`;
+          placeholder.fills = []; // Transparent
+          placeholder.resize(itemWidth, 1);
+          // Keep visible so it takes up space in auto-layout
+          rowFrames[r].appendChild(placeholder);
+          try {
+            placeholder.layoutGrow = pos.colSpan;
+            placeholder.layoutSizingHorizontal = 'FILL';
+          } catch (e) {}
+          console.log(`[GRID-FALLBACK] Row ${r}: Placeholder for Item ${childIndex} width=${itemWidth}px (${pos.colSpan} cols)`);
+        }
+        c += pos.colSpan;
+      }
+    }
+  }
+
+  console.log('[GRID-FALLBACK] Complete');
+}
+
+// Grid layout genérico para N columnas (sin spans)
+// Uses row-based fallback since native Figma Grid API is not widely available
+async function createGridLayout(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
+  console.log('[GRID-SIMPLE] createGridLayout called with', children.length, 'children,', columns, 'columns');
+
+  if (!children || children.length === 0) {
+    console.log('[GRID-SIMPLE] No children to process!');
+    return;
+  }
+
+  // Use row-based fallback directly since native Grid API is not available in most Figma versions
+  await createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles);
+}
+
+// Fallback for createGridLayout using horizontal rows
+async function createGridLayoutFallback(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
+  console.log('[GRID-FALLBACK-SIMPLE] Using row-based fallback');
+
+  parentFrame.layoutMode = 'VERTICAL';
+  parentFrame.itemSpacing = gap;
+
   for (let i = 0; i < children.length; i += columns) {
     const rowFrame = figma.createFrame();
-    rowFrame.name = `Grid Row (${columns} cols)`;
+    rowFrame.name = `Grid Row`;
     rowFrame.fills = [];
     rowFrame.layoutMode = 'HORIZONTAL';
     rowFrame.primaryAxisSizingMode = 'AUTO';
     rowFrame.counterAxisSizingMode = 'AUTO';
     rowFrame.itemSpacing = gap;
     parentFrame.appendChild(rowFrame);
-    if (parentFrame.layoutMode !== 'NONE') {
-      try {
-        rowFrame.layoutSizingHorizontal = 'FILL';
-        rowFrame.setPluginData('hasExplicitWidth', 'true');
-      } catch (error) {
-        rowFrame.resize(Math.max(400, rowFrame.width), rowFrame.height);
-      }
-    }
+
+    try {
+      rowFrame.layoutSizingHorizontal = 'FILL';
+    } catch (e) {}
+
     for (let j = 0; j < columns; j++) {
       if (children[i + j]) {
-        // Grid items have constrained width (FILL layout)
         const gridInheritedStyles = { ...inheritedStyles, '_hasConstrainedWidth': true };
         await createFigmaNodesFromStructure([children[i + j]], rowFrame, 0, 0, gridInheritedStyles);
       }
     }
-    // Hacer que los items llenen el espacio de la fila
+
+    // Make items fill row equally
     for (let k = 0; k < rowFrame.children.length; k++) {
       try {
         const child = rowFrame.children[k] as FrameNode;
         child.layoutGrow = 1;
         child.layoutSizingHorizontal = 'FILL';
-        child.setPluginData('hasExplicitWidth', 'true');
-      } catch (error) {}
+      } catch (e) {}
     }
   }
 }
@@ -876,10 +1275,20 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       }
 
       // Convert sticky/fixed positioning to normal (but still render)
+      // Mark original position for sidebar pattern detection
+      const originalPosition = node.styles?.position;
       if (node.styles?.position === 'sticky' || node.styles?.position === 'fixed') {
-
-        // Don't skip - just normalize the positioning
+        node.styles._originalPosition = originalPosition;
         node.styles.position = 'relative';
+      }
+
+      // SIDEBAR PATTERN: If element has margin-left and sibling has fixed position,
+      // this is likely the main content area - should fill remaining width, not use margin
+      const hasMarginLeft = node.styles?.['margin-left'] && parseSize(node.styles['margin-left'])! > 50;
+      if (hasMarginLeft) {
+        node.styles._isMainContent = true;
+        // Clear margin-left - in Figma horizontal auto-layout, items are automatically side by side
+        delete node.styles['margin-left'];
       }
       
 
@@ -898,7 +1307,8 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           // Flex direction: row = HORIZONTAL, column = VERTICAL
           layoutMode = node.styles?.['flex-direction'] === 'column' ? 'VERTICAL' : 'HORIZONTAL';
         } else if (node.styles?.display === 'grid') {
-          // Keep vertical layout for grid - we'll handle 2x2 layout in child processing
+          // Initial layout set to VERTICAL, will be changed to native GRID mode
+          // in createGridLayoutWithSpans() or createGridLayout() during child processing
           layoutMode = 'VERTICAL';
         } else if (node.styles?.display === 'inline' || node.styles?.display === 'inline-block') {
           // Inline elements: children flow horizontally
@@ -1120,22 +1530,30 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           }
         } else if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
           try {
-            // FIX: In HORIZONTAL parent (flex row), children should HUG by default unless they have flex-grow
-            // Only apply FILL in VERTICAL parent or if element has flex-grow/flex: 1
-            const hasFlex = node.styles?.flex || node.styles?.['flex-grow'];
-            const flexValue = node.styles?.flex;
-            const flexGrowValue = node.styles?.['flex-grow'];
-            const shouldFillHorizontal = parentFrame.layoutMode === 'VERTICAL' ||
-                                         hasFlex === '1' || flexValue === '1' || flexGrowValue === '1' ||
-                                         node.styles?.['margin-right'] === 'auto'; // margin-right: auto in flexbox
-
-            if (shouldFillHorizontal) {
-              frame.layoutSizingHorizontal = 'FILL';
-            } else if (parentFrame.layoutMode === 'HORIZONTAL') {
-              // In horizontal flex, children should HUG to their content
-              frame.layoutSizingHorizontal = 'HUG';
+            // CRITICAL: Don't set FILL on absolute positioned elements (Figma doesn't allow it)
+            const isAbsolutePositioned = frame.layoutPositioning === 'ABSOLUTE';
+            if (isAbsolutePositioned) {
+              // Skip FILL for absolute positioned elements
             } else {
-              frame.layoutSizingHorizontal = 'FILL';
+              // FIX: In HORIZONTAL parent (flex row), children should HUG by default unless they have flex-grow
+              // Only apply FILL in VERTICAL parent or if element has flex-grow/flex: 1
+              const hasFlex = node.styles?.flex || node.styles?.['flex-grow'];
+              const flexValue = node.styles?.flex;
+              const flexGrowValue = node.styles?.['flex-grow'];
+              const isMainContent = node.styles?._isMainContent; // Sidebar pattern: main content area
+              const shouldFillHorizontal = parentFrame.layoutMode === 'VERTICAL' ||
+                                           hasFlex === '1' || flexValue === '1' || flexGrowValue === '1' ||
+                                           node.styles?.['margin-right'] === 'auto' ||
+                                           isMainContent; // Main content in sidebar layout should fill
+
+              if (shouldFillHorizontal) {
+                frame.layoutSizingHorizontal = 'FILL';
+              } else if (parentFrame.layoutMode === 'HORIZONTAL') {
+                // In horizontal flex, children should HUG to their content
+                frame.layoutSizingHorizontal = 'HUG';
+              } else {
+                frame.layoutSizingHorizontal = 'FILL';
+              }
             }
 
             // Maintain vertical HUG for containers to grow with content
@@ -1350,10 +1768,18 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
                 const numCols = getGridColCount(gridTemplateAreas);
                 await createGridLayoutWithAreas(node.children, frame, areaMap, numRows, numCols, gap, inheritableStyles);
               } else {
-                // Fallback to column-based grid layout
+                // Check if children have grid-column/grid-row spans
                 const columns = parseGridColumns(gridTemplateColumns);
                 const finalColumns = columns > 0 ? columns : 2;
-                await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
+
+                if (hasGridSpans(node.children)) {
+                  // Use bento grid layout with span support
+                  console.log('[GRID] Using bento layout with spans');
+                  await createGridLayoutWithSpans(node.children, frame, finalColumns, gap, inheritableStyles);
+                } else {
+                  // Simple grid layout without spans
+                  await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
+                }
               }
             } else {
               await createFigmaNodesFromStructure(node.children, frame, 0, 0, inheritableStyles);
@@ -1392,18 +1818,17 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         }
 
         // FIXED: Apply align-self for individual item alignment within parent
+        // Note: Figma only supports 'STRETCH', 'INHERIT', and 'CENTER' for layoutAlign
         if (node.styles?.['align-self'] && parentFrame) {
           try {
             const alignSelf = node.styles['align-self'];
             if (alignSelf === 'center') {
               frame.layoutAlign = 'CENTER';
-            } else if (alignSelf === 'flex-start' || alignSelf === 'start') {
-              frame.layoutAlign = 'MIN';
-            } else if (alignSelf === 'flex-end' || alignSelf === 'end') {
-              frame.layoutAlign = 'MAX';
             } else if (alignSelf === 'stretch') {
               frame.layoutAlign = 'STRETCH';
             }
+            // Note: 'MIN' and 'MAX' are deprecated in Figma API
+            // flex-start/flex-end don't have direct equivalents
           } catch (error) {
             console.error('Error applying align-self:', error);
           }

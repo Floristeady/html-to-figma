@@ -1148,16 +1148,65 @@ function detectDesignWidthFromHTML(htmlStr) {
     }
   }
 
-  // 6. Fallback: If HTML has content but no width detected, use reasonable default
-  // This prevents the 100px HUG issue
-  var hasContent = htmlStr.match(/<(?:div|section|article|p|h[1-6]|span)[^>]*>/i);
-  if (hasContent) {
-    console.log('[WIDTH-UI] No explicit width detected, using fallback 400px');
-    return 400; // Reasonable default for cards/components
+  // 6. Detect if this is a full page vs a component/snippet
+  var isFullPage = /<!DOCTYPE|<html|<body/i.test(htmlStr);
+
+  if (isFullPage) {
+    // 6a. For full pages, analyze layout structure
+    var cssRules = extractCSS(htmlStr);
+
+    // Check for sidebar + main layout pattern
+    var sidebarWidth = 0;
+    var mainMarginLeft = 0;
+
+    // Common sidebar selectors
+    var sidebarSelectors = ['.sidebar', '.side-bar', '.sidenav', 'aside'];
+    for (var i = 0; i < sidebarSelectors.length; i++) {
+      var rule = cssRules[sidebarSelectors[i]];
+      if (rule && rule['width']) {
+        var w = parseFloat(rule['width']);
+        if (!isNaN(w) && w > 0 && w < 400) {
+          sidebarWidth = w;
+          break;
+        }
+      }
+    }
+
+    // Check for main wrapper with margin-left (indicates sidebar offset)
+    var mainSelectors = ['.main-wrapper', '.main', 'main', '.content', '.main-content', '.page-content'];
+    for (var i = 0; i < mainSelectors.length; i++) {
+      var rule = cssRules[mainSelectors[i]];
+      if (rule && rule['margin-left']) {
+        var ml = parseFloat(rule['margin-left']);
+        if (!isNaN(ml) && ml > 0) {
+          mainMarginLeft = ml;
+          break;
+        }
+      }
+    }
+
+    // If we found a sidebar layout, calculate total width
+    if (sidebarWidth > 0 || mainMarginLeft > 0) {
+      // Sidebar layout: sidebar + main content area (~1200px typical)
+      var calculatedWidth = Math.max(sidebarWidth, mainMarginLeft) + 1200;
+      console.log('[WIDTH-UI] Detected sidebar layout, calculated width:', calculatedWidth);
+      return calculatedWidth;
+    }
+
+    // Full page without sidebar, use desktop default
+    console.log('[WIDTH-UI] Full page detected, using desktop default: 1440');
+    return 1440;
   }
 
-  // 7. No width detected and no meaningful content
-  console.log('[WIDTH-UI] No explicit width detected');
+  // 7. Component/snippet - use smaller default
+  var hasContent = htmlStr.match(/<(?:div|section|article|p|h[1-6]|span)[^>]*>/i);
+  if (hasContent) {
+    console.log('[WIDTH-UI] Component detected, using fallback 400px');
+    return 400;
+  }
+
+  // 8. No width detected and no meaningful content
+  console.log('[WIDTH-UI] No content detected');
   return null;
 }
 
