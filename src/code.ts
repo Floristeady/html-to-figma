@@ -38,7 +38,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
   if (widthMetaMatch) {
     const width = parseInt(widthMetaMatch[1], 10);
     if (!isNaN(width) && width > 0) {
-      console.log('[WIDTH] Detected from meta figma-width:', width);
+      // Debug log removed
       return width;
     }
   }
@@ -48,7 +48,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
   if (viewportMetaMatch) {
     const preset = viewportMetaMatch[1].toLowerCase();
     if (VIEWPORT_PRESETS[preset]) {
-      console.log('[WIDTH] Detected from meta figma-viewport:', preset, '=', VIEWPORT_PRESETS[preset]);
+      // Debug log removed
       return VIEWPORT_PRESETS[preset];
     }
   }
@@ -58,7 +58,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
   if (commentMatch) {
     const width = parseInt(commentMatch[1], 10);
     if (!isNaN(width) && width > 0) {
-      console.log('[WIDTH] Detected from HTML comment:', width);
+      // Debug log removed
       return width;
     }
   }
@@ -71,7 +71,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
       if (rule['max-width']) {
         const maxWidth = parseSize(rule['max-width']);
         if (maxWidth && maxWidth > 0 && maxWidth < 3000) {
-          console.log('[WIDTH] Detected from CSS max-width on', selector, ':', maxWidth);
+          // Debug log removed
           // Add typical padding/margins to container max-width for full page width
           // Most designs have ~20-40px padding on sides
           return maxWidth + 80; // Container + padding compensation
@@ -82,7 +82,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
       if (rule['width'] && !rule['width'].includes('%')) {
         const width = parseSize(rule['width']);
         if (width && width > 100 && width < 3000) {
-          console.log('[WIDTH] Detected from CSS width on', selector, ':', width);
+          // Debug log removed
           return width;
         }
       }
@@ -90,7 +90,7 @@ function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): n
   }
 
   // 5. No width detected, return null (caller will use default)
-  console.log('[WIDTH] No explicit width detected, will use default');
+  // Debug log removed
   return null;
 }
 
@@ -630,8 +630,8 @@ async function createGridLayoutWithAreas(
   gap: number,
   inheritedStyles?: any
 ) {
-  console.log('[GRID-AREAS] createGridLayoutWithAreas:', numRows, 'rows x', numCols, 'cols');
-  console.log('[GRID-AREAS] Area map:', JSON.stringify(areaMap));
+  // Debug log removed
+  // Debug log removed
 
   // Map children to their grid areas
   const childrenByArea: { [key: string]: any } = {};
@@ -639,7 +639,7 @@ async function createGridLayoutWithAreas(
     const gridArea = child.styles?.['grid-area'];
     if (gridArea && areaMap[gridArea]) {
       childrenByArea[gridArea] = child;
-      console.log(`[GRID-AREAS] Child mapped to area "${gridArea}"`);
+      // Debug log removed
     }
   }
 
@@ -661,7 +661,7 @@ async function createGridLayoutWithAreas(
       parentFrame.gridRowSizes[i].type = 'FLEX';
     }
 
-    console.log('[GRID-AREAS] Configured native grid:', numCols, 'cols x', numRows, 'rows');
+    // Debug log removed
   } catch (error) {
     console.error('[GRID-AREAS] Error configuring native grid, using fallback:', error);
     await createGridLayoutWithAreasFallback(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles);
@@ -699,7 +699,7 @@ async function createGridLayoutWithAreas(
       wrapper.layoutSizingHorizontal = 'FILL';
       wrapper.layoutSizingVertical = 'FILL';
 
-      console.log(`[GRID-AREAS] Area "${areaName}": positioned at (${bounds.colStart}, ${bounds.rowStart}) span ${colSpan}x${rowSpan}`);
+      // Debug log removed
     } catch (error) {
       console.error(`[GRID-AREAS] Error positioning area "${areaName}":`, error);
     }
@@ -715,7 +715,7 @@ async function createGridLayoutWithAreas(
     }
   }
 
-  console.log('[GRID-AREAS] Grid layout complete');
+  // Debug log removed
 }
 
 // Fallback for createGridLayoutWithAreas using horizontal rows
@@ -728,7 +728,7 @@ async function createGridLayoutWithAreasFallback(
   gap: number,
   inheritedStyles?: any
 ) {
-  console.log('[GRID-AREAS-FALLBACK] Using row-based fallback');
+  // Debug log removed
 
   parentFrame.layoutMode = 'VERTICAL';
   parentFrame.itemSpacing = gap;
@@ -876,7 +876,7 @@ async function createGridLayoutWithSpans(
   gap: number,
   inheritedStyles?: any
 ) {
-  console.log('[GRID-NATIVE] createGridLayoutWithSpans with', children.length, 'children,', columns, 'columns');
+  // Grid layout with spans - uses fallback since native Grid API not widely available
 
   if (!children || children.length === 0) return;
 
@@ -889,7 +889,7 @@ async function createGridLayoutWithSpans(
     const child = children[i];
     const colSpan = parseGridSpan(child.styles?.['grid-column']);
     const rowSpan = parseGridSpan(child.styles?.['grid-row']);
-    console.log(`[GRID-NATIVE] Child ${i}: colSpan=${colSpan}, rowSpan=${rowSpan}`);
+    // Debug log removed
 
     // Find next available position
     let placed = false;
@@ -920,7 +920,7 @@ async function createGridLayoutWithSpans(
             }
           }
           childPositions[i] = { row, col, rowSpan, colSpan };
-          console.log(`[GRID-NATIVE] Placed child ${i} at row=${row}, col=${col}, spans ${colSpan}x${rowSpan}`);
+          // Debug log removed
           placed = true;
           break;
         }
@@ -931,8 +931,8 @@ async function createGridLayoutWithSpans(
   }
 
   const numRows = grid.length;
-  console.log('[GRID-NATIVE] Grid dimensions:', numRows, 'rows x', columns, 'columns');
-  console.log('[GRID-NATIVE] Grid layout:\n' + grid.map(row => row.map(c => c === null ? '.' : c).join(' ')).join('\n'));
+  // Debug log removed
+  // Debug log removed
 
   // Step 2: Check if native Grid API is available BEFORE modifying parent
   let useNativeGrid = false;
@@ -971,11 +971,11 @@ async function createGridLayoutWithSpans(
     testParent.remove();
 
     useNativeGrid = true;
-    console.log('[GRID-NATIVE] Native Grid API fully available');
+    // Debug log removed
   } catch (error) {
     // Clean up test frame
     testParent.remove();
-    console.log('[GRID-NATIVE] Native Grid API not available, using fallback. Reason:', error);
+    // Debug log removed
     await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
     return;
   }
@@ -998,7 +998,7 @@ async function createGridLayoutWithSpans(
       parentFrame.gridRowSizes[i].type = 'FLEX';
     }
 
-    console.log('[GRID-NATIVE] Parent configured as GRID with', columns, 'cols x', numRows, 'rows');
+    // Debug log removed
   } catch (error) {
     console.error('[GRID-NATIVE] Error configuring grid after test passed:', error);
     parentFrame.layoutMode = 'VERTICAL';
@@ -1033,7 +1033,7 @@ async function createGridLayoutWithSpans(
       wrapper.layoutSizingHorizontal = 'FILL';
       wrapper.layoutSizingVertical = 'FILL';
 
-      console.log(`[GRID-NATIVE] Item ${i}: positioned at (${pos.col}, ${pos.row}) span ${pos.colSpan}x${pos.rowSpan}`);
+      // Debug log removed
     } catch (error) {
       console.error(`[GRID-NATIVE] Error positioning item ${i}:`, error);
     }
@@ -1047,7 +1047,7 @@ async function createGridLayoutWithSpans(
     await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
   }
 
-  console.log('[GRID-NATIVE] Grid layout complete');
+  // Debug log removed
 }
 
 // Fallback function using HORIZONTAL rows (for older Figma versions or errors)
@@ -1058,13 +1058,13 @@ async function createGridLayoutWithSpansFallback(
   gap: number,
   inheritedStyles?: any
 ) {
-  console.log('[GRID-FALLBACK] Using horizontal row fallback');
+  // Debug log removed
 
   // Calculate column width based on parent
   const parentWidth = parentFrame.width || 1200;
   const totalGaps = (columns - 1) * gap;
   const columnWidth = Math.floor((parentWidth - totalGaps) / columns);
-  console.log('[GRID-FALLBACK] Parent width:', parentWidth, 'Column width:', columnWidth);
+  // Debug log removed
 
   // Reset parent to vertical layout
   parentFrame.layoutMode = 'VERTICAL';
@@ -1103,7 +1103,7 @@ async function createGridLayoutWithSpansFallback(
             }
           }
           childPositions[i] = { row, col, rowSpan, colSpan };
-          console.log(`[GRID-FALLBACK] Placed child ${i} at row=${row}, col=${col}, spans ${colSpan}x${rowSpan}`);
+          // Debug log removed
           placed = true;
           break;
         }
@@ -1113,7 +1113,7 @@ async function createGridLayoutWithSpansFallback(
   }
 
   const numRows = grid.length;
-  console.log('[GRID-FALLBACK] Grid:', numRows, 'rows x', columns, 'cols');
+  // Debug log removed
 
   // Create row frames
   const rowFrames: FrameNode[] = [];
@@ -1171,7 +1171,7 @@ async function createGridLayoutWithSpansFallback(
             wrapper.layoutSizingHorizontal = 'FILL';
           } catch (e) {}
 
-          console.log(`[GRID-FALLBACK] Row ${r}: Item ${childIndex} width=${itemWidth}px (${pos.colSpan} cols)`);
+          // Debug log removed
 
           await createFigmaNodesFromStructure([children[childIndex]], wrapper, 0, 0, {
             ...inheritedStyles,
@@ -1191,23 +1191,23 @@ async function createGridLayoutWithSpansFallback(
             placeholder.layoutGrow = pos.colSpan;
             placeholder.layoutSizingHorizontal = 'FILL';
           } catch (e) {}
-          console.log(`[GRID-FALLBACK] Row ${r}: Placeholder for Item ${childIndex} width=${itemWidth}px (${pos.colSpan} cols)`);
+          // Debug log removed
         }
         c += pos.colSpan;
       }
     }
   }
 
-  console.log('[GRID-FALLBACK] Complete');
+  // Debug log removed
 }
 
 // Grid layout genérico para N columnas (sin spans)
 // Uses row-based fallback since native Figma Grid API is not widely available
 async function createGridLayout(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
-  console.log('[GRID-SIMPLE] createGridLayout called with', children.length, 'children,', columns, 'columns');
+  // Debug log removed
 
   if (!children || children.length === 0) {
-    console.log('[GRID-SIMPLE] No children to process!');
+    // Debug log removed
     return;
   }
 
@@ -1217,7 +1217,7 @@ async function createGridLayout(children: any[], parentFrame: FrameNode, columns
 
 // Fallback for createGridLayout using horizontal rows
 async function createGridLayoutFallback(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
-  console.log('[GRID-FALLBACK-SIMPLE] Using row-based fallback');
+  // Debug log removed
 
   parentFrame.layoutMode = 'VERTICAL';
   parentFrame.itemSpacing = gap;
@@ -1752,11 +1752,11 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           if (node.children && node.children.length > 0) {
             // Manejo de grid genérico
             if (node.styles?.display === 'grid') {
-              console.log('[GRID] Grid detected! Children:', node.children.length);
+              // Debug log removed
               const gridTemplateAreas = node.styles?.['grid-template-areas'];
               const gridTemplateColumns = node.styles?.['grid-template-columns'];
-              console.log('[GRID] template-areas:', gridTemplateAreas);
-              console.log('[GRID] template-columns:', gridTemplateColumns);
+              // Debug log removed
+              // Debug log removed
               const gap = parseSize(node.styles?.gap) || parseSize(parentFrame?.getPluginData('gridGap') || '') || 12;
 
               // Check if grid-template-areas is defined
@@ -1774,7 +1774,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 
                 if (hasGridSpans(node.children)) {
                   // Use bento grid layout with span support
-                  console.log('[GRID] Using bento layout with spans');
+                  // Debug log removed
                   await createGridLayoutWithSpans(node.children, frame, finalColumns, gap, inheritableStyles);
                 } else {
                   // Simple grid layout without spans
@@ -1798,22 +1798,51 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           }
         }
 
-        // Apply flex grow after appendChild for proper timing
-        if ((node.styles?.flex === '1' || node.styles?.['flex-grow'] === '1') && parentFrame) {
-          if (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL') {
-            try {
+        // Apply flex properties after appendChild for proper timing
+        if (parentFrame && (parentFrame.layoutMode === 'HORIZONTAL' || parentFrame.layoutMode === 'VERTICAL')) {
+          const flexValue = node.styles?.flex;
+          const flexGrowValue = node.styles?.['flex-grow'];
+
+          // Parse flex shorthand: flex: grow shrink basis (e.g., "0 0 auto", "1", "1 1 0%")
+          let shouldGrow = false;
+          let shouldNotGrow = false;
+
+          if (flexValue) {
+            const flexParts = flexValue.toString().split(/\s+/);
+            const growPart = parseFloat(flexParts[0]);
+            if (growPart === 0) {
+              shouldNotGrow = true;
+            } else if (growPart > 0) {
+              shouldGrow = true;
+            }
+          }
+
+          if (flexGrowValue === '1' || flexValue === '1') {
+            shouldGrow = true;
+          }
+          if (flexGrowValue === '0') {
+            shouldNotGrow = true;
+          }
+
+          try {
+            if (shouldGrow) {
               frame.layoutGrow = 1;
               frame.layoutSizingHorizontal = 'FILL';
               frame.layoutSizingVertical = 'HUG';
-            } catch (error) {
-              console.error('Error applying flex grow:', error);
-              // Fallback: only apply layoutGrow
-              try {
-                frame.layoutGrow = 1;
-              } catch (fallbackError) {
-                console.error('Fallback error:', fallbackError);
+            } else if (shouldNotGrow) {
+              // flex: 0 or flex: 0 0 auto - item should NOT grow, maintain its size
+              frame.layoutGrow = 0;
+              // Use min-width if set, otherwise HUG
+              const minWidth = parseSize(node.styles?.['min-width']);
+              if (minWidth && minWidth > 0) {
+                frame.layoutSizingHorizontal = 'FIXED';
+                frame.resize(Math.max(frame.width, minWidth), frame.height);
+              } else {
+                frame.layoutSizingHorizontal = 'HUG';
               }
             }
+          } catch (error) {
+            // Silently handle - flex properties may not be supported
           }
         }
 
@@ -2521,7 +2550,7 @@ function markRequestProcessed(requestId: string): void {
     }
   }
   processedRequestIDs.add(requestId);
-  console.log(`[DEDUP] Marked RequestID as processed: ${requestId}`);
+  // Debug log removed
 }
 
 // NEW: Use figma.clientStorage for MCP communication (replaces file system)
@@ -2555,7 +2584,7 @@ async function readMCPSharedData(): Promise<any | null> {
     });
     
   } catch (error) {
-    console.log('[MCP] Error reading MCP data:', error);
+    // Debug log removed
     return null;
   }
 }
@@ -2567,14 +2596,14 @@ async function deleteMCPSharedData(): Promise<boolean> {
     debugLog('[MCP] Requested deletion of MCP data file');
     return true;
   } catch (error) {
-    console.log('[MCP] Could not delete MCP data:', error);
+    // Debug log removed
     return false;
   }
 }
 
 // NEW: SSE-based MCP Monitoring with Intelligent Fallback
 function startMCPMonitoring() {
-  console.log('[MCP] Starting SSE-based monitoring with intelligent fallback...');
+  // Debug log removed
   
   // Stop any existing polling interval
   if (mcpMonitoringInterval) {
@@ -2596,7 +2625,7 @@ function startMCPMonitoring() {
     
     // Only use fallback if SSE has been silent for more than 30 seconds
     if (!sseConnected || timeSinceLastSSE > 30000) {
-      console.log('[MCP] 🔄 SSE inactive, checking fallback...');
+      // Debug log removed
       
       try {
         const mcpData = await readMCPSharedData();
@@ -2605,7 +2634,7 @@ function startMCPMonitoring() {
           
           // Only process if this data is newer than our last SSE success
           if (dataTimestamp > sseLastSuccessTimestamp) {
-            console.log('[MCP] 💾 Fallback processing new data');
+            // Debug log removed
             
             // Process and clean up
             figma.ui.postMessage({ 
@@ -2620,18 +2649,18 @@ function startMCPMonitoring() {
           }
         }
       } catch (error) {
-        console.log('[MCP] Fallback check failed:', error);
+        // Debug log removed
       }
     } else {
       debugLog('[MCP] 🟢 SSE active, fallback not needed');
     }
   }, 15000); // Check every 15 seconds
   
-     console.log('[MCP] ✅ Intelligent fallback enabled (SSE-priority)');
+     // Debug log removed
 }
 
 function stopMCPMonitoring() {
-  console.log('[MCP] Stopping SSE-based monitoring...');
+  // Debug log removed
   
   // Stop SSE connection in UI
   figma.ui.postMessage({ type: 'stop-sse' });
@@ -2738,21 +2767,21 @@ figma.ui.onmessage = async (msg) => {
     // ✅ DEDUPLICATION: Check if RequestID was already processed
     const requestId = msg.requestId || msg.timestamp || `fallback-${Date.now()}`;
     if (isRequestProcessed(requestId)) {
-      console.log(`[DEDUP] 🚫 RequestID already processed, skipping: ${requestId}`);
+      // Debug log removed
       return;
     }
 
     // Mark as processed immediately to prevent any race conditions
     markRequestProcessed(requestId);
-    console.log(`[HTML] ✅ Passed dedup check, proceeding with requestId: ${requestId}`);
+    // Debug log removed
 
     // ✅ DESIGN WIDTH DETECTION: Use width detected by UI (from meta tags and CSS)
     const detectedDesignWidth: number | null = msg.detectedWidth || null;
     if (detectedDesignWidth) {
       // Update CSS_CONFIG.viewportWidth for vw calculations
       (CSS_CONFIG as any).viewportWidth = detectedDesignWidth;
-      console.log('[WIDTH] Using detected width from UI:', detectedDesignWidth);
-      console.log('[WIDTH] Updated CSS_CONFIG.viewportWidth to:', detectedDesignWidth);
+      // Debug log removed
+      // Debug log removed
     }
 
     // Detect full page layout pattern (sidebar + main content, grid layouts, etc.)
@@ -2836,7 +2865,7 @@ figma.ui.onmessage = async (msg) => {
         if (depth <= 1 && node.styles?.width) {
           const width = parseSize(node.styles.width);
           if (width && width > 0 && !node.styles?.position?.includes('fixed')) {
-            console.log('[WIDTH] Found explicit width:', width, 'on', node.tagName);
+            // Debug log removed
             explicitWidth = width;
           }
         }
@@ -2846,7 +2875,7 @@ figma.ui.onmessage = async (msg) => {
           const width = parseSize(node.styles.width);
           if (width && width > 0) {
             sidebarWidth = Math.max(sidebarWidth, width);
-            console.log('[WIDTH] Detected fixed sidebar width:', width);
+            // Debug log removed
           }
         }
 
@@ -2855,7 +2884,7 @@ figma.ui.onmessage = async (msg) => {
           const margin = parseSize(node.styles['margin-left']);
           if (margin && margin > 0) {
             mainContentMargin = Math.max(mainContentMargin, margin);
-            console.log('[WIDTH] Detected main content margin-left:', margin);
+            // Debug log removed
           }
         }
 
@@ -2878,7 +2907,7 @@ figma.ui.onmessage = async (msg) => {
       // Main content should be ~1200px, so total = sidebar + 1200
       if (sidebarWidth > 0 && mainContentMargin > 0) {
         const calculatedWidth = sidebarWidth + 1200; // sidebar + reasonable main content width
-        console.log('[WIDTH] Calculated width from sidebar pattern:', calculatedWidth);
+        // Debug log removed
         return calculatedWidth;
       }
 
@@ -2946,13 +2975,13 @@ figma.ui.onmessage = async (msg) => {
 
   // MCP MONITORING HANDLERS
   if (msg.type === 'start-mcp-monitoring') {
-    console.log('[MCP] Starting MCP monitoring...');
+    // Debug log removed
     startMCPMonitoring();
     figma.notify('🔄 MCP Monitoring iniciado');
   }
 
   if (msg.type === 'stop-mcp-monitoring') {
-    console.log('[MCP] Stopping MCP monitoring...');
+    // Debug log removed
     stopMCPMonitoring();
     figma.notify('⏹️ MCP Monitoring detenido');
   }

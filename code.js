@@ -811,14 +811,11 @@
   }
   async function createGridLayoutWithAreas(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles) {
     var _a;
-    console.log("[GRID-AREAS] createGridLayoutWithAreas:", numRows, "rows x", numCols, "cols");
-    console.log("[GRID-AREAS] Area map:", JSON.stringify(areaMap));
     const childrenByArea = {};
     for (const child of children) {
       const gridArea = (_a = child.styles) == null ? void 0 : _a["grid-area"];
       if (gridArea && areaMap[gridArea]) {
         childrenByArea[gridArea] = child;
-        console.log(`[GRID-AREAS] Child mapped to area "${gridArea}"`);
       }
     }
     try {
@@ -833,7 +830,6 @@
       for (let i = 0; i < parentFrame.gridRowSizes.length; i++) {
         parentFrame.gridRowSizes[i].type = "FLEX";
       }
-      console.log("[GRID-AREAS] Configured native grid:", numCols, "cols x", numRows, "rows");
     } catch (error) {
       console.error("[GRID-AREAS] Error configuring native grid, using fallback:", error);
       await createGridLayoutWithAreasFallback(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles);
@@ -860,7 +856,6 @@
         wrapper.gridRowSpan = rowSpan;
         wrapper.layoutSizingHorizontal = "FILL";
         wrapper.layoutSizingVertical = "FILL";
-        console.log(`[GRID-AREAS] Area "${areaName}": positioned at (${bounds.colStart}, ${bounds.rowStart}) span ${colSpan}x${rowSpan}`);
       } catch (error) {
         console.error(`[GRID-AREAS] Error positioning area "${areaName}":`, error);
       }
@@ -872,11 +867,9 @@
         await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
       }
     }
-    console.log("[GRID-AREAS] Grid layout complete");
   }
   async function createGridLayoutWithAreasFallback(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles) {
     var _a;
-    console.log("[GRID-AREAS-FALLBACK] Using row-based fallback");
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
     const childrenByArea = {};
@@ -996,7 +989,6 @@
   }
   async function createGridLayoutWithSpans(children, parentFrame, columns, gap, inheritedStyles) {
     var _a, _b, _c;
-    console.log("[GRID-NATIVE] createGridLayoutWithSpans with", children.length, "children,", columns, "columns");
     if (!children || children.length === 0) return;
     const grid = [];
     const childPositions = [];
@@ -1004,7 +996,6 @@
       const child = children[i];
       const colSpan = parseGridSpan((_a = child.styles) == null ? void 0 : _a["grid-column"]);
       const rowSpan = parseGridSpan((_b = child.styles) == null ? void 0 : _b["grid-row"]);
-      console.log(`[GRID-NATIVE] Child ${i}: colSpan=${colSpan}, rowSpan=${rowSpan}`);
       let placed = false;
       let row = 0;
       while (!placed) {
@@ -1027,7 +1018,6 @@
               }
             }
             childPositions[i] = { row, col, rowSpan, colSpan };
-            console.log(`[GRID-NATIVE] Placed child ${i} at row=${row}, col=${col}, spans ${colSpan}x${rowSpan}`);
             placed = true;
             break;
           }
@@ -1036,8 +1026,6 @@
       }
     }
     const numRows = grid.length;
-    console.log("[GRID-NATIVE] Grid dimensions:", numRows, "rows x", columns, "columns");
-    console.log("[GRID-NATIVE] Grid layout:\n" + grid.map((row) => row.map((c) => c === null ? "." : c).join(" ")).join("\n"));
     let useNativeGrid = false;
     const testParent = figma.createFrame();
     testParent.name = "__grid_test_parent__";
@@ -1058,10 +1046,8 @@
       testChild.remove();
       testParent.remove();
       useNativeGrid = true;
-      console.log("[GRID-NATIVE] Native Grid API fully available");
     } catch (error) {
       testParent.remove();
-      console.log("[GRID-NATIVE] Native Grid API not available, using fallback. Reason:", error);
       await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
       return;
     }
@@ -1077,7 +1063,6 @@
       for (let i = 0; i < parentFrame.gridRowSizes.length; i++) {
         parentFrame.gridRowSizes[i].type = "FLEX";
       }
-      console.log("[GRID-NATIVE] Parent configured as GRID with", columns, "cols x", numRows, "rows");
     } catch (error) {
       console.error("[GRID-NATIVE] Error configuring grid after test passed:", error);
       parentFrame.layoutMode = "VERTICAL";
@@ -1101,7 +1086,6 @@
         wrapper.gridRowSpan = pos.rowSpan;
         wrapper.layoutSizingHorizontal = "FILL";
         wrapper.layoutSizingVertical = "FILL";
-        console.log(`[GRID-NATIVE] Item ${i}: positioned at (${pos.col}, ${pos.row}) span ${pos.colSpan}x${pos.rowSpan}`);
       } catch (error) {
         console.error(`[GRID-NATIVE] Error positioning item ${i}:`, error);
       }
@@ -1111,15 +1095,12 @@
       });
       await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
     }
-    console.log("[GRID-NATIVE] Grid layout complete");
   }
   async function createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles) {
     var _a, _b;
-    console.log("[GRID-FALLBACK] Using horizontal row fallback");
     const parentWidth = parentFrame.width || 1200;
     const totalGaps = (columns - 1) * gap;
     const columnWidth = Math.floor((parentWidth - totalGaps) / columns);
-    console.log("[GRID-FALLBACK] Parent width:", parentWidth, "Column width:", columnWidth);
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
     parentFrame.counterAxisSizingMode = "FIXED";
@@ -1149,7 +1130,6 @@
               }
             }
             childPositions[i] = { row, col, rowSpan, colSpan };
-            console.log(`[GRID-FALLBACK] Placed child ${i} at row=${row}, col=${col}, spans ${colSpan}x${rowSpan}`);
             placed = true;
             break;
           }
@@ -1158,7 +1138,6 @@
       }
     }
     const numRows = grid.length;
-    console.log("[GRID-FALLBACK] Grid:", numRows, "rows x", columns, "cols");
     const rowFrames = [];
     for (let r = 0; r < numRows; r++) {
       const rowFrame = figma.createFrame();
@@ -1209,7 +1188,6 @@
               wrapper.layoutSizingHorizontal = "FILL";
             } catch (e) {
             }
-            console.log(`[GRID-FALLBACK] Row ${r}: Item ${childIndex} width=${itemWidth}px (${pos.colSpan} cols)`);
             await createFigmaNodesFromStructure([children[childIndex]], wrapper, 0, 0, __spreadProps(__spreadValues({}, inheritedStyles), {
               "_hasConstrainedWidth": true,
               "_gridItemWidth": itemWidth
@@ -1226,24 +1204,19 @@
               placeholder.layoutSizingHorizontal = "FILL";
             } catch (e) {
             }
-            console.log(`[GRID-FALLBACK] Row ${r}: Placeholder for Item ${childIndex} width=${itemWidth}px (${pos.colSpan} cols)`);
           }
           c += pos.colSpan;
         }
       }
     }
-    console.log("[GRID-FALLBACK] Complete");
   }
   async function createGridLayout(children, parentFrame, columns, gap, inheritedStyles) {
-    console.log("[GRID-SIMPLE] createGridLayout called with", children.length, "children,", columns, "columns");
     if (!children || children.length === 0) {
-      console.log("[GRID-SIMPLE] No children to process!");
       return;
     }
     await createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles);
   }
   async function createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles) {
-    console.log("[GRID-FALLBACK-SIMPLE] Using row-based fallback");
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
     for (let i = 0; i < children.length; i += columns) {
@@ -1276,7 +1249,7 @@
     }
   }
   async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0, startY = 0, inheritedStyles) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va, _wa, _xa, _ya, _za, _Aa, _Ba, _Ca, _Da, _Ea, _Fa, _Ga, _Ha, _Ia, _Ja, _Ka, _La, _Ma, _Na, _Oa, _Pa, _Qa, _Ra, _Sa, _Ta, _Ua, _Va, _Wa, _Xa, _Ya, _Za, __a, _$a, _ab, _bb, _cb, _db, _eb, _fb, _gb, _hb, _ib, _jb, _kb, _lb, _mb, _nb, _ob, _pb, _qb, _rb, _sb, _tb, _ub, _vb, _wb, _xb, _yb, _zb, _Ab, _Bb, _Cb, _Db, _Eb, _Fb, _Gb, _Hb, _Ib, _Jb, _Kb, _Lb, _Mb, _Nb, _Ob, _Pb, _Qb, _Rb, _Sb, _Tb, _Ub, _Vb, _Wb, _Xb, _Yb, _Zb, __b, _$b, _ac, _bc, _cc, _dc, _ec, _fc, _gc, _hc, _ic, _jc, _kc, _lc, _mc, _nc, _oc, _pc, _qc, _rc, _sc, _tc;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va, _wa, _xa, _ya, _za, _Aa, _Ba, _Ca, _Da, _Ea, _Fa, _Ga, _Ha, _Ia, _Ja, _Ka, _La, _Ma, _Na, _Oa, _Pa, _Qa, _Ra, _Sa, _Ta, _Ua, _Va, _Wa, _Xa, _Ya, _Za, __a, _$a, _ab, _bb, _cb, _db, _eb, _fb, _gb, _hb, _ib, _jb, _kb, _lb, _mb, _nb, _ob, _pb, _qb, _rb, _sb, _tb, _ub, _vb, _wb, _xb, _yb, _zb, _Ab, _Bb, _Cb, _Db, _Eb, _Fb, _Gb, _Hb, _Ib, _Jb, _Kb, _Lb, _Mb, _Nb, _Ob, _Pb, _Qb, _Rb, _Sb, _Tb, _Ub, _Vb, _Wb, _Xb, _Yb, _Zb, __b, _$b, _ac, _bc, _cc, _dc, _ec, _fc, _gc, _hc, _ic, _jc, _kc, _lc, _mc, _nc, _oc, _pc, _qc, _rc, _sc, _tc, _uc;
     debugLog("[NODE CREATION] Starting createFigmaNodesFromStructure");
     debugLog("[NODE CREATION] Structure:", structure);
     debugLog("[NODE CREATION] ParentFrame:", (parentFrame == null ? void 0 : parentFrame.name) || "none");
@@ -1614,11 +1587,8 @@
             }
             if (node.children && node.children.length > 0) {
               if (((_Da = node.styles) == null ? void 0 : _Da.display) === "grid") {
-                console.log("[GRID] Grid detected! Children:", node.children.length);
                 const gridTemplateAreas = (_Ea = node.styles) == null ? void 0 : _Ea["grid-template-areas"];
                 const gridTemplateColumns = (_Fa = node.styles) == null ? void 0 : _Fa["grid-template-columns"];
-                console.log("[GRID] template-areas:", gridTemplateAreas);
-                console.log("[GRID] template-columns:", gridTemplateColumns);
                 const gap2 = parseSize((_Ga = node.styles) == null ? void 0 : _Ga.gap) || parseSize((parentFrame == null ? void 0 : parentFrame.getPluginData("gridGap")) || "") || 12;
                 const areaMap = parseGridTemplateAreas(gridTemplateAreas);
                 if (areaMap) {
@@ -1629,7 +1599,6 @@
                   const columns = parseGridColumns(gridTemplateColumns);
                   const finalColumns = columns > 0 ? columns : 2;
                   if (hasGridSpans(node.children)) {
-                    console.log("[GRID] Using bento layout with spans");
                     await createGridLayoutWithSpans(node.children, frame, finalColumns, gap2, inheritableStyles);
                   } else {
                     await createGridLayout(node.children, frame, finalColumns, gap2, inheritableStyles);
@@ -1647,23 +1616,45 @@
               frame.setPluginData("zIndex", zIndex.toString());
             }
           }
-          if ((((_Ia = node.styles) == null ? void 0 : _Ia.flex) === "1" || ((_Ja = node.styles) == null ? void 0 : _Ja["flex-grow"]) === "1") && parentFrame) {
-            if (parentFrame.layoutMode === "HORIZONTAL" || parentFrame.layoutMode === "VERTICAL") {
-              try {
+          if (parentFrame && (parentFrame.layoutMode === "HORIZONTAL" || parentFrame.layoutMode === "VERTICAL")) {
+            const flexValue = (_Ia = node.styles) == null ? void 0 : _Ia.flex;
+            const flexGrowValue = (_Ja = node.styles) == null ? void 0 : _Ja["flex-grow"];
+            let shouldGrow = false;
+            let shouldNotGrow = false;
+            if (flexValue) {
+              const flexParts = flexValue.toString().split(/\s+/);
+              const growPart = parseFloat(flexParts[0]);
+              if (growPart === 0) {
+                shouldNotGrow = true;
+              } else if (growPart > 0) {
+                shouldGrow = true;
+              }
+            }
+            if (flexGrowValue === "1" || flexValue === "1") {
+              shouldGrow = true;
+            }
+            if (flexGrowValue === "0") {
+              shouldNotGrow = true;
+            }
+            try {
+              if (shouldGrow) {
                 frame.layoutGrow = 1;
                 frame.layoutSizingHorizontal = "FILL";
                 frame.layoutSizingVertical = "HUG";
-              } catch (error) {
-                console.error("Error applying flex grow:", error);
-                try {
-                  frame.layoutGrow = 1;
-                } catch (fallbackError) {
-                  console.error("Fallback error:", fallbackError);
+              } else if (shouldNotGrow) {
+                frame.layoutGrow = 0;
+                const minWidth = parseSize((_Ka = node.styles) == null ? void 0 : _Ka["min-width"]);
+                if (minWidth && minWidth > 0) {
+                  frame.layoutSizingHorizontal = "FIXED";
+                  frame.resize(Math.max(frame.width, minWidth), frame.height);
+                } else {
+                  frame.layoutSizingHorizontal = "HUG";
                 }
               }
+            } catch (error) {
             }
           }
-          if (((_Ka = node.styles) == null ? void 0 : _Ka["align-self"]) && parentFrame) {
+          if (((_La = node.styles) == null ? void 0 : _La["align-self"]) && parentFrame) {
             try {
               const alignSelf = node.styles["align-self"];
               if (alignSelf === "center") {
@@ -1682,12 +1673,12 @@
           form.layoutMode = "VERTICAL";
           form.primaryAxisSizingMode = "AUTO";
           form.counterAxisSizingMode = "AUTO";
-          const basePadding = parseSize((_La = node.styles) == null ? void 0 : _La.padding);
-          form.paddingLeft = (_Oa = (_Na = parseSize((_Ma = node.styles) == null ? void 0 : _Ma["padding-left"])) != null ? _Na : basePadding) != null ? _Oa : 0;
-          form.paddingRight = (_Ra = (_Qa = parseSize((_Pa = node.styles) == null ? void 0 : _Pa["padding-right"])) != null ? _Qa : basePadding) != null ? _Ra : 0;
-          form.paddingTop = (_Ua = (_Ta = parseSize((_Sa = node.styles) == null ? void 0 : _Sa["padding-top"])) != null ? _Ta : basePadding) != null ? _Ua : 0;
-          form.paddingBottom = (_Xa = (_Wa = parseSize((_Va = node.styles) == null ? void 0 : _Va["padding-bottom"])) != null ? _Wa : basePadding) != null ? _Xa : 0;
-          form.itemSpacing = (_Za = parseSize((_Ya = node.styles) == null ? void 0 : _Ya.gap)) != null ? _Za : 0;
+          const basePadding = parseSize((_Ma = node.styles) == null ? void 0 : _Ma.padding);
+          form.paddingLeft = (_Pa = (_Oa = parseSize((_Na = node.styles) == null ? void 0 : _Na["padding-left"])) != null ? _Oa : basePadding) != null ? _Pa : 0;
+          form.paddingRight = (_Sa = (_Ra = parseSize((_Qa = node.styles) == null ? void 0 : _Qa["padding-right"])) != null ? _Ra : basePadding) != null ? _Sa : 0;
+          form.paddingTop = (_Va = (_Ua = parseSize((_Ta = node.styles) == null ? void 0 : _Ta["padding-top"])) != null ? _Ua : basePadding) != null ? _Va : 0;
+          form.paddingBottom = (_Ya = (_Xa = parseSize((_Wa = node.styles) == null ? void 0 : _Wa["padding-bottom"])) != null ? _Xa : basePadding) != null ? _Ya : 0;
+          form.itemSpacing = (__a = parseSize((_Za = node.styles) == null ? void 0 : _Za.gap)) != null ? __a : 0;
           if (node.styles) {
             applyStylesToFrame(form, node.styles);
           }
@@ -1700,40 +1691,40 @@
           }
           await createFigmaNodesFromStructure(node.children, form, 0, 0, inheritedStyles);
         } else if (["input", "textarea", "select"].includes(node.tagName)) {
-          let inputWidth = parseSize((__a = node.styles) == null ? void 0 : __a.width);
-          const inputHeight = node.tagName === "textarea" ? (parseSize((_$a = node.attributes) == null ? void 0 : _$a.rows) || 3) * 20 + 20 : parseSize((_ab = node.styles) == null ? void 0 : _ab.height) || 40;
+          let inputWidth = parseSize((_$a = node.styles) == null ? void 0 : _$a.width);
+          const inputHeight = node.tagName === "textarea" ? (parseSize((_ab = node.attributes) == null ? void 0 : _ab.rows) || 3) * 20 + 20 : parseSize((_bb = node.styles) == null ? void 0 : _bb.height) || 40;
           const input = figma.createFrame();
           let bgColor = { r: 1, g: 1, b: 1 };
-          if (((_bb = node.styles) == null ? void 0 : _bb["background"]) && node.styles["background"] !== "transparent") {
+          if (((_cb = node.styles) == null ? void 0 : _cb["background"]) && node.styles["background"] !== "transparent") {
             const bgParsed = hexToRgb(node.styles["background"]);
             if (bgParsed) bgColor = bgParsed;
-          } else if (((_cb = node.styles) == null ? void 0 : _cb["background-color"]) && node.styles["background-color"] !== "transparent") {
+          } else if (((_db = node.styles) == null ? void 0 : _db["background-color"]) && node.styles["background-color"] !== "transparent") {
             const bgParsed = hexToRgb(node.styles["background-color"]);
             if (bgParsed) bgColor = bgParsed;
           }
           input.fills = [{ type: "SOLID", color: bgColor }];
           let borderColor = { r: 0.8, g: 0.8, b: 0.8 };
-          if (((_db = node.styles) == null ? void 0 : _db["border"]) || ((_eb = node.styles) == null ? void 0 : _eb["border-color"])) {
+          if (((_eb = node.styles) == null ? void 0 : _eb["border"]) || ((_fb = node.styles) == null ? void 0 : _fb["border-color"])) {
             const borderParsed = hexToRgb(node.styles["border-color"] || extractBorderColor(node.styles["border"]));
             if (borderParsed) borderColor = borderParsed;
           }
           input.strokes = [{ type: "SOLID", color: borderColor }];
-          input.strokeWeight = parseSize((_fb = node.styles) == null ? void 0 : _fb["border-width"]) || 1;
-          input.cornerRadius = parseSize((_gb = node.styles) == null ? void 0 : _gb["border-radius"]) || 4;
+          input.strokeWeight = parseSize((_gb = node.styles) == null ? void 0 : _gb["border-width"]) || 1;
+          input.cornerRadius = parseSize((_hb = node.styles) == null ? void 0 : _hb["border-radius"]) || 4;
           input.name = node.tagName.toUpperCase();
           input.layoutMode = "HORIZONTAL";
-          if (((_hb = node.styles) == null ? void 0 : _hb["text-align"]) === "center") {
+          if (((_ib = node.styles) == null ? void 0 : _ib["text-align"]) === "center") {
             input.primaryAxisAlignItems = "CENTER";
             input.counterAxisAlignItems = "CENTER";
           } else {
             input.primaryAxisAlignItems = "MIN";
             input.counterAxisAlignItems = "CENTER";
           }
-          input.paddingLeft = parseSize((_ib = node.styles) == null ? void 0 : _ib["padding-left"]) || 12;
-          input.paddingRight = parseSize((_jb = node.styles) == null ? void 0 : _jb["padding-right"]) || 12;
+          input.paddingLeft = parseSize((_jb = node.styles) == null ? void 0 : _jb["padding-left"]) || 12;
+          input.paddingRight = parseSize((_kb = node.styles) == null ? void 0 : _kb["padding-right"]) || 12;
           const parentIsAutoLayout = parentFrame && parentFrame.type === "FRAME" && parentFrame.layoutMode && parentFrame.layoutMode !== "NONE";
           let useFill = false;
-          if (((_kb = node.styles) == null ? void 0 : _kb.width) === "100%") {
+          if (((_lb = node.styles) == null ? void 0 : _lb.width) === "100%") {
             if (parentIsAutoLayout) {
               useFill = true;
             } else {
@@ -1750,13 +1741,13 @@
           }
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const inputText = figma.createText();
-          const displayText = ((_lb = node.attributes) == null ? void 0 : _lb.value) || ((_mb = node.attributes) == null ? void 0 : _mb.placeholder) || (node.tagName === "select" ? "Select option \u25BC" : "Input field");
+          const displayText = ((_mb = node.attributes) == null ? void 0 : _mb.value) || ((_nb = node.attributes) == null ? void 0 : _nb.placeholder) || (node.tagName === "select" ? "Select option \u25BC" : "Input field");
           inputText.characters = displayText;
           let textColor = { r: 0.2, g: 0.2, b: 0.2 };
-          if ((_nb = node.styles) == null ? void 0 : _nb.color) {
+          if ((_ob = node.styles) == null ? void 0 : _ob.color) {
             const colorParsed = hexToRgb(node.styles.color);
             if (colorParsed) textColor = colorParsed;
-          } else if (!((_ob = node.attributes) == null ? void 0 : _ob.value)) {
+          } else if (!((_pb = node.attributes) == null ? void 0 : _pb.value)) {
             textColor = { r: 0.6, g: 0.6, b: 0.6 };
           }
           inputText.fills = [{ type: "SOLID", color: textColor }];
@@ -1780,7 +1771,7 @@
             }
           }
         } else if (node.tagName === "table") {
-          const tableWidth = parseSize((_pb = node.styles) == null ? void 0 : _pb.width) || 500;
+          const tableWidth = parseSize((_qb = node.styles) == null ? void 0 : _qb.width) || 500;
           let tableHeight = 60;
           const bodyRows = node.children.filter(
             (c) => c.tagName === "tbody" || c.tagName === "tr"
@@ -1842,33 +1833,33 @@
           }
         } else if (["td", "th"].includes(node.tagName)) {
           const cell = figma.createFrame();
-          const cellWidth = parseSize((_qb = node.styles) == null ? void 0 : _qb.width) || 100;
-          const cellHeight = parseSize((_rb = node.styles) == null ? void 0 : _rb.height) || 40;
+          const cellWidth = parseSize((_rb = node.styles) == null ? void 0 : _rb.width) || 100;
+          const cellHeight = parseSize((_sb = node.styles) == null ? void 0 : _sb.height) || 40;
           cell.resize(cellWidth, cellHeight);
-          const bgColor = ((_sb = node.styles) == null ? void 0 : _sb["background-color"]) || ((_tb = node.styles) == null ? void 0 : _tb.background);
+          const bgColor = ((_tb = node.styles) == null ? void 0 : _tb["background-color"]) || ((_ub = node.styles) == null ? void 0 : _ub.background);
           if (bgColor && bgColor !== "transparent") {
             const parsedBg = hexToRgb(bgColor);
             cell.fills = parsedBg ? [{ type: "SOLID", color: parsedBg }] : [];
           } else {
             cell.fills = [];
           }
-          const borderColor = (_ub = node.styles) == null ? void 0 : _ub["border-color"];
+          const borderColor = (_vb = node.styles) == null ? void 0 : _vb["border-color"];
           if (borderColor) {
             const parsedBorder = hexToRgb(borderColor);
             cell.strokes = parsedBorder ? [{ type: "SOLID", color: parsedBorder }] : [];
           } else {
             cell.strokes = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
           }
-          cell.strokeWeight = (_wb = parseSize((_vb = node.styles) == null ? void 0 : _vb["border-width"])) != null ? _wb : 0.5;
+          cell.strokeWeight = (_xb = parseSize((_wb = node.styles) == null ? void 0 : _wb["border-width"])) != null ? _xb : 0.5;
           cell.name = node.tagName.toUpperCase();
           cell.layoutMode = "HORIZONTAL";
           cell.primaryAxisAlignItems = "CENTER";
           cell.counterAxisAlignItems = "CENTER";
-          const basePadding = parseSize((_xb = node.styles) == null ? void 0 : _xb.padding);
-          cell.paddingLeft = (_Ab = (_zb = parseSize((_yb = node.styles) == null ? void 0 : _yb["padding-left"])) != null ? _zb : basePadding) != null ? _Ab : 8;
-          cell.paddingRight = (_Db = (_Cb = parseSize((_Bb = node.styles) == null ? void 0 : _Bb["padding-right"])) != null ? _Cb : basePadding) != null ? _Db : 8;
-          cell.paddingTop = (_Gb = (_Fb = parseSize((_Eb = node.styles) == null ? void 0 : _Eb["padding-top"])) != null ? _Fb : basePadding) != null ? _Gb : 4;
-          cell.paddingBottom = (_Jb = (_Ib = parseSize((_Hb = node.styles) == null ? void 0 : _Hb["padding-bottom"])) != null ? _Ib : basePadding) != null ? _Jb : 4;
+          const basePadding = parseSize((_yb = node.styles) == null ? void 0 : _yb.padding);
+          cell.paddingLeft = (_Bb = (_Ab = parseSize((_zb = node.styles) == null ? void 0 : _zb["padding-left"])) != null ? _Ab : basePadding) != null ? _Bb : 8;
+          cell.paddingRight = (_Eb = (_Db = parseSize((_Cb = node.styles) == null ? void 0 : _Cb["padding-right"])) != null ? _Db : basePadding) != null ? _Eb : 8;
+          cell.paddingTop = (_Hb = (_Gb = parseSize((_Fb = node.styles) == null ? void 0 : _Fb["padding-top"])) != null ? _Gb : basePadding) != null ? _Hb : 4;
+          cell.paddingBottom = (_Kb = (_Jb = parseSize((_Ib = node.styles) == null ? void 0 : _Ib["padding-bottom"])) != null ? _Jb : basePadding) != null ? _Kb : 4;
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const cellText = figma.createText();
           let textContent = "";
@@ -1884,7 +1875,7 @@
             }).filter((text) => text.trim()).join(" ");
           }
           cellText.characters = textContent || "";
-          const textColor = (_Kb = node.styles) == null ? void 0 : _Kb.color;
+          const textColor = (_Lb = node.styles) == null ? void 0 : _Lb.color;
           if (textColor) {
             const parsedColor = hexToRgb(textColor);
             cellText.fills = parsedColor ? [{ type: "SOLID", color: parsedColor }] : [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
@@ -1902,11 +1893,11 @@
             applyStylesToText(cellText, node.styles);
           }
           if (parentFrame && parentFrame.getPluginData("textAlign") === "center") {
-            if (!((_Lb = node.styles) == null ? void 0 : _Lb["text-align"])) {
+            if (!((_Mb = node.styles) == null ? void 0 : _Mb["text-align"])) {
               cellText.textAlignHorizontal = "CENTER";
             }
           }
-          if ((_Nb = (_Mb = node.styles) == null ? void 0 : _Mb.className) == null ? void 0 : _Nb.includes("detail")) {
+          if ((_Ob = (_Nb = node.styles) == null ? void 0 : _Nb.className) == null ? void 0 : _Ob.includes("detail")) {
           }
           if (!parentFrame) {
             cell.x = startX;
@@ -1916,11 +1907,11 @@
             parentFrame.appendChild(cell);
           }
         } else if (node.tagName === "button") {
-          const buttonWidth = parseSize((_Ob = node.styles) == null ? void 0 : _Ob.width) || Math.max(120, (((_Pb = node.text) == null ? void 0 : _Pb.length) || 6) * 12);
-          const buttonHeight = parseSize((_Qb = node.styles) == null ? void 0 : _Qb.height) || 44;
+          const buttonWidth = parseSize((_Pb = node.styles) == null ? void 0 : _Pb.width) || Math.max(120, (((_Qb = node.text) == null ? void 0 : _Qb.length) || 6) * 12);
+          const buttonHeight = parseSize((_Rb = node.styles) == null ? void 0 : _Rb.height) || 44;
           const frame = figma.createFrame();
           frame.resize(buttonWidth, buttonHeight);
-          const bgColor = ((_Rb = node.styles) == null ? void 0 : _Rb["background-color"]) || ((_Sb = node.styles) == null ? void 0 : _Sb.background);
+          const bgColor = ((_Sb = node.styles) == null ? void 0 : _Sb["background-color"]) || ((_Tb = node.styles) == null ? void 0 : _Tb.background);
           if (bgColor) {
             const parsedColor = hexToRgb(bgColor);
             if (parsedColor) {
@@ -1931,24 +1922,24 @@
           } else {
             frame.fills = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
           }
-          const borderRadius = (_Ub = parseSize((_Tb = node.styles) == null ? void 0 : _Tb["border-radius"])) != null ? _Ub : 4;
+          const borderRadius = (_Vb = parseSize((_Ub = node.styles) == null ? void 0 : _Ub["border-radius"])) != null ? _Vb : 4;
           frame.cornerRadius = borderRadius;
           frame.name = "Button";
           frame.layoutMode = "HORIZONTAL";
           frame.primaryAxisAlignItems = "CENTER";
           frame.counterAxisAlignItems = "CENTER";
-          const basePadding = parseSize((_Vb = node.styles) == null ? void 0 : _Vb.padding);
-          frame.paddingLeft = (_Yb = (_Xb = parseSize((_Wb = node.styles) == null ? void 0 : _Wb["padding-left"])) != null ? _Xb : basePadding) != null ? _Yb : 16;
-          frame.paddingRight = (_$b = (__b = parseSize((_Zb = node.styles) == null ? void 0 : _Zb["padding-right"])) != null ? __b : basePadding) != null ? _$b : 16;
-          frame.paddingTop = (_cc = (_bc = parseSize((_ac = node.styles) == null ? void 0 : _ac["padding-top"])) != null ? _bc : basePadding) != null ? _cc : 8;
-          frame.paddingBottom = (_fc = (_ec = parseSize((_dc = node.styles) == null ? void 0 : _dc["padding-bottom"])) != null ? _ec : basePadding) != null ? _fc : 8;
+          const basePadding = parseSize((_Wb = node.styles) == null ? void 0 : _Wb.padding);
+          frame.paddingLeft = (_Zb = (_Yb = parseSize((_Xb = node.styles) == null ? void 0 : _Xb["padding-left"])) != null ? _Yb : basePadding) != null ? _Zb : 16;
+          frame.paddingRight = (_ac = (_$b = parseSize((__b = node.styles) == null ? void 0 : __b["padding-right"])) != null ? _$b : basePadding) != null ? _ac : 16;
+          frame.paddingTop = (_dc = (_cc = parseSize((_bc = node.styles) == null ? void 0 : _bc["padding-top"])) != null ? _cc : basePadding) != null ? _dc : 8;
+          frame.paddingBottom = (_gc = (_fc = parseSize((_ec = node.styles) == null ? void 0 : _ec["padding-bottom"])) != null ? _fc : basePadding) != null ? _gc : 8;
           if (node.styles) {
             applyStylesToFrame(frame, node.styles);
           }
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const buttonText = figma.createText();
           buttonText.characters = node.text || "Button";
-          const textColor = (_gc = node.styles) == null ? void 0 : _gc.color;
+          const textColor = (_hc = node.styles) == null ? void 0 : _hc.color;
           if (textColor) {
             const parsedTextColor = hexToRgb(textColor);
             if (parsedTextColor) {
@@ -1971,18 +1962,18 @@
             parentFrame.appendChild(frame);
           }
         } else if (node.tagName === "img") {
-          const width = parseSize((_hc = node.styles) == null ? void 0 : _hc.width) || 200;
-          const height = parseSize((_ic = node.styles) == null ? void 0 : _ic.height) || 150;
+          const width = parseSize((_ic = node.styles) == null ? void 0 : _ic.width) || 200;
+          const height = parseSize((_jc = node.styles) == null ? void 0 : _jc.height) || 150;
           const frame = figma.createFrame();
           frame.resize(width, height);
           frame.fills = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
-          frame.name = "Image: " + (((_jc = node.attributes) == null ? void 0 : _jc.alt) || "Unnamed");
+          frame.name = "Image: " + (((_kc = node.attributes) == null ? void 0 : _kc.alt) || "Unnamed");
           frame.layoutMode = "HORIZONTAL";
           frame.primaryAxisAlignItems = "CENTER";
           frame.counterAxisAlignItems = "CENTER";
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const placeholderText = figma.createText();
-          placeholderText.characters = ((_kc = node.attributes) == null ? void 0 : _kc.alt) || "Image";
+          placeholderText.characters = ((_lc = node.attributes) == null ? void 0 : _lc.alt) || "Image";
           placeholderText.fills = [{ type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.5 } }];
           frame.appendChild(placeholderText);
           if (!parentFrame) {
@@ -2017,7 +2008,7 @@
         } else if (node.tagName === "li") {
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const text = figma.createText();
-          const parentList = ((_lc = parentFrame == null ? void 0 : parentFrame.name) == null ? void 0 : _lc.includes("OL")) ? "OL" : "UL";
+          const parentList = ((_mc = parentFrame == null ? void 0 : parentFrame.name) == null ? void 0 : _mc.includes("OL")) ? "OL" : "UL";
           const bullet = parentList === "OL" ? "1. " : "\u2022 ";
           text.characters = bullet + (node.text || "List item");
           text.name = "List Item";
@@ -2025,11 +2016,11 @@
             applyStylesToText(text, node.styles);
           }
           if (parentFrame && parentFrame.getPluginData("textAlign") === "center") {
-            if (!((_mc = node.styles) == null ? void 0 : _mc["text-align"])) {
+            if (!((_nc = node.styles) == null ? void 0 : _nc["text-align"])) {
               text.textAlignHorizontal = "CENTER";
             }
           }
-          if ((_oc = (_nc = node.styles) == null ? void 0 : _nc.className) == null ? void 0 : _oc.includes("detail")) {
+          if ((_pc = (_oc = node.styles) == null ? void 0 : _oc.className) == null ? void 0 : _pc.includes("detail")) {
           }
           if (!parentFrame) {
             text.x = startX;
@@ -2045,7 +2036,7 @@
             await createFigmaNodesFromStructure(node.children, parentFrame, startX, startY, inheritedStyles);
             continue;
           }
-          const hasBackground = ((_pc = node.styles) == null ? void 0 : _pc["background"]) || ((_qc = node.styles) == null ? void 0 : _qc["background-color"]);
+          const hasBackground = ((_qc = node.styles) == null ? void 0 : _qc["background"]) || ((_rc = node.styles) == null ? void 0 : _rc["background-color"]);
           const isSpanWithBackground = node.tagName === "span" && hasBackground && hasBackground !== "transparent";
           if (isSpanWithBackground) {
             const spanFrame = figma.createFrame();
@@ -2122,11 +2113,11 @@
               applyStylesToText(text, node.styles);
             }
             if (parentFrame && parentFrame.getPluginData("textAlign") === "center") {
-              if (!((_rc = node.styles) == null ? void 0 : _rc["text-align"])) {
+              if (!((_sc = node.styles) == null ? void 0 : _sc["text-align"])) {
                 text.textAlignHorizontal = "CENTER";
               }
             }
-            if ((_tc = (_sc = node.styles) == null ? void 0 : _sc.className) == null ? void 0 : _tc.includes("detail")) {
+            if ((_uc = (_tc = node.styles) == null ? void 0 : _tc.className) == null ? void 0 : _uc.includes("detail")) {
             }
             if (!parentFrame) {
               text.x = startX;
@@ -2176,7 +2167,6 @@
       }
     }
     processedRequestIDs.add(requestId);
-    console.log(`[DEDUP] Marked RequestID as processed: ${requestId}`);
   }
   async function readMCPSharedData() {
     try {
@@ -2202,7 +2192,6 @@
         }, 500);
       });
     } catch (error) {
-      console.log("[MCP] Error reading MCP data:", error);
       return null;
     }
   }
@@ -2212,12 +2201,10 @@
       debugLog("[MCP] Requested deletion of MCP data file");
       return true;
     } catch (error) {
-      console.log("[MCP] Could not delete MCP data:", error);
       return false;
     }
   }
   function startMCPMonitoring() {
-    console.log("[MCP] Starting SSE-based monitoring with intelligent fallback...");
     if (mcpMonitoringInterval) {
       clearInterval(mcpMonitoringInterval);
       mcpMonitoringInterval = null;
@@ -2229,13 +2216,11 @@
       const now = Date.now();
       const timeSinceLastSSE = now - sseLastSuccessTimestamp;
       if (!sseConnected || timeSinceLastSSE > 3e4) {
-        console.log("[MCP] \u{1F504} SSE inactive, checking fallback...");
         try {
           const mcpData = await readMCPSharedData();
           if (mcpData) {
             const dataTimestamp = mcpData.timestamp ? new Date(mcpData.timestamp).getTime() : 0;
             if (dataTimestamp > sseLastSuccessTimestamp) {
-              console.log("[MCP] \u{1F4BE} Fallback processing new data");
               figma.ui.postMessage({
                 type: "parse-mcp-html",
                 html: mcpData.content,
@@ -2247,16 +2232,13 @@
             }
           }
         } catch (error) {
-          console.log("[MCP] Fallback check failed:", error);
         }
       } else {
         debugLog("[MCP] \u{1F7E2} SSE active, fallback not needed");
       }
     }, 15e3);
-    console.log("[MCP] \u2705 Intelligent fallback enabled (SSE-priority)");
   }
   function stopMCPMonitoring() {
-    console.log("[MCP] Stopping SSE-based monitoring...");
     figma.ui.postMessage({ type: "stop-sse" });
     if (mcpMonitoringInterval) {
       clearInterval(mcpMonitoringInterval);
@@ -2342,16 +2324,12 @@
       debugLog("[MAIN HANDLER] From MCP:", msg.fromMCP);
       const requestId = msg.requestId || msg.timestamp || `fallback-${Date.now()}`;
       if (isRequestProcessed(requestId)) {
-        console.log(`[DEDUP] \u{1F6AB} RequestID already processed, skipping: ${requestId}`);
         return;
       }
       markRequestProcessed(requestId);
-      console.log(`[HTML] \u2705 Passed dedup check, proceeding with requestId: ${requestId}`);
       const detectedDesignWidth = msg.detectedWidth || null;
       if (detectedDesignWidth) {
         CSS_CONFIG.viewportWidth = detectedDesignWidth;
-        console.log("[WIDTH] Using detected width from UI:", detectedDesignWidth);
-        console.log("[WIDTH] Updated CSS_CONFIG.viewportWidth to:", detectedDesignWidth);
       }
       const detectFullPageLayout = (structure) => {
         if (!structure || structure.length === 0) return false;
@@ -2412,7 +2390,6 @@
           if (depth <= 1 && ((_a2 = node.styles) == null ? void 0 : _a2.width)) {
             const width = parseSize(node.styles.width);
             if (width && width > 0 && !((_c = (_b = node.styles) == null ? void 0 : _b.position) == null ? void 0 : _c.includes("fixed"))) {
-              console.log("[WIDTH] Found explicit width:", width, "on", node.tagName);
               explicitWidth = width;
             }
           }
@@ -2420,14 +2397,12 @@
             const width = parseSize(node.styles.width);
             if (width && width > 0) {
               sidebarWidth = Math.max(sidebarWidth, width);
-              console.log("[WIDTH] Detected fixed sidebar width:", width);
             }
           }
           if ((_f = node.styles) == null ? void 0 : _f["margin-left"]) {
             const margin = parseSize(node.styles["margin-left"]);
             if (margin && margin > 0) {
               mainContentMargin = Math.max(mainContentMargin, margin);
-              console.log("[WIDTH] Detected main content margin-left:", margin);
             }
           }
           if (node.children) {
@@ -2442,7 +2417,6 @@
         if (explicitWidth) return explicitWidth;
         if (sidebarWidth > 0 && mainContentMargin > 0) {
           const calculatedWidth = sidebarWidth + 1200;
-          console.log("[WIDTH] Calculated width from sidebar pattern:", calculatedWidth);
           return calculatedWidth;
         }
         return null;
@@ -2482,12 +2456,10 @@
       figma.notify("\u2705 HTML converted successfully!");
     }
     if (msg.type === "start-mcp-monitoring") {
-      console.log("[MCP] Starting MCP monitoring...");
       startMCPMonitoring();
       figma.notify("\u{1F504} MCP Monitoring iniciado");
     }
     if (msg.type === "stop-mcp-monitoring") {
-      console.log("[MCP] Stopping MCP monitoring...");
       stopMCPMonitoring();
       figma.notify("\u23F9\uFE0F MCP Monitoring detenido");
     }

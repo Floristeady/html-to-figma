@@ -196,6 +196,7 @@ html-to-figma/
 - Complex gradients may not render correctly
 - Images show as placeholders only (no actual image loading)
 - Grid gaps have limitations in complex layouts
+- `flex: 0 0 auto` with `min-width` may not prevent items from stretching in horizontal flex containers
 
 ## Troubleshooting
 
