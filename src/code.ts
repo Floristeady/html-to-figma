@@ -1,5 +1,8 @@
 /// <reference types="@figma/plugin-typings" />
 
+// Import constants from parser module
+import { VIEWPORT_PRESETS, CONTAINER_SELECTORS } from './parser/css-constants';
+
 // __html__ is injected by Figma when using a separate ui.html file
 figma.showUI(__html__, { width: 360, height: 380 });
 
@@ -119,17 +122,7 @@ const CSS_CONFIG = {
   viewportWidth: 1440  // 100vw = 1440px (reasonable desktop width)
 };
 
-// Viewport presets for design width detection
-const VIEWPORT_PRESETS: { [key: string]: number } = {
-  'mobile': 375,
-  'tablet': 768,
-  'desktop': 1440,
-  'large': 1600,
-  'wide': 1920
-};
-
-// Container selectors to check for max-width (in order of priority)
-const CONTAINER_SELECTORS = ['.container', '.wrapper', '.main-container', '.page-container', 'main', '.content', 'body', 'html'];
+// VIEWPORT_PRESETS and CONTAINER_SELECTORS imported from ./parser/css-constants
 
 function parseSize(value: string): number | null {
   if (!value || value === 'auto' || value === 'inherit' || value === 'initial') return null;
