@@ -260,15 +260,7 @@
     return { top: 0, right: 0, bottom: 0, left: 0 };
   }
 
-  // src/code.ts
-  figma.showUI(__html__, { width: 360, height: 380 });
-  function calculatePercentageWidth(widthValue, parentFrame) {
-    if (!parentFrame || !widthValue) return null;
-    const percentage = parsePercentage(widthValue);
-    if (percentage === null) return null;
-    const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
-    return Math.round(percentage / 100 * availableWidth);
-  }
+  // src/utils/effects.ts
   function parseBoxShadow(shadowValue) {
     const match = shadowValue.match(/(-?\d+(?:\.\d+)?(?:px)?)\s+(-?\d+(?:\.\d+)?(?:px)?)\s+(-?\d+(?:\.\d+)?(?:px)?)?\s*(-?\d+(?:\.\d+)?(?:px)?)?\s*(rgba?\([^)]+\)|#[a-fA-F0-9]{6}|#[a-fA-F0-9]{3})?/);
     if (match) {
@@ -401,6 +393,79 @@
     } catch (error) {
       return null;
     }
+  }
+
+  // src/utils/grid.ts
+  function parseGridColumns(gridTemplate) {
+    if (!gridTemplate) return 1;
+    const repeatMatch = gridTemplate.match(/repeat\((\d+),/);
+    if (repeatMatch) {
+      return parseInt(repeatMatch[1], 10);
+    }
+    if (gridTemplate.includes("auto-fill") || gridTemplate.includes("auto-fit")) {
+      const minmaxMatch = gridTemplate.match(/minmax\((\d+)px/);
+      if (minmaxMatch) {
+        const minWidth = parseInt(minmaxMatch[1], 10);
+        return Math.max(1, Math.floor(1200 / (minWidth + 16)));
+      }
+      return 3;
+    }
+    const normalized = gridTemplate.replace(/minmax\([^)]+\)/g, "1fr");
+    const parts = normalized.split(/\s+/).filter((p) => p.trim() && p !== "");
+    if (parts.length > 0) {
+      return parts.length;
+    }
+    return 1;
+  }
+  function parseGridTemplateAreas(areasString) {
+    if (!areasString) return null;
+    const rowMatches = areasString.match(/"([^"]+)"/g);
+    if (!rowMatches || rowMatches.length === 0) return null;
+    const areaMap = {};
+    for (let rowIndex = 0; rowIndex < rowMatches.length; rowIndex++) {
+      const rowContent = rowMatches[rowIndex].replace(/"/g, "").trim();
+      const columns = rowContent.split(/\s+/);
+      for (let colIndex = 0; colIndex < columns.length; colIndex++) {
+        const areaName = columns[colIndex];
+        if (areaName === ".") continue;
+        if (!areaMap[areaName]) {
+          areaMap[areaName] = {
+            rowStart: rowIndex,
+            rowEnd: rowIndex + 1,
+            colStart: colIndex,
+            colEnd: colIndex + 1
+          };
+        } else {
+          areaMap[areaName].rowEnd = Math.max(areaMap[areaName].rowEnd, rowIndex + 1);
+          areaMap[areaName].colEnd = Math.max(areaMap[areaName].colEnd, colIndex + 1);
+          areaMap[areaName].rowStart = Math.min(areaMap[areaName].rowStart, rowIndex);
+          areaMap[areaName].colStart = Math.min(areaMap[areaName].colStart, colIndex);
+        }
+      }
+    }
+    return Object.keys(areaMap).length > 0 ? areaMap : null;
+  }
+  function getGridRowCount(areasString) {
+    if (!areasString) return 1;
+    const rowMatches = areasString.match(/"([^"]+)"/g);
+    return rowMatches ? rowMatches.length : 1;
+  }
+  function getGridColCount(areasString) {
+    if (!areasString) return 1;
+    const rowMatches = areasString.match(/"([^"]+)"/g);
+    if (!rowMatches || rowMatches.length === 0) return 1;
+    const firstRow = rowMatches[0].replace(/"/g, "").trim();
+    return firstRow.split(/\s+/).length;
+  }
+
+  // src/code.ts
+  figma.showUI(__html__, { width: 360, height: 380 });
+  function calculatePercentageWidth(widthValue, parentFrame) {
+    if (!parentFrame || !widthValue) return null;
+    const percentage = parsePercentage(widthValue);
+    if (percentage === null) return null;
+    const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
+    return Math.round(percentage / 100 * availableWidth);
   }
   function applyStylesToFrame(frame, styles) {
     if (styles["visibility"] === "hidden") {
@@ -740,67 +805,6 @@
     } catch (error) {
       console.error("Error reordering by z-index:", error);
     }
-  }
-  function parseGridColumns(gridTemplate) {
-    if (!gridTemplate) return 1;
-    const repeatMatch = gridTemplate.match(/repeat\((\d+),/);
-    if (repeatMatch) {
-      return parseInt(repeatMatch[1], 10);
-    }
-    if (gridTemplate.includes("auto-fill") || gridTemplate.includes("auto-fit")) {
-      const minmaxMatch = gridTemplate.match(/minmax\((\d+)px/);
-      if (minmaxMatch) {
-        const minWidth = parseInt(minmaxMatch[1], 10);
-        return Math.max(1, Math.floor(1200 / (minWidth + 16)));
-      }
-      return 3;
-    }
-    const normalized = gridTemplate.replace(/minmax\([^)]+\)/g, "1fr");
-    const parts = normalized.split(/\s+/).filter((p) => p.trim() && p !== "");
-    if (parts.length > 0) {
-      return parts.length;
-    }
-    return 1;
-  }
-  function parseGridTemplateAreas(areasString) {
-    if (!areasString) return null;
-    const rowMatches = areasString.match(/"([^"]+)"/g);
-    if (!rowMatches || rowMatches.length === 0) return null;
-    const areaMap = {};
-    for (let rowIndex = 0; rowIndex < rowMatches.length; rowIndex++) {
-      const rowContent = rowMatches[rowIndex].replace(/"/g, "").trim();
-      const columns = rowContent.split(/\s+/);
-      for (let colIndex = 0; colIndex < columns.length; colIndex++) {
-        const areaName = columns[colIndex];
-        if (areaName === ".") continue;
-        if (!areaMap[areaName]) {
-          areaMap[areaName] = {
-            rowStart: rowIndex,
-            rowEnd: rowIndex + 1,
-            colStart: colIndex,
-            colEnd: colIndex + 1
-          };
-        } else {
-          areaMap[areaName].rowEnd = Math.max(areaMap[areaName].rowEnd, rowIndex + 1);
-          areaMap[areaName].colEnd = Math.max(areaMap[areaName].colEnd, colIndex + 1);
-          areaMap[areaName].rowStart = Math.min(areaMap[areaName].rowStart, rowIndex);
-          areaMap[areaName].colStart = Math.min(areaMap[areaName].colStart, colIndex);
-        }
-      }
-    }
-    return Object.keys(areaMap).length > 0 ? areaMap : null;
-  }
-  function getGridRowCount(areasString) {
-    if (!areasString) return 1;
-    const rowMatches = areasString.match(/"([^"]+)"/g);
-    return rowMatches ? rowMatches.length : 1;
-  }
-  function getGridColCount(areasString) {
-    if (!areasString) return 1;
-    const rowMatches = areasString.match(/"([^"]+)"/g);
-    if (!rowMatches || rowMatches.length === 0) return 1;
-    const firstRow = rowMatches[0].replace(/"/g, "").trim();
-    return firstRow.split(/\s+/).length;
   }
   async function createGridLayoutWithAreas(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles) {
     var _a;
