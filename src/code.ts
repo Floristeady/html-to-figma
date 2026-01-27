@@ -1140,7 +1140,25 @@ function detectDesignWidthFromHTML(htmlStr) {
     }
   }
 
-  // 5. No width detected
+  // 5. Check for inline width on root element (first div/section/article in body)
+  var inlineWidthMatch = htmlStr.match(/<(?:div|section|article|main|header|nav)[^>]*style=["'][^"']*width:\s*(\d+(?:\.\d+)?)(px)?[^"']*["'][^>]*>/i);
+  if (inlineWidthMatch) {
+    var inlineWidth = parseFloat(inlineWidthMatch[1]);
+    if (!isNaN(inlineWidth) && inlineWidth > 50 && inlineWidth < 3000) {
+      console.log('[WIDTH-UI] Detected from inline style width:', inlineWidth);
+      return inlineWidth;
+    }
+  }
+
+  // 6. Fallback: If HTML has content but no width detected, use reasonable default
+  // This prevents the 100px HUG issue
+  var hasContent = htmlStr.match(/<(?:div|section|article|p|h[1-6]|span)[^>]*>/i);
+  if (hasContent) {
+    console.log('[WIDTH-UI] No explicit width detected, using fallback 400px');
+    return 400; // Reasonable default for cards/components
+  }
+
+  // 7. No width detected and no meaningful content
   console.log('[WIDTH-UI] No explicit width detected');
   return null;
 }
