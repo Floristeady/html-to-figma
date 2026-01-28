@@ -1536,14 +1536,16 @@ These are existing bugs that should be addressed during the refactoring process:
 |-------|-------------|-----------------|----------|
 | ~~**Fixed 1440px design width**~~ | ~~All designs render at 1440px regardless of content or meta tags~~ | ~~`src/ui.html`, `src/code.ts`~~ | ✅ **FIXED** (commit 5032cec) - Wide layouts (8+ column grids) now use 1920px |
 | ~~**position: fixed**~~ | ~~Elements with `position: fixed` don't position correctly~~ | ~~`src/code.ts`~~ | ✅ **FIXED** (commit 5032cec) - Converts to relative, propagates `_shouldFillWidth` to children |
-| **Inline style priority** | Some inline styles don't override CSS rules properly | `src/ui.html` (extractCSS function) | Medium |
+| ~~**Inline style priority**~~ | ~~Some inline styles don't override CSS rules properly~~ | ~~`src/ui.html`~~ | ✅ **FIXED** (commit d3a34fb) - Proper CSS cascade with `!important` support |
 
-### Medium
+### Low Priority
 
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
 | **Grid decimal fractions** | `1.3fr 2.7fr` doesn't respect exact proportions | `src/utils/grid.ts` | Low |
 | **Complex calc() expressions** | `calc()` with mixed units fails | `src/utils/css-units.ts` | Low |
+| **transform: scale/translate** | Only rotate is implemented | `src/utils/effects.ts` | Low |
+| **filter/backdrop-filter/clip-path** | Advanced visual effects not supported | N/A | Low |
 
 ### Investigation Needed
 
@@ -1552,6 +1554,7 @@ These are existing bugs that should be addressed during the refactoring process:
 - [x] Verify sizing mode (HUG vs FILL vs FIXED) logic for root container - FIXED
 - [x] REM units not converted correctly - FIXED: Added root font-size detection from CSS, property name normalization, and font shorthand parsing
 - [x] Viewport units (vh/vw) - FIXED: VW uses detected design width, parseSize correctly handles vh/vw units
+- [x] Inline style priority - FIXED: Proper CSS cascade with !important support (commit d3a34fb)
 
 ---
 
@@ -1588,17 +1591,18 @@ These are existing bugs that should be addressed during the refactoring process:
 - ✅ **Viewport units fixed**: VW now uses detected design width from meta tags/CSS, VH uses 900px default
 - ✅ **CSS property normalization**: Property names in `parseInlineStyles()` are now normalized to lowercase for consistent matching
 - ✅ **Font shorthand parsing**: The `font` shorthand property is now parsed to extract `font-size` value
+- ✅ **CSS !important cascade**: Proper cascade order: CSS normal → inline normal → CSS !important → inline !important (commit d3a34fb)
 
 ### Next Steps (Resume Here)
 1. **Phase 1**: Extract types/IR to `src/types/`
    - Create `figma-ir.ts`, `css.ts`, `parsed-element.ts`
    - Define explicit interfaces for intermediate representation
 
-2. **Remaining issues to investigate**:
-   - Consider making fallback width configurable (currently hardcoded 400px)
-   - Inline style priority (Medium)
+2. **Remaining issues (Low priority)**:
    - Grid decimal fractions (Low)
    - Complex calc() expressions (Low)
+   - transform: scale/translate (Low)
+   - filter/backdrop-filter/clip-path (Low)
 
 ### Commands Reference
 ```bash

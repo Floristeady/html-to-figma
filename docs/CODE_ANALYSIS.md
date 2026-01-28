@@ -1,6 +1,6 @@
 # Análisis Completo del Código HTML-to-Figma
 
-**Fecha:** 2026-01-23 (Actualizado)
+**Fecha:** 2026-01-28 (Actualizado)
 **Archivo Principal:** `src/code.ts`
 
 ---
@@ -264,143 +264,82 @@ Aplica como `x`/`y` y configura constraints.
 
 ## 11. PROBLEMAS CRÍTICOS IDENTIFICADOS (2026-01-23)
 
-Estos problemas causan que diseños complejos no se vean como el original:
+**ACTUALIZACIÓN 2026-01-28:** La mayoría de estos problemas han sido resueltos.
 
-### 11.1 Unidades REM no se calculan correctamente ❌ CRÍTICO
-**Problema:** `font-size: 3.5rem` debería ser 56px (asumiendo base 16px), pero se renderiza muy pequeño.
-**Impacto:** Todos los títulos y textos con unidades `rem` se ven diminutos.
-**Solución:** Implementar conversión `rem → px` con base configurable (default 16px).
+### 11.1 Unidades REM ✅ RESUELTO (commit f535881)
+- Detecta `font-size` en `html` o `:root` para base dinámica
+- Soporta porcentajes (`62.5%` = 10px base)
+- `CSS_CONFIG.remBase` se actualiza dinámicamente
 
-### 11.2 Viewport Units (vh, vw) no soportadas ❌ CRÍTICO
-**Problema:** `height: 100vh` no tiene sentido en Figma estático.
-**Impacto:** Hero banners y secciones full-height colapsan.
-**Solución:** Convertir `100vh` a altura fija configurable (ej: 800px o 900px).
+### 11.2 Viewport Units (vh, vw) ✅ RESUELTO (commit f535881)
+- `vw` usa el ancho detectado del diseño
+- `vh` usa 900px por defecto (altura desktop razonable)
 
-### 11.3 linear-gradient() en backgrounds ❌ CRÍTICO
-**Problema:** `background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), #e5e5e5` no se parsea.
-**Impacto:** Hero banners y overlays pierden sus gradientes/colores.
-**Solución:** Parsear gradientes y crear fills de Figma con gradientPaint o al menos extraer el color fallback.
+### 11.3 linear-gradient() ✅ RESUELTO
+- Implementado en `src/utils/effects.ts` → `parseLinearGradient()`
+- Soporta gradientes con rgba() anidado
+- Extrae color fallback cuando hay gradiente + color
 
-### 11.4 Colores RGBA no se aplican a fondos ❌ ALTO
-**Problema:** `background: rgba(255,255,255,0.1)` no se convierte correctamente.
-**Impacto:** Fondos semi-transparentes se ven sólidos o desaparecen.
-**Solución:** Parsear rgba() y aplicar tanto color como opacity al fill.
+### 11.4 Colores RGBA ✅ RESUELTO
+- Implementado en `src/utils/colors.ts` → `hexToRgba()`
+- Parsea `rgba(r, g, b, a)` correctamente
+- Aplica alpha channel a fills
 
-### 11.5 Grid con fracciones decimales (1.3fr 2.7fr) ❌ ALTO
+### 11.5 Grid con fracciones decimales ❌ PENDIENTE (Low)
 **Problema:** `grid-template-columns: 1.3fr 2.7fr` no respeta proporciones exactas.
-**Impacto:** Layouts asimétricos se ven desbalanceados.
-**Solución:** Calcular porcentajes exactos: 1.3/(1.3+2.7) = 32.5%, 2.7/(1.3+2.7) = 67.5%.
+**Archivo:** `src/utils/grid.ts`
 
-### 11.6 position: fixed no se renderiza arriba ❌ MEDIO
-**Problema:** Headers con `position: fixed` no aparecen en su posición correcta.
-**Impacto:** Navegación fija desaparece o se posiciona mal.
-**Solución:** Detectar `position: fixed` con `top: 0` y posicionar al inicio del frame raíz.
+### 11.6 position: fixed ✅ RESUELTO (commit 5032cec)
+- Convierte a `position: relative`
+- Propaga `_shouldFillWidth` a hijos
+- Headers fijos se posicionan correctamente
 
-### 11.7 border-radius grandes (20px+) ❌ BAJO
-**Problema:** `border-radius: 20px` puede no aplicarse a todos los corners.
-**Impacto:** Cards y botones no tienen bordes redondeados uniformes.
-**Solución:** Verificar que cornerRadius se aplica correctamente en todos los casos.
+### 11.7 border-radius grandes ✅ RESUELTO
+- `cornerRadius` se aplica correctamente en todos los casos
 
-### 11.8 Colores en inline styles no tienen prioridad ❌ MEDIO
-**Problema:** `style="color: #666"` inline debería sobreescribir CSS de clase.
-**Impacto:** Textos con colores inline usan color incorrecto.
-**Solución:** Aplicar inline styles después de CSS de clases.
+### 11.8 Inline styles priority ✅ RESUELTO (commit d3a34fb)
+- Cascade CSS correcto: CSS normal → inline normal → CSS !important → inline !important
+- Strip de `!important` para parsing limpio
 
-### 11.9 Ancho del diseño fijo en 1440px ❌ ALTO
-**Problema:** Todos los diseños se renderizan a 1440px de ancho, pero algunos necesitan ser más pequeños (mobile: 375px, tablet: 768px) o más grandes (1920px, full-width).
-**Impacto:** Diseños mobile se ven estirados, diseños para pantallas grandes se ven comprimidos.
-
-**Estrategias posibles (en orden de prioridad):**
-
-#### Opción A: Detección automática desde CSS ⭐ RECOMENDADA
-1. Buscar `max-width` en contenedores principales (`.container`, `.wrapper`, `main`, `body`)
-2. Buscar `width` explícito en `html` o `body`
-3. Si encuentra valores como `375px`, `768px`, `1200px`, `1920px` → usar ese ancho
-4. Fallback a 1440px si no hay indicadores
-
-```typescript
-// Ejemplo de detección
-function detectDesignWidth(styles: Map<string, CSSStyles>): number {
-  const containerSelectors = ['.container', '.wrapper', 'main', 'body', 'html'];
-  for (const selector of containerSelectors) {
-    const style = styles.get(selector);
-    if (style?.maxWidth) return parseSize(style.maxWidth);
-    if (style?.width && !style.width.includes('%')) return parseSize(style.width);
-  }
-  return 1440; // default
-}
-```
-
-#### Opción B: Meta tag personalizado
-Permitir que el usuario especifique el ancho en el HTML:
-```html
-<meta name="figma-width" content="375">
-<!-- o -->
-<meta name="figma-viewport" content="mobile">
-```
-
-**Presets de viewport:**
-| Preset | Ancho |
-|--------|-------|
-| `mobile` | 375px |
-| `tablet` | 768px |
-| `desktop` | 1440px |
-| `large` | 1600px |
-| `wide` | 1920px |
-
-#### Opción C: Comentario HTML
-```html
-<!-- figma-width: 1920 -->
-```
-
-#### Opción D: Detección por media queries
-Analizar `@media` queries para inferir breakpoints objetivo:
-- Si hay `@media (max-width: 768px)` → probablemente es diseño desktop
-- Si hay `@media (min-width: 769px)` → probablemente es diseño mobile
-
-#### Opción E: Parámetro en MCP
-Pasar el ancho como parámetro al importar:
-```typescript
-mcp_html_to_design_import-html({ html, width: 375 })
-```
-
-**Recomendación:** Implementar Opción A (detección automática) + Opción B (meta tag) como override.
+### 11.9 Ancho del diseño ✅ RESUELTO (commit 5032cec)
+- Detección automática desde meta tags y CSS
+- Grids de 8+ columnas usan 1920px
+- Soporta `<meta name="figma-width" content="375">`
+- Soporta `<meta name="figma-viewport" content="mobile|tablet|desktop|large|wide">`
+- Soporta comentario HTML `<!-- figma-width: 1920 -->`
 
 ---
 
 ## 12. PRIORIZACIÓN DE FIXES
 
-### 🔴 CRÍTICOS (Bloquean uso en producción)
-| # | Problema | Esfuerzo | Impacto |
-|---|----------|----------|---------|
-| 1 | REM units | Medio | Alto - afecta todo el texto |
-| 2 | Viewport units (vh/vw) | Bajo | Alto - hero sections rotas |
-| 3 | linear-gradient() | Alto | Alto - fondos de secciones |
+### ✅ CRÍTICOS - TODOS RESUELTOS
+| # | Problema | Estado |
+|---|----------|--------|
+| 1 | REM units | ✅ RESUELTO (commit f535881) |
+| 2 | Viewport units (vh/vw) | ✅ RESUELTO (commit f535881) |
+| 3 | linear-gradient() | ✅ RESUELTO (effects.ts) |
 
-### 🟠 ALTOS (Degradan significativamente)
-| # | Problema | Esfuerzo | Impacto |
-|---|----------|----------|---------|
-| 4 | RGBA backgrounds | Medio | Medio - transparencias |
-| 5 | Grid fr decimales | Bajo | Medio - proporciones |
-| 9 | Ancho fijo 1440px | Medio | Alto - mobile/responsive |
+### ✅ ALTOS - TODOS RESUELTOS
+| # | Problema | Estado |
+|---|----------|--------|
+| 4 | RGBA backgrounds | ✅ RESUELTO (colors.ts) |
+| 5 | Ancho fijo 1440px | ✅ RESUELTO (commit 5032cec) |
+| 6 | position: fixed | ✅ RESUELTO (commit 5032cec) |
+| 7 | Inline style priority | ✅ RESUELTO (commit d3a34fb) |
 
-### 🟡 MEDIOS (Mejoran fidelidad)
+### 🟡 PENDIENTES (Low priority)
 | # | Problema | Esfuerzo | Impacto |
 |---|----------|----------|---------|
-| 6 | position: fixed | Medio | Medio - headers |
-| 8 | Inline style priority | Bajo | Bajo - casos específicos |
-
-### 🟢 BAJOS (Nice to have)
-| # | Problema | Esfuerzo | Impacto |
-|---|----------|----------|---------|
-| 7 | border-radius uniformes | Bajo | Bajo - estético |
+| 1 | Grid fr decimales | Bajo | Bajo - proporciones |
+| 2 | Complex calc() | Bajo | Bajo - casos edge |
+| 3 | transform: scale/translate | Bajo | Bajo - solo rotate funciona |
+| 4 | filter/backdrop-filter | Alto | Bajo - efectos avanzados |
 
 ---
 
-## 📊 ESTADO ACTUALIZADO: 50/62 (81% completo)
+## 📊 ESTADO ACTUALIZADO: 58/62 (94% completo)
 
-- ✅ Resueltos: 50
-- ❌ Críticos pendientes: 3
-- ⚠️ Altos pendientes: 3
-- 🔶 Medios pendientes: 2
+- ✅ Resueltos: 58
+- ❌ Críticos pendientes: 0
+- ⚠️ Altos pendientes: 0
 - 🔷 Bajos pendientes: 4
