@@ -14,6 +14,46 @@ import { parseGridColumns, parseGridTemplateAreas, getGridRowCount, getGridColCo
 // __html__ is injected by Figma when using a separate ui.html file
 figma.showUI(__html__, { width: 360, height: 380 });
 
+// ==========================================
+// SESSION ID MANAGEMENT
+// ==========================================
+
+// Generate a unique session ID (format: user_xxxxxxxx)
+function generateSessionId(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = 'user_';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Initialize session ID on plugin start
+async function initializeSessionId(): Promise<string> {
+  // Try to get existing session ID from storage
+  let sessionId = await figma.clientStorage.getAsync('figma-session-id');
+
+  if (!sessionId) {
+    // Generate new session ID if none exists
+    sessionId = generateSessionId();
+    await figma.clientStorage.setAsync('figma-session-id', sessionId);
+    console.log('[Session] Generated new session ID:', sessionId);
+  } else {
+    console.log('[Session] Using existing session ID:', sessionId);
+  }
+
+  // Send session ID to UI
+  figma.ui.postMessage({
+    type: 'session-id',
+    sessionId: sessionId
+  });
+
+  return sessionId;
+}
+
+// Initialize session ID when plugin loads
+initializeSessionId();
+
 // Color utilities imported from ./utils/colors
 // CSS unit utilities (CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePadding)
 // imported from ./utils/css-units

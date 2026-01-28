@@ -4,13 +4,22 @@
  */
 
 export const SERVER_CONFIG = {
-  // Server settings
-  PORT: parseInt(process.env.SSE_PORT || '3003'),
+  // Server settings (Render uses PORT env var)
+  PORT: parseInt(process.env.PORT || process.env.SSE_PORT || '3003'),
   HOST: process.env.SSE_HOST || 'localhost',
-  
+
+  // Environment
+  NODE_ENV: process.env.NODE_ENV || 'development',
+
+  // Authentication
+  API_KEY: process.env.API_KEY || 'dev-key',
+
+  // CORS - allowed origins (comma-separated in env, or * for all)
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || '*',
+
   // File paths
   SHARED_DATA_FILE: 'mcp-shared-data.json',
-  
+
   // Endpoints
   ENDPOINTS: {
     SSE_STREAM: '/mcp-stream',
@@ -18,7 +27,7 @@ export const SERVER_CONFIG = {
     HEALTH: '/mcp-status',
     TEST_BROADCAST: '/test-broadcast'
   },
-  
+
   // Timeouts and intervals
   TIMEOUTS: {
     HEARTBEAT: 30000         // 30 seconds - used by SSE server for keep-alive

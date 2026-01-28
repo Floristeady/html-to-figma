@@ -16,14 +16,26 @@ import { SERVER_CONFIG } from './config/server-config.js';
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Environment configuration
+const MCP_CONFIG = {
+  // Session ID from environment (required for multi-user routing)
+  SESSION_ID: process.env.FIGMA_SESSION_ID || null,
+  // Server URL (for production deployment)
+  SERVER_URL: process.env.FIGMA_SERVER_URL || `http://${SERVER_CONFIG.HOST}:${SERVER_CONFIG.PORT}`,
+  // API key for authentication
+  API_KEY: process.env.API_KEY || SERVER_CONFIG.API_KEY || 'dev-key'
+};
+
 console.error('[MCP-SERVER] Starting dedicated MCP server for Cursor...');
+console.error(`[MCP-SERVER] Session ID: ${MCP_CONFIG.SESSION_ID || 'NOT SET'}`);
+console.error(`[MCP-SERVER] Server URL: ${MCP_CONFIG.SERVER_URL}`);
 
 class FigmaMCPServer {
   constructor() {
     this.server = new Server(
       {
         name: 'figma-html-bridge',
-        version: '2.1.0-dedicated',
+        version: '3.0.0-multiuser',
       },
       {
         capabilities: {
@@ -35,6 +47,11 @@ class FigmaMCPServer {
     // Shared data file for communication with SSE server
     this.sharedDataPath = path.join(__dirname, SERVER_CONFIG.SHARED_DATA_FILE);
     this.setupToolHandlers();
+
+    // Warn if session ID is not configured
+    if (!MCP_CONFIG.SESSION_ID) {
+      console.error('[MCP-SERVER] ⚠️  WARNING: FIGMA_SESSION_ID not set. Get it from Figma plugin > MCP Config');
+    }
   }
 
   setupToolHandlers() {
@@ -106,6 +123,11 @@ class FigmaMCPServer {
         throw new Error('Invalid HTML content provided');
       }
 
+      // Validate session ID
+      if (!MCP_CONFIG.SESSION_ID) {
+        throw new Error('FIGMA_SESSION_ID not configured. Get it from Figma plugin > MCP Config button');
+      }
+
       // Prepare data for communication with SSE server
       const mcpData = {
         type: 'mcp-request',
@@ -114,6 +136,7 @@ class FigmaMCPServer {
           html: html,
           name: name
         },
+        sessionId: MCP_CONFIG.SESSION_ID,  // For multi-user routing
         requestId: `mcp-${Date.now()}`,
         timestamp: new Date().toISOString(),
         source: 'mcp-server-dedicated'
@@ -159,24 +182,37 @@ class FigmaMCPServer {
 
   async notifySSEServer(data) {
     try {
-      const http = await import('http');
-      
+      // Parse server URL to determine http vs https
+      const serverUrl = new URL(MCP_CONFIG.SERVER_URL);
+      const isHttps = serverUrl.protocol === 'https:';
+      const httpModule = isHttps ? await import('https') : await import('http');
+
       const postData = JSON.stringify(data);
       const options = {
-        hostname: SERVER_CONFIG.HOST,
-        port: SERVER_CONFIG.PORT,
+        hostname: serverUrl.hostname,
+        port: serverUrl.port || (isHttps ? 443 : 80),
         path: SERVER_CONFIG.ENDPOINTS.MCP_TRIGGER,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
+          'Content-Length': Buffer.byteLength(postData),
+          'Authorization': `Bearer ${MCP_CONFIG.API_KEY}`  // API key auth
         }
       };
 
+      console.error(`[MCP-SERVER] Sending to: ${serverUrl.hostname}:${options.port}${options.path}`);
+
       return new Promise((resolve, reject) => {
-        const req = http.request(options, (res) => {
-          console.error(`[MCP-SERVER] SSE notification response: ${res.statusCode}`);
-          resolve(res.statusCode);
+        const req = httpModule.request(options, (res) => {
+          let responseData = '';
+          res.on('data', chunk => responseData += chunk);
+          res.on('end', () => {
+            console.error(`[MCP-SERVER] SSE notification response: ${res.statusCode}`);
+            if (res.statusCode !== 200) {
+              console.error(`[MCP-SERVER] Response body: ${responseData}`);
+            }
+            resolve(res.statusCode);
+          });
         });
 
         req.on('error', (err) => {

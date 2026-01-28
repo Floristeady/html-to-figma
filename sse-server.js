@@ -20,14 +20,34 @@ console.log('[SSE-SERVER] Working directory:', __dirname);
 
 class FigmaSSEServer {
   constructor() {
-    this.sseConnections = new Set();
+    // Map of sessionId -> connection (for multi-user routing)
+    this.sseConnections = new Map();
     this.httpServer = null;
     this.sharedDataPath = path.join(__dirname, SERVER_CONFIG.SHARED_DATA_FILE);
     this.lastProcessedRequestId = null;
-    
+
+    console.log(`[SSE-SERVER] Environment: ${SERVER_CONFIG.NODE_ENV}`);
+    console.log(`[SSE-SERVER] API Key configured: ${SERVER_CONFIG.API_KEY ? 'Yes' : 'No'}`);
+
     // Watch for file changes
     this.setupFileWatcher();
     this.setupSSEServer();
+  }
+
+  // Verify API key for protected endpoints
+  verifyApiKey(req) {
+    // In development, allow requests without API key
+    if (SERVER_CONFIG.NODE_ENV === 'development' && SERVER_CONFIG.API_KEY === 'dev-key') {
+      return true;
+    }
+
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return false;
+    }
+
+    const providedKey = authHeader.substring(7); // Remove 'Bearer ' prefix
+    return providedKey === SERVER_CONFIG.API_KEY;
   }
 
   setupFileWatcher() {
@@ -100,13 +120,15 @@ class FigmaSSEServer {
       if (parsedUrl.pathname === SERVER_CONFIG.ENDPOINTS.HEALTH) {
         res.writeHead(200, {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': SERVER_CONFIG.ALLOWED_ORIGINS
         });
         res.end(JSON.stringify({
           status: 'running',
+          environment: SERVER_CONFIG.NODE_ENV,
           activeConnections: this.sseConnections.size,
+          activeSessions: this.getActiveSessions(),
           sseEndpoint: getSSEStreamURL(),
-          version: '2.1.0-dedicated',
+          version: '3.0.0-multiuser',
           timestamp: new Date().toISOString()
         }));
         return;
@@ -147,24 +169,36 @@ class FigmaSSEServer {
   }
 
   handleSSEConnection(req, res) {
-    console.log('[SSE-SERVER] New SSE connection');
+    // Extract sessionId from query params
+    const parsedUrl = url.parse(req.url, true);
+    const sessionId = parsedUrl.query.sessionId;
+
+    if (!sessionId) {
+      console.log('[SSE-SERVER] Connection rejected: No sessionId provided');
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'sessionId query parameter is required' }));
+      return;
+    }
+
+    console.log(`[SSE-SERVER] New SSE connection for session: ${sessionId}`);
 
     // Set SSE headers
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': SERVER_CONFIG.ALLOWED_ORIGINS,
       'Access-Control-Allow-Headers': 'Cache-Control'
     });
 
-    // Add to active connections
-    this.sseConnections.add(res);
+    // Store connection with sessionId
+    this.sseConnections.set(sessionId, res);
 
     // Send initial connection confirmation
     this.sendSSEMessage(res, {
       type: 'connection-established',
       message: 'SSE connection established',
+      sessionId: sessionId,
       activeConnections: this.sseConnections.size,
       timestamp: new Date().toISOString()
     });
@@ -181,13 +215,21 @@ class FigmaSSEServer {
 
     // Handle connection close
     req.on('close', () => {
-      console.log('[SSE-SERVER] SSE connection closed');
+      console.log(`[SSE-SERVER] SSE connection closed for session: ${sessionId}`);
       clearInterval(heartbeat);
-      this.sseConnections.delete(res);
+      this.sseConnections.delete(sessionId);
     });
   }
 
   handleMCPTrigger(req, res) {
+    // Verify API key for production
+    if (!this.verifyApiKey(req)) {
+      console.log('[SSE-SERVER] MCP trigger rejected: Invalid API key');
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid or missing API key' }));
+      return;
+    }
+
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
@@ -196,19 +238,50 @@ class FigmaSSEServer {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        console.log('[SSE-SERVER] MCP trigger received:', data.requestId);
-        
-        // Broadcast the MCP data to SSE clients
-        this.broadcastToSSEClients(data);
-        
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, broadcasted: this.sseConnections.size }));
+        const sessionId = data.sessionId;
+
+        console.log(`[SSE-SERVER] MCP trigger received for session: ${sessionId}, requestId: ${data.requestId}`);
+
+        if (!sessionId) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'sessionId is required in request body' }));
+          return;
+        }
+
+        // Send to specific session instead of broadcast
+        const success = this.sendToSession(sessionId, data);
+
+        if (success) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, sessionId: sessionId }));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'Session not found or not connected',
+            sessionId: sessionId,
+            activeConnections: this.sseConnections.size
+          }));
+        }
       } catch (error) {
         console.error('[SSE-SERVER] Error handling MCP trigger:', error);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: error.message }));
       }
     });
+  }
+
+  // Send message to specific session
+  sendToSession(sessionId, data) {
+    const connection = this.sseConnections.get(sessionId);
+
+    if (!connection) {
+      console.log(`[SSE-SERVER] Session not found: ${sessionId}`);
+      console.log(`[SSE-SERVER] Active sessions: ${Array.from(this.sseConnections.keys()).join(', ')}`);
+      return false;
+    }
+
+    console.log(`[SSE-SERVER] Sending to session: ${sessionId}`);
+    return this.sendSSEMessage(connection, data);
   }
 
   sendSSEMessage(res, data) {
@@ -231,9 +304,9 @@ class FigmaSSEServer {
     }
 
     console.log(`[SSE-SERVER] Broadcasting to ${this.sseConnections.size} connections`);
-    
+
     let successCount = 0;
-    for (const connection of this.sseConnections) {
+    for (const [sessionId, connection] of this.sseConnections) {
       if (this.sendSSEMessage(connection, data)) {
         successCount++;
       }
@@ -243,27 +316,33 @@ class FigmaSSEServer {
     return successCount > 0;
   }
 
+  // Get list of active session IDs
+  getActiveSessions() {
+    return Array.from(this.sseConnections.keys());
+  }
+
   async start() {
     console.log('[SSE-SERVER] SSE server started successfully');
   }
 
   shutdown() {
     console.log('[SSE-SERVER] Shutting down SSE server...');
-    
+
     // Close all SSE connections
-    for (const connection of this.sseConnections) {
+    for (const [sessionId, connection] of this.sseConnections) {
       try {
+        console.log(`[SSE-SERVER] Closing connection for session: ${sessionId}`);
         connection.end();
       } catch (error) {
         console.error('[SSE-SERVER] Error closing SSE connection:', error);
       }
     }
-    
+
     // Close HTTP server
     if (this.httpServer) {
       this.httpServer.close();
     }
-    
+
     // Stop file watcher
     if (fs.existsSync(this.sharedDataPath)) {
       fs.unwatchFile(this.sharedDataPath);
