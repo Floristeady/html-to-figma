@@ -192,10 +192,17 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
   }
   
   // Height - SIMPLIFICADO y corregido
+  // IMPORTANT: Also set layoutSizingVertical = 'FIXED' to prevent stretching in auto-layout
   if (styles.height) {
     const height = parseSize(styles.height);
     if (height && height > 0) {
       frame.resize(frame.width, height);
+      // Mark this frame to maintain fixed height in auto-layout
+      try {
+        frame.layoutSizingVertical = 'FIXED';
+      } catch (e) {
+        // Ignore if not in auto-layout context yet
+      }
     }
   }
   
@@ -630,95 +637,13 @@ async function createGridLayoutWithAreas(
   gap: number,
   inheritedStyles?: any
 ) {
-  // Debug log removed
-  // Debug log removed
-
-  // Map children to their grid areas
-  const childrenByArea: { [key: string]: any } = {};
-  for (const child of children) {
-    const gridArea = child.styles?.['grid-area'];
-    if (gridArea && areaMap[gridArea]) {
-      childrenByArea[gridArea] = child;
-      // Debug log removed
-    }
-  }
-
-  // Configure parent as native Figma Grid
-  try {
-    parentFrame.layoutMode = 'GRID';
-    parentFrame.gridColumnCount = numCols;
-    parentFrame.gridRowCount = numRows;
-    parentFrame.gridColumnGap = gap;
-    parentFrame.gridRowGap = gap;
-
-    // Set all columns to FLEX (equal width)
-    for (let i = 0; i < parentFrame.gridColumnSizes.length; i++) {
-      parentFrame.gridColumnSizes[i].type = 'FLEX';
-    }
-
-    // Set all rows to FLEX
-    for (let i = 0; i < parentFrame.gridRowSizes.length; i++) {
-      parentFrame.gridRowSizes[i].type = 'FLEX';
-    }
-
-    // Debug log removed
-  } catch (error) {
-    console.error('[GRID-AREAS] Error configuring native grid, using fallback:', error);
-    await createGridLayoutWithAreasFallback(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles);
-    return;
-  }
-
-  // Process each unique area and place children
-  const processedAreas = new Set<string>();
-
-  for (const [areaName, bounds] of Object.entries(areaMap)) {
-    if (processedAreas.has(areaName)) continue;
-    processedAreas.add(areaName);
-
-    const child = childrenByArea[areaName];
-    const colSpan = bounds.colEnd - bounds.colStart;
-    const rowSpan = bounds.rowEnd - bounds.rowStart;
-
-    // Create wrapper for the grid item
-    const wrapper = figma.createFrame();
-    wrapper.name = child ? `Grid Area: ${areaName}` : `${areaName} (empty)`;
-    wrapper.fills = [];
-    wrapper.layoutMode = 'VERTICAL';
-    wrapper.primaryAxisSizingMode = 'AUTO';
-    wrapper.counterAxisSizingMode = 'AUTO';
-
-    // Append to parent first
-    parentFrame.appendChild(wrapper);
-
-    // Set grid position and span
-    try {
-      wrapper.gridColumnAnchorIndex = bounds.colStart;
-      wrapper.gridRowAnchorIndex = bounds.rowStart;
-      wrapper.gridColumnSpan = colSpan;
-      wrapper.gridRowSpan = rowSpan;
-      wrapper.layoutSizingHorizontal = 'FILL';
-      wrapper.layoutSizingVertical = 'FILL';
-
-      // Debug log removed
-    } catch (error) {
-      console.error(`[GRID-AREAS] Error positioning area "${areaName}":`, error);
-    }
-
-    // Render child content if exists
-    if (child) {
-      const gridInheritedStyles = {
-        ...inheritedStyles,
-        '_hasConstrainedWidth': true,
-        '_isGridChild': true
-      };
-      await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
-    }
-  }
-
-  // Debug log removed
+  // Native Figma Grid API (layoutMode = 'GRID', gridColumnAnchorIndex, etc.) is not available
+  // in the Figma Plugin API. Always use the row-based fallback approach.
+  await createGridLayoutWithAreasFallback(children, parentFrame, areaMap, numRows, numCols, gap, inheritedStyles);
 }
 
-// Fallback for createGridLayoutWithAreas using horizontal rows
+// Fallback for createGridLayoutWithAreas using column-based approach
+// This creates vertical columns and stacks items within each column region
 async function createGridLayoutWithAreasFallback(
   children: any[],
   parentFrame: FrameNode,
@@ -728,10 +653,10 @@ async function createGridLayoutWithAreasFallback(
   gap: number,
   inheritedStyles?: any
 ) {
-  // Debug log removed
-
-  parentFrame.layoutMode = 'VERTICAL';
-  parentFrame.itemSpacing = gap;
+  // Calculate column width based on parent width
+  const parentWidth = parentFrame.width || 1200;
+  const totalGaps = (numCols - 1) * gap;
+  const columnWidth = Math.floor((parentWidth - totalGaps) / numCols);
 
   // Map children to their grid areas
   const childrenByArea: { [key: string]: any } = {};
@@ -742,110 +667,143 @@ async function createGridLayoutWithAreasFallback(
     }
   }
 
-  // Create row frames
-  const rowFrames: FrameNode[] = [];
-  for (let r = 0; r < numRows; r++) {
-    const rowFrame = figma.createFrame();
-    rowFrame.name = `Grid Row ${r + 1}`;
-    rowFrame.fills = [];
-    rowFrame.layoutMode = 'HORIZONTAL';
-    rowFrame.primaryAxisSizingMode = 'AUTO';
-    rowFrame.counterAxisSizingMode = 'AUTO';
-    rowFrame.itemSpacing = gap;
-    parentFrame.appendChild(rowFrame);
-    try {
-      rowFrame.layoutSizingHorizontal = 'FILL';
-    } catch (e) {}
-    rowFrames.push(rowFrame);
-  }
+  // Step 1: Group rows by their column structure
+  // Find rows where column boundaries align to create "sections"
+  const rowGroups: number[][] = [];
+  let currentGroup: number[] = [0];
 
-  // Process each unique area
+  for (let r = 1; r < numRows; r++) {
+    // Check if this row has the same column boundaries as the previous row
+    const prevRowCols = getColumnBoundaries(r - 1, areaMap, numCols);
+    const currRowCols = getColumnBoundaries(r, areaMap, numCols);
+
+    if (arraysEqual(prevRowCols, currRowCols)) {
+      currentGroup.push(r);
+    } else {
+      rowGroups.push(currentGroup);
+      currentGroup = [r];
+    }
+  }
+  rowGroups.push(currentGroup);
+
+  // Configure parent as vertical layout (sections stack vertically)
+  parentFrame.layoutMode = 'VERTICAL';
+  parentFrame.itemSpacing = gap;
+  parentFrame.counterAxisSizingMode = 'FIXED';
+  parentFrame.primaryAxisSizingMode = 'AUTO';
+
   const processedAreas = new Set<string>();
 
-  for (let r = 0; r < numRows; r++) {
-    for (let c = 0; c < numCols; c++) {
-      // Find which area this cell belongs to
-      let cellArea: string | null = null;
-      for (const [areaName, bounds] of Object.entries(areaMap)) {
-        if (r >= bounds.rowStart && r < bounds.rowEnd && c >= bounds.colStart && c < bounds.colEnd) {
-          cellArea = areaName;
-          break;
+  // Step 2: Process each row group
+  for (const rowGroup of rowGroups) {
+    const firstRow = rowGroup[0];
+    const colBoundaries = getColumnBoundaries(firstRow, areaMap, numCols);
+
+    // Create a horizontal section frame for this row group
+    const sectionFrame = figma.createFrame();
+    sectionFrame.name = `Section (rows ${rowGroup[0] + 1}-${rowGroup[rowGroup.length - 1] + 1})`;
+    sectionFrame.fills = [];
+    sectionFrame.layoutMode = 'HORIZONTAL';
+    sectionFrame.primaryAxisSizingMode = 'FIXED';
+    sectionFrame.counterAxisSizingMode = 'AUTO';
+    sectionFrame.itemSpacing = gap;
+    sectionFrame.resize(parentWidth, 100);
+    parentFrame.appendChild(sectionFrame);
+    try {
+      sectionFrame.layoutSizingHorizontal = 'FILL';
+    } catch (e) {}
+
+    // Step 3: Create vertical columns within this section
+    for (let i = 0; i < colBoundaries.length - 1; i++) {
+      const colStart = colBoundaries[i];
+      const colEnd = colBoundaries[i + 1];
+      const colSpan = colEnd - colStart;
+      const colWidth = columnWidth * colSpan + gap * (colSpan - 1);
+
+      // Create vertical column frame
+      const colFrame = figma.createFrame();
+      colFrame.name = `Column ${colStart + 1}-${colEnd}`;
+      colFrame.fills = [];
+      colFrame.layoutMode = 'VERTICAL';
+      colFrame.primaryAxisSizingMode = 'AUTO';
+      colFrame.counterAxisSizingMode = 'FIXED';
+      colFrame.itemSpacing = gap;
+      colFrame.resize(colWidth, 100);
+      sectionFrame.appendChild(colFrame);
+      try {
+        colFrame.layoutGrow = colSpan;
+        colFrame.layoutSizingHorizontal = 'FILL';
+      } catch (e) {}
+
+      // Find areas that belong to this column in this row group
+      const areasInColumn: string[] = [];
+      for (const row of rowGroup) {
+        for (const [areaName, bounds] of Object.entries(areaMap)) {
+          if (bounds.colStart === colStart && bounds.colEnd === colEnd &&
+              row >= bounds.rowStart && row < bounds.rowEnd &&
+              !areasInColumn.includes(areaName)) {
+            areasInColumn.push(areaName);
+          }
         }
       }
 
-      if (!cellArea) {
-        // Empty cell
-        const placeholder = figma.createFrame();
-        placeholder.name = `Empty`;
-        placeholder.fills = [];
-        placeholder.resize(10, 10);
-        rowFrames[r].appendChild(placeholder);
-        try {
-          placeholder.layoutGrow = 1;
-          placeholder.layoutSizingHorizontal = 'FILL';
-        } catch (e) {}
-        continue;
-      }
+      // Sort areas by their row start position
+      areasInColumn.sort((a, b) => areaMap[a].rowStart - areaMap[b].rowStart);
 
-      const bounds = areaMap[cellArea];
-      const isFirstCellOfArea = (r === bounds.rowStart && c === bounds.colStart);
+      // Render each area in this column
+      for (const areaName of areasInColumn) {
+        if (processedAreas.has(areaName)) continue;
+        processedAreas.add(areaName);
 
-      if (isFirstCellOfArea && !processedAreas.has(cellArea)) {
-        processedAreas.add(cellArea);
-        const child = childrenByArea[cellArea];
-        const colSpan = bounds.colEnd - bounds.colStart;
+        const child = childrenByArea[areaName];
 
         const wrapper = figma.createFrame();
-        wrapper.name = cellArea;
+        wrapper.name = areaName;
         wrapper.fills = [];
         wrapper.layoutMode = 'VERTICAL';
         wrapper.primaryAxisSizingMode = 'AUTO';
         wrapper.counterAxisSizingMode = 'AUTO';
-        rowFrames[r].appendChild(wrapper);
+        colFrame.appendChild(wrapper);
 
         try {
-          wrapper.layoutGrow = colSpan;
           wrapper.layoutSizingHorizontal = 'FILL';
         } catch (e) {}
 
         if (child) {
           await createFigmaNodesFromStructure([child], wrapper, 0, 0, {
             ...inheritedStyles,
-            '_hasConstrainedWidth': true
+            '_hasConstrainedWidth': true,
+            '_gridItemWidth': colWidth
           });
-        }
-
-        // Placeholders for remaining columns
-        for (let cc = 1; cc < colSpan; cc++) {
-          const placeholder = figma.createFrame();
-          placeholder.name = `span`;
-          placeholder.fills = [];
-          placeholder.resize(1, 1);
-          placeholder.visible = false;
-          rowFrames[r].appendChild(placeholder);
-          try {
-            placeholder.layoutGrow = 1;
-            placeholder.layoutSizingHorizontal = 'FILL';
-          } catch (e) {}
-        }
-      } else if (!isFirstCellOfArea && r > bounds.rowStart && c === bounds.colStart) {
-        // Subsequent row placeholders
-        const colSpan = bounds.colEnd - bounds.colStart;
-        for (let cc = 0; cc < colSpan; cc++) {
-          const placeholder = figma.createFrame();
-          placeholder.name = `row-span`;
-          placeholder.fills = [];
-          placeholder.resize(1, 1);
-          placeholder.visible = false;
-          rowFrames[r].appendChild(placeholder);
-          try {
-            placeholder.layoutGrow = 1;
-            placeholder.layoutSizingHorizontal = 'FILL';
-          } catch (e) {}
         }
       }
     }
   }
+}
+
+// Helper: Get column boundaries for a specific row based on area definitions
+function getColumnBoundaries(row: number, areaMap: { [key: string]: { rowStart: number, rowEnd: number, colStart: number, colEnd: number } }, numCols: number): number[] {
+  const boundaries = new Set<number>();
+  boundaries.add(0);
+  boundaries.add(numCols);
+
+  for (const [_, bounds] of Object.entries(areaMap)) {
+    if (row >= bounds.rowStart && row < bounds.rowEnd) {
+      boundaries.add(bounds.colStart);
+      boundaries.add(bounds.colEnd);
+    }
+  }
+
+  return Array.from(boundaries).sort((a, b) => a - b);
+}
+
+// Helper: Check if two arrays are equal
+function arraysEqual(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 // Parse grid-column span value (e.g., "span 2" -> 2)
@@ -1280,6 +1238,18 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       if (node.styles?.position === 'sticky' || node.styles?.position === 'fixed') {
         node.styles._originalPosition = originalPosition;
         node.styles.position = 'relative';
+        // Fixed elements with width: 100% should fill the container
+        if (node.styles?.width === '100%') {
+          node.styles._shouldFillWidth = true;
+        }
+        // Mark children of fixed headers to also fill width
+        if (node.children) {
+          for (const child of node.children) {
+            if (child.styles) {
+              child.styles._shouldFillWidth = true;
+            }
+          }
+        }
       }
 
       // SIDEBAR PATTERN: If element has margin-left and sibling has fixed position,
@@ -1453,7 +1423,10 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           parentFrame.appendChild(frame);
 
           // CRITICAL: Set FILL vertical AFTER appendChild (requires auto-layout parent)
-          if (inheritedStyles?.['_shouldFillVertical'] && parentFrame.layoutMode !== 'NONE') {
+          // BUT: Never apply FILL to elements with explicit height - they should stay FIXED
+          const nodeHeight = node.styles?.height;
+          const hasExplicitNodeHeight = nodeHeight && parseSize(nodeHeight) !== null;
+          if (inheritedStyles?.['_shouldFillVertical'] && parentFrame.layoutMode !== 'NONE' && !hasExplicitNodeHeight) {
             try {
               frame.layoutSizingVertical = 'FILL';
             } catch (e) {
@@ -1464,39 +1437,58 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 
         // FIXED: Handle position: absolute/relative with top/left/right/bottom
         if (node.styles?.position === 'absolute' && parentFrame) {
-          try {
-            // In Figma, use absolute positioning within auto-layout
-            frame.layoutPositioning = 'ABSOLUTE';
+          // Check if this is a centering pattern (left: 50% + transform: translateX(-50%))
+          // For navs and similar elements, skip absolute and use flex alignment instead
+          const leftPercentage = parsePercentage(node.styles?.left);
+          const isCenteringPattern = leftPercentage === 50;
+          const isNavOrMenu = node.tagName === 'nav' ||
+                              (node.styles?.class || '').includes('nav') ||
+                              (node.styles?.class || '').includes('menu');
 
-            // Apply top/left/right/bottom as constraints
-            const top = parseSize(node.styles?.top);
-            const left = parseSize(node.styles?.left);
-            const right = parseSize(node.styles?.right);
-            const bottom = parseSize(node.styles?.bottom);
+          if (isCenteringPattern && isNavOrMenu) {
+            // Don't use absolute positioning for centered navs - let them be flex children
+            try {
+              frame.layoutPositioning = 'AUTO';
+            } catch (e) {}
+          } else {
+            try {
+              // In Figma, use absolute positioning within auto-layout
+              frame.layoutPositioning = 'ABSOLUTE';
 
-            // Set position based on top/left
-            if (top !== null) frame.y = top;
-            if (left !== null) frame.x = left;
+              // Apply top/left/right/bottom as constraints
+              const top = parseSize(node.styles?.top);
+              const right = parseSize(node.styles?.right);
+              const bottom = parseSize(node.styles?.bottom);
 
-            // Set constraints based on which values are defined
-            if (top !== null && bottom !== null) {
-              frame.constraints = { vertical: 'STRETCH', horizontal: frame.constraints?.horizontal || 'MIN' };
-            } else if (bottom !== null) {
-              frame.constraints = { vertical: 'MAX', horizontal: frame.constraints?.horizontal || 'MIN' };
-            } else if (top !== null) {
-              frame.constraints = { vertical: 'MIN', horizontal: frame.constraints?.horizontal || 'MIN' };
+              // Handle left - can be pixels or percentage
+              let left = parseSize(node.styles?.left);
+
+              // Handle percentage left
+              if (left === null && leftPercentage !== null && parentFrame.width) {
+                left = (leftPercentage / 100) * parentFrame.width;
+              }
+
+              // Set position based on top/left
+              if (top !== null) frame.y = top;
+              if (left !== null) frame.x = left;
+
+              // Set constraints based on which values are defined
+              if (top !== null && bottom !== null) {
+                frame.constraints = { vertical: 'STRETCH', horizontal: frame.constraints?.horizontal || 'MIN' };
+              } else if (bottom !== null) {
+                frame.constraints = { vertical: 'MAX', horizontal: frame.constraints?.horizontal || 'MIN' };
+              } else if (top !== null) {
+                frame.constraints = { vertical: 'MIN', horizontal: frame.constraints?.horizontal || 'MIN' };
+              }
+
+              if (left !== null && right !== null) {
+                frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'STRETCH' };
+              } else if (right !== null) {
+                frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'MAX' };
+              }
+            } catch (error) {
+              // Silently handle absolute positioning errors
             }
-
-            if (left !== null && right !== null) {
-              frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'STRETCH' };
-            } else if (right !== null) {
-              frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'MAX' };
-            } else if (left !== null) {
-              frame.constraints = { vertical: frame.constraints?.vertical || 'MIN', horizontal: 'MIN' };
-            }
-          } catch (error) {
-            // Fallback: just position with x/y if absolute positioning fails
-            console.error('Absolute positioning error:', error);
           }
         }
 
@@ -1506,6 +1498,13 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         const hasExplicitPixelWidth = widthValue && parseSize(widthValue) !== null;
         const hasPercentageWidth = widthValue && parsePercentage(widthValue) !== null;
         const hasExplicitDimensions = hasExplicitPixelWidth || heightValue;
+
+        // Handle elements that should fill width (e.g., fixed headers converted to relative)
+        if (node.styles?._shouldFillWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
+          try {
+            frame.layoutSizingHorizontal = 'FILL';
+          } catch (e) {}
+        }
 
         // FIXED: Handle percentage widths
         if (hasPercentageWidth && parentFrame) {
@@ -1527,6 +1526,13 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
               frame.resize(calculatedWidth, frame.height);
               frame.layoutSizingHorizontal = 'FIXED';
             }
+          }
+          // IMPORTANT: Also handle explicit height for elements with percentage width
+          const parsedHeight = parseSize(heightValue);
+          if (heightValue && parsedHeight !== null) {
+            try {
+              frame.layoutSizingVertical = 'FIXED';
+            } catch (e) {}
           }
         } else if (!hasExplicitDimensions && needsFullWidth && parentFrame && parentFrame.layoutMode !== 'NONE') {
           try {
@@ -1573,19 +1579,29 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             frame.layoutSizingVertical = 'HUG';
           }
         } else if (hasExplicitDimensions) {
-  
+          // Elements with explicit dimensions should use FIXED sizing to prevent stretching
+          try {
+            if (heightValue && parseSize(heightValue) !== null) {
+              frame.layoutSizingVertical = 'FIXED';
+            }
+            if (hasExplicitPixelWidth) {
+              frame.layoutSizingHorizontal = 'FIXED';
+            }
+          } catch (e) {
+            // Ignore if sizing modes not supported
+          }
         }
-        
+
         // Handle flex child height separately for ALL elements (including those with explicit width like sidebar)
-        if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !node.styles?.height) {
+        // IMPORTANT: Skip FILL for absolute positioned elements - they cannot have FILL sizing in auto-layout
+        // IMPORTANT: Skip FILL for elements with explicit height - they should maintain their fixed size
+        const isAbsolutePositioned = node.styles?.position === 'absolute' || node.styles?.position === 'fixed';
+        const hasExplicitHeight = heightValue && parseSize(heightValue) !== null;
+        if (parentFrame && parentFrame.layoutMode === 'HORIZONTAL' && !hasExplicitHeight && !isAbsolutePositioned) {
           try {
             frame.layoutSizingVertical = 'FILL';
-
-            // Debug height filling for sidebar
-            if (node.styles?.className === 'sidebar') {
-            }
           } catch (error) {
-            console.error('Height fill error for', node.styles?.className || 'element', error);
+            // Silently ignore - some elements may not support FILL
           }
         }
 
@@ -2929,12 +2945,47 @@ figma.ui.onmessage = async (msg) => {
     mainContainer.layoutMode = 'VERTICAL';
     mainContainer.primaryAxisSizingMode = 'AUTO';
 
+    // Helper to detect if layout needs wider width (e.g., 12-column grids)
+    const detectWideLayout = (structure: any[]): boolean => {
+      const checkNode = (node: any): boolean => {
+        if (!node) return false;
+        // Check for grid-template-columns with many columns (8+)
+        const gridCols = node.styles?.['grid-template-columns'];
+        if (gridCols) {
+          const repeatMatch = gridCols.match(/repeat\((\d+)/);
+          if (repeatMatch && parseInt(repeatMatch[1]) >= 8) return true;
+          // Count explicit columns
+          const colCount = gridCols.split(/\s+/).filter((c: string) => c && c !== '').length;
+          if (colCount >= 8) return true;
+        }
+        // Check children recursively
+        if (node.children) {
+          for (const child of node.children) {
+            if (checkNode(child)) return true;
+          }
+        }
+        return false;
+      };
+      for (const node of structure) {
+        if (checkNode(node)) return true;
+      }
+      return false;
+    };
+
+    const needsWideLayout = detectWideLayout(msg.structure);
+
     // Determine container width priority:
-    // 1. Meta tag / CSS detection (most reliable - explicit user intent)
-    // 2. Structure-based detection (sidebar patterns, explicit widths)
-    // 3. Full page layout default
-    // 4. Auto (null)
-    const containerWidth = detectedDesignWidth || structureWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
+    // 1. Wide layout (12-column grids) needs at least 1920px
+    // 2. Meta tag / CSS detection
+    // 3. Structure-based detection (sidebar patterns, explicit widths)
+    // 4. Full page layout default
+    // 5. Auto (null)
+    let containerWidth = detectedDesignWidth || structureWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
+
+    // Wide layouts need more space - override if detected width is too small
+    if (needsWideLayout && (containerWidth === null || containerWidth < 1920)) {
+      containerWidth = 1920;
+    }
 
     if (containerWidth) {
       mainContainer.counterAxisSizingMode = 'FIXED';

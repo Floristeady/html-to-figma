@@ -1155,6 +1155,30 @@ function detectDesignWidthFromHTML(htmlStr) {
     // 6a. For full pages, analyze layout structure
     var cssRules = extractCSS(htmlStr);
 
+    // 6b. Check for wide layouts (12-column grids need more space)
+    var wideLayoutNeeded = false;
+    for (var selector in cssRules) {
+      var rule = cssRules[selector];
+      if (rule && rule['grid-template-columns']) {
+        var gridCols = rule['grid-template-columns'];
+        var repeatMatch = gridCols.match(/repeat\((\d+)/);
+        if (repeatMatch && parseInt(repeatMatch[1]) >= 8) {
+          wideLayoutNeeded = true;
+          break;
+        }
+      }
+      if (rule && rule['grid-template-areas']) {
+        // grid-template-areas usually indicates complex layout
+        wideLayoutNeeded = true;
+        break;
+      }
+    }
+
+    if (wideLayoutNeeded) {
+      console.log('[WIDTH-UI] Wide layout detected (8+ column grid), using 1920px');
+      return 1920;
+    }
+
     // Check for sidebar + main layout pattern
     var sidebarWidth = 0;
     var mainMarginLeft = 0;
