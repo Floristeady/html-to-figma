@@ -2,183 +2,211 @@
 
 ## Quick Start (5 minutes)
 
-### Step 1: Install Dependencies
+This guide helps you set up the HTML-to-Figma plugin to convert HTML from Claude Code, Cursor, or Claude Desktop directly into Figma designs.
 
-```bash
-cd html-to-figma
-npm install
-npm run build
-```
+---
 
-### Step 2: Install the Figma Plugin
+## Step 1: Install the Figma Plugin
 
 1. Open Figma Desktop
 2. Go to **Menu > Plugins > Development > Import plugin from manifest...**
 3. Select the `manifest.json` file from this project folder
 4. Done! The plugin is now available in Figma
 
-### Step 3: Start the Servers
+---
+
+## Step 2: Start the SSE Server
 
 Open a terminal in the project folder and run:
 
 ```bash
-node start-servers.js
+node sse-server.js
 ```
 
 Keep this terminal open. You should see:
 ```
-🚀 Starting Figma HTML-to-Design Plugin Servers...
-📡 [SSE] Server running on http://localhost:3003
-🔧 [MCP] MCP Server started
+[SSE-SERVER] Starting dedicated SSE server for Figma plugin...
+[SSE-SERVER] Environment: development
+[SSE-SERVER] Server listening on port 3003
 ```
-
-> **Tip:** You can also start servers individually:
-> - `node start-servers.js sse` - Only SSE server
-> - `node start-servers.js mcp` - Only MCP server
-
-### Step 4: Configure your AI Client
-
-Choose one:
 
 ---
 
-## Cursor Configuration
+## Step 3: Get Your Session ID
 
-1. Open Cursor
-2. Go to **Settings** (Cmd+, or Ctrl+,)
-3. Search for "MCP" or go to **Features > MCP Servers**
-4. Click **Edit in settings.json**
-5. Add this configuration:
+1. Open the HTML to Figma plugin in Figma
+2. Go to the **MCP Bridge** tab
+3. Enable the **MCP Bridge** switch
+4. Click **"MCP Config"** button
+5. Copy your unique Session ID (e.g., `user_abc12345`)
+
+---
+
+## Step 4: Configure Your AI Client
+
+### Claude Code (CLI) - RECOMMENDED
+
+Run this command in your terminal:
+
+```bash
+claude mcp add figma-html-bridge -s local \
+  -e FIGMA_SERVER_URL=http://localhost:3003 \
+  -e FIGMA_SESSION_ID=YOUR_SESSION_ID \
+  -e API_KEY=dev-key \
+  -- node /FULL/PATH/TO/html-to-figma/mcp-server.js
+```
+
+**Replace:**
+- `YOUR_SESSION_ID` with your session ID from the plugin
+- `/FULL/PATH/TO/html-to-figma` with the actual path to the project
+
+**Then restart Claude Code** (`/exit` and reopen).
+
+**To verify it worked:**
+```bash
+claude mcp get figma-html-bridge
+```
+
+Should show:
+```
+figma-html-bridge:
+  Status: ✓ Connected
+  Environment:
+    FIGMA_SERVER_URL=http://localhost:3003
+    FIGMA_SESSION_ID=user_xxxxx
+    API_KEY=dev-key
+```
+
+---
+
+### Cursor
+
+Add to `~/.cursor/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "html-to-figma": {
-      "command": "node",
-      "args": ["/FULL/PATH/TO/html-to-figma/mcp-server.js"]
+      "command": "npx",
+      "args": ["-y", "github:Floristeady/html-to-figma"],
+      "env": {
+        "FIGMA_SERVER_URL": "http://localhost:3003",
+        "FIGMA_SESSION_ID": "YOUR_SESSION_ID",
+        "API_KEY": "dev-key"
+      }
     }
   }
 }
 ```
 
-> **Important:** Replace `/FULL/PATH/TO/` with the actual path to this project folder.
->
-> Example macOS: `/Users/yourname/Sites/html-to-figma/mcp-server.js`
->
-> Example Windows: `C:\\Users\\yourname\\Projects\\html-to-figma\\mcp-server.js`
-
-6. Restart Cursor
+**Then restart Cursor.**
 
 ---
 
-## Claude Code Configuration
+### Claude Desktop
 
-Claude Code automatically detects MCP servers. You have two options:
-
-### Option A: Project-specific (recommended)
-
-Create a `.mcp.json` file in your project root:
+Add to your config file:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "html-to-figma": {
-      "command": "node",
-      "args": ["/FULL/PATH/TO/html-to-figma/mcp-server.js"]
+      "command": "npx",
+      "args": ["-y", "github:Floristeady/html-to-figma"],
+      "env": {
+        "FIGMA_SERVER_URL": "http://localhost:3003",
+        "FIGMA_SESSION_ID": "YOUR_SESSION_ID",
+        "API_KEY": "dev-key"
+      }
     }
   }
 }
 ```
 
-### Option B: Global configuration
-
-Add to your Claude Code settings (`~/.claude/settings.json`):
-
-```json
-{
-  "mcpServers": {
-    "html-to-figma": {
-      "command": "node",
-      "args": ["/FULL/PATH/TO/html-to-figma/mcp-server.js"]
-    }
-  }
-}
-```
-
-> **Important:** Replace `/FULL/PATH/TO/` with the actual path to this project folder.
+**Then restart Claude Desktop.**
 
 ---
 
-## Step 5: Verify the Connection
+## Step 5: Test the Connection
 
-1. **In Figma:**
-   - Open the HTML to Figma plugin
-   - Go to the **MCP Bridge** tab
-   - Enable the **MCP Bridge** switch
-   - You should see: `SSE Connected` (green indicator)
+1. Make sure the Figma plugin shows **"SSE Connected"** (green indicator)
+2. In your AI client, ask:
+   > "Send this HTML to Figma: `<div style='background:blue;width:100px;height:100px'></div>`"
+3. A blue square should appear in your Figma canvas
 
-2. **In Cursor or Claude Code:**
-   - Type: "Convert this HTML to Figma: `<div style="background: blue; padding: 20px;">Hello</div>`"
-   - The element should appear in your Figma canvas
+---
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `FIGMA_SERVER_URL` | URL of the SSE server | `http://localhost:3003` |
+| `FIGMA_SESSION_ID` | Your unique session ID from the plugin | Required |
+| `API_KEY` | Authentication key | `dev-key` |
 
 ---
 
 ## Troubleshooting
 
-### Servers not starting
+### "FIGMA_SESSION_ID not configured"
+- You didn't include the Session ID in your MCP config
+- Copy your Session ID from the plugin's "MCP Config" panel
+- For Claude Code, make sure you used the `-e FIGMA_SESSION_ID=xxx` flag
 
-```bash
-# Check if port 3003 is in use
-lsof -i :3003
+### "Session not found"
+- The Figma plugin is not connected
+- Make sure the plugin shows "SSE Connected"
+- Check that the Session ID matches exactly (case-sensitive)
 
-# Kill existing processes
-pkill -f "sse-server\|mcp-server"
+### MCP tool not appearing
+- Restart your AI client after configuration
+- For Claude Code: run `claude mcp list` to verify it's installed
 
-# Restart
-node start-servers.js
-```
+### Connection keeps disconnecting
+- Keep the SSE server running (`node sse-server.js`)
+- If it disconnects, the plugin will auto-reconnect
 
-### SSE Server not connecting
-
-- Make sure servers are running (`node start-servers.js`)
-- Check the terminal for errors
-- Verify port 3003 is not in use
-
-### MCP tool not available in Cursor/Claude
-
-- Restart your AI client after adding the configuration
-- Verify the path to `mcp-server.js` is correct and absolute
-- Check that Node.js is installed and available in PATH
-
-### Plugin not receiving HTML
-
-- Make sure the MCP Bridge switch is ON in the plugin
-- Check the browser console for errors (Right-click plugin > Inspect)
-- Verify both servers are running
+### "Cannot find module" error
+- Make sure Node.js is installed
+- Make sure you're using the correct path to mcp-server.js
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-│  Cursor/Claude   │      │    MCP Server    │      │   SSE Server     │
-│                  │      │                  │      │   (port 3003)    │
-│ "Convert HTML"   │─────▶│ Receives command │─────▶│ Broadcasts to    │
-│                  │ stdio│                  │ HTTP │ Figma plugin     │
-└──────────────────┘      └──────────────────┘      └──────────────────┘
-                          (mcp-server.js)           (sse-server.js)
-                                                           │
-                                                           │ SSE
-                                                           ▼
-                                                    ┌──────────────┐
-                                                    │ Figma Plugin │
-                                                    │              │
-                                                    │ Creates      │
-                                                    │ design nodes │
-                                                    └──────────────┘
+┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+│ Claude Code   │     │  MCP Server   │     │  SSE Server   │
+│ / Cursor      │────▶│               │────▶│  (port 3003)  │
+│               │stdio│ Sends HTML +  │HTTP │               │
+│               │     │ Session ID    │     │ Routes to     │
+└───────────────┘     └───────────────┘     │ correct user  │
+                                            └───────┬───────┘
+                                                    │ SSE
+                                                    ▼
+                                            ┌───────────────┐
+                                            │ Figma Plugin  │
+                                            │ (your session)│
+                                            │               │
+                                            │ Creates       │
+                                            │ design nodes  │
+                                            └───────────────┘
 ```
+
+Each user has their own Session ID, so multiple people can use the system simultaneously without receiving each other's HTML.
 
 ---
 
-**Last updated:** January 2026
+## For Production (Remote Server)
+
+When the team server is deployed on Render:
+
+1. Change `FIGMA_SERVER_URL` to: `https://html-to-figma-XXXX.onrender.com`
+2. Change `API_KEY` to the team's shared key
+3. The Session ID remains your personal one from the plugin
+
+---
+
+**Last updated:** January 28, 2026

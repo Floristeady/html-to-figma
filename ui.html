@@ -242,6 +242,41 @@
       border-radius: 6px;
     }
 
+    .config-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .config-tab {
+      flex: 1;
+      padding: 6px 10px;
+      background: #e9ecef;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      color: #666;
+      transition: all 0.2s;
+    }
+
+    .config-tab.active {
+      background: #9747FF;
+      color: white;
+    }
+
+    .config-tab:hover:not(.active) {
+      background: #dee2e6;
+    }
+
+    .config-content {
+      display: none;
+    }
+
+    .config-content.active {
+      display: block;
+    }
+
     .config-header {
       display: flex;
       justify-content: space-between;
@@ -524,11 +559,35 @@
 
     <!-- MCP CONFIG PANEL (Hidden by default) -->
     <div class="config-panel" id="mcp-config-panel" style="display: none;">
-      <div class="config-header">
-        <span>Copy this to your MCP config:</span>
-        <button class="copy-btn" id="copy-config-btn">Copy All</button>
+      <!-- Config Tabs -->
+      <div class="config-tabs">
+        <button class="config-tab active" data-target="claude-code-config">Claude Code</button>
+        <button class="config-tab" data-target="cursor-config">Cursor / Desktop</button>
       </div>
-      <pre class="config-code" id="mcp-config-code">{
+
+      <!-- Claude Code Config -->
+      <div class="config-content active" id="claude-code-config">
+        <div class="config-header">
+          <span>Run this command:</span>
+          <button class="copy-btn" id="copy-claude-cmd">Copy</button>
+        </div>
+        <pre class="config-code" id="claude-code-cmd">claude mcp add figma-html-bridge -s local \
+  -e FIGMA_SERVER_URL=http://localhost:3003 \
+  -e FIGMA_SESSION_ID=loading... \
+  -e API_KEY=dev-key \
+  -- node mcp-server.js</pre>
+        <div class="config-note">
+          Run in terminal, then <code>/exit</code> and restart Claude Code
+        </div>
+      </div>
+
+      <!-- Cursor / Claude Desktop Config -->
+      <div class="config-content" id="cursor-config">
+        <div class="config-header">
+          <span>Add to config file:</span>
+          <button class="copy-btn" id="copy-cursor-config">Copy</button>
+        </div>
+        <pre class="config-code" id="cursor-config-code">{
   "html-to-figma": {
     "command": "npx",
     "args": ["-y", "github:Floristeady/html-to-figma"],
@@ -539,8 +598,9 @@
     }
   }
 }</pre>
-      <div class="config-note">
-        Paste in: <code>~/.cursor/mcp.json</code> or Claude Desktop config
+        <div class="config-note">
+          Paste in: <code>~/.cursor/mcp.json</code>
+        </div>
       </div>
     </div>
   </div>
@@ -593,15 +653,25 @@ var MCP_SERVER_URL = 'http://localhost:3003';
 var MCP_API_KEY = 'dev-key';
 var MCP_GITHUB_REPO = 'github:Floristeady/html-to-figma';
 
-// Generate MCP config JSON
-function generateMCPConfig() {
+// Generate Claude Code command
+function generateClaudeCodeCmd() {
+  var sessionId = currentSessionId || 'YOUR_SESSION_ID';
+  return 'claude mcp add figma-html-bridge -s local \\\n' +
+    '  -e FIGMA_SERVER_URL=' + MCP_SERVER_URL + ' \\\n' +
+    '  -e FIGMA_SESSION_ID=' + sessionId + ' \\\n' +
+    '  -e API_KEY=' + MCP_API_KEY + ' \\\n' +
+    '  -- node mcp-server.js';
+}
+
+// Generate Cursor/Desktop config JSON
+function generateCursorConfig() {
   return JSON.stringify({
     "html-to-figma": {
       "command": "npx",
       "args": ["-y", MCP_GITHUB_REPO],
       "env": {
         "FIGMA_SERVER_URL": MCP_SERVER_URL,
-        "FIGMA_SESSION_ID": currentSessionId || "loading...",
+        "FIGMA_SESSION_ID": currentSessionId || "YOUR_SESSION_ID",
         "API_KEY": MCP_API_KEY
       }
     }
@@ -610,11 +680,34 @@ function generateMCPConfig() {
 
 // Update config display when session ID changes
 function updateConfigDisplay() {
-  var configCode = document.getElementById('mcp-config-code');
-  if (configCode) {
-    configCode.textContent = generateMCPConfig();
+  var claudeCmd = document.getElementById('claude-code-cmd');
+  var cursorConfig = document.getElementById('cursor-config-code');
+  if (claudeCmd) {
+    claudeCmd.textContent = generateClaudeCodeCmd();
+  }
+  if (cursorConfig) {
+    cursorConfig.textContent = generateCursorConfig();
   }
 }
+
+// Config tabs switching
+document.querySelectorAll('.config-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    var targetId = this.getAttribute('data-target');
+
+    // Update tabs
+    document.querySelectorAll('.config-tab').forEach(function(t) {
+      t.classList.remove('active');
+    });
+    this.classList.add('active');
+
+    // Update content
+    document.querySelectorAll('.config-content').forEach(function(c) {
+      c.classList.remove('active');
+    });
+    document.getElementById(targetId).classList.add('active');
+  });
+});
 
 // MCP Config panel toggle
 document.getElementById('mcp-config-btn').addEventListener('click', function() {
@@ -629,17 +722,27 @@ document.getElementById('mcp-config-btn').addEventListener('click', function() {
   }
 });
 
-// Copy full config button handler
-document.getElementById('copy-config-btn').addEventListener('click', function() {
-  var configText = generateMCPConfig();
-
-  if (copyToClipboard(configText)) {
-    var btn = document.getElementById('copy-config-btn');
+// Copy Claude Code command
+document.getElementById('copy-claude-cmd').addEventListener('click', function() {
+  if (copyToClipboard(generateClaudeCodeCmd())) {
+    var btn = this;
     btn.textContent = 'Copied!';
     btn.classList.add('copied');
-
     setTimeout(function() {
-      btn.textContent = 'Copy All';
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  }
+});
+
+// Copy Cursor config
+document.getElementById('copy-cursor-config').addEventListener('click', function() {
+  if (copyToClipboard(generateCursorConfig())) {
+    var btn = this;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = 'Copy';
       btn.classList.remove('copied');
     }, 2000);
   }
