@@ -1,349 +1,407 @@
 # Team Deployment Plan - HTML to Figma
 
-**Date**: January 19, 2026
+**Date**: January 28, 2026
 **Status**: Planning
-**Scope**: Simplify installation for internal team + Full CSS support
+**Scope**: Simple team deployment with remote server
 
 ## Objective
 
-Enable the internal team to use the **HTML-to-Figma** plugin with MCP integration (Cursor, Claude Desktop, Claude Code) in a simple way, with one-time installation and minimal technical knowledge required.
+Enable the internal team (max 4 users) to use the **HTML-to-Figma** plugin with MCP integration (Cursor, Claude Desktop, Claude Code) with:
+- One-time installation (~5 minutes)
+- No technical knowledge required
+- No need to clone or run this project
 
 ---
 
-## Current Situation
-
-### What works:
-- Figma plugin is operational
-- HTML to Figma conversion with inline styles
-- MCP integration with Cursor
-- Local SSE server (localhost:3003)
-
-### Current limitations:
-- Requires manually running local servers
-- Only processes **inline** styles (not external CSS or `<style>` blocks)
-- Complex technical configuration
-- Only works with localhost
-
----
-
-## Proposed Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              TEAM'S CENTRALIZED SERVER                  │
-│         (internal machine or cloud service)             │
-│                                                         │
-│   ┌─────────────┐          ┌─────────────────────┐     │
-│   │ MCP Server  │◄────────►│ SSE Server          │     │
-│   │ (WebSocket) │          │ (real-time events   │     │
-│   └─────────────┘          │  to plugins)        │     │
-│                            └─────────────────────┘     │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    RENDER SERVER                             │
+│              (https://html-to-figma.onrender.com)           │
+│                                                              │
+│   ┌─────────────┐          ┌─────────────────────┐          │
+│   │ MCP Server  │◄────────►│ SSE Server          │          │
+│   │ (HTTP API)  │          │ (real-time events)  │          │
+│   └─────────────┘          └─────────────────────┘          │
+└─────────────────────────────────────────────────────────────┘
           ▲                            ▲
           │                            │
     ┌─────┴─────┐                ┌─────┴─────┐
     │           │                │           │
 ┌───┴───┐   ┌───┴───┐        ┌───┴───┐   ┌───┴───┐
-│ Juan  │   │ Maria │        │ Juan  │   │ Maria │
-│Cursor │   │Claude │        │Figma  │   │Figma  │
-│       │   │Desktop│        │Plugin │   │Plugin │
+│ User1 │   │ User2 │        │ User1 │   │ User2 │
+│Claude │   │Cursor │        │Figma  │   │Figma  │
+│ Code  │   │       │        │Plugin │   │Plugin │
 └───────┘   └───────┘        └───────┘   └───────┘
 ```
 
 ### Usage flow:
-1. User writes in Cursor/Claude: "Convert this HTML to Figma"
-2. MCP Server receives the command
-3. SSE Server notifies the user's Figma plugin
-4. Plugin generates the design on the canvas
+
+**First time setup (once):**
+1. User opens Figma plugin
+2. Plugin auto-generates a session ID and displays it: `user_7f3a2b`
+3. User clicks "Copy ID" and pastes it in their MCP config
+4. Done - never touch this again
+
+**Daily use:**
+1. User opens Figma plugin (shows "Connected as: user_7f3a2b")
+2. User writes in Claude Code/Cursor: "Convert this HTML to Figma"
+3. MCP sends HTML + session ID to Render server
+4. Server routes to the correct Figma plugin
+5. Design appears on canvas
 
 ---
 
 ## Work Plan
 
-### PHASE 1: Internal CSS Support
+### PHASE 1: Centralized Server on Render
 **Priority**: High
-**Effort**: Medium
 
 #### Objective
-Allow the plugin to process HTML with internal `<style>` blocks, not just inline styles.
+Replace localhost with a Render server accessible to the team.
 
 #### Tasks
 
-- [ ] **1.1** Create `<style>` block parser
-  - Extract CSS from `<style>` tags in HTML
-  - Parse CSS rules (selectors, properties)
-  - Handle selectors: classes (`.class`), IDs (`#id`), elements (`div`, `h1`)
+- [ ] **1.1** Prepare server for production
+  - Add environment variable `SERVER_URL`
+  - Support HTTPS (Render provides this)
+  - Configure CORS for Figma plugin
+  - Add basic authentication (team API key)
 
-- [ ] **1.2** Apply CSS styles to elements
-  - Map CSS selectors to HTML elements
-  - Resolve basic specificity (inline > ID > class > element)
-  - Combine inherited styles with own styles
+- [ ] **1.2** Implement session/user identification
+  - Plugin generates unique session ID on first open (stored locally)
+  - Plugin shows ID in UI with "Copy" button
+  - MCP reads ID from env variable `FIGMA_SESSION_ID`
+  - Server routes HTML to plugin with matching session ID
 
-- [ ] **1.3** Support external CSS (optional)
-  - Additional input in UI to paste external CSS
-  - Or resolve `<link href="styles.css">` if file is available
+- [ ] **1.3** Deploy to Render
+  - Create Render account/project
+  - Configure environment variables
+  - Deploy SSE + API server
+  - Test connection
 
-- [ ] **1.4** Testing
-  - Test with HTML + internal `<style>`
-  - Test with complex selectors
-  - Verify that inline styles still work
-
-#### Supported input example:
-```html
-<style>
-  .card { background: #fff; padding: 20px; border-radius: 8px; }
-  .title { color: #333; font-size: 24px; }
-</style>
-<div class="card">
-  <h1 class="title">Hello</h1>
-</div>
-```
+- [ ] **1.4** Update MCP for remote server
+  - Connect to Render URL instead of localhost
+  - Pass session ID with requests
+  - Handle reconnection
 
 ---
 
-### PHASE 2: Centralized Server
+### PHASE 2: Distribution Setup
 **Priority**: High
-**Effort**: Medium
 
 #### Objective
-Replace localhost with a server accessible to the entire team.
-
-#### Environment Strategy
-The server URL will be **pre-configured in the plugin code** (not user-configurable):
-- **Development**: `http://localhost:3003`
-- **Production**: `https://figma-server.your-team.com`
-
-This simplifies deployment - users don't need to configure anything. The team distributes the correct plugin version for each environment.
+Prepare everything for easy team installation.
 
 #### Tasks
 
-- [ ] **2.1** Modify SSE Server for production
-  - Add environment variable `SERVER_URL` for server-side config
-  - Support HTTPS for secure connections
-  - Add basic authentication (team API key)
-  - Configure CORS for production domain
+- [ ] **2.1** Prepare MCP package for GitHub distribution
+  - Ensure package.json has correct "bin" entry
+  - Test installation via `npx github:your-org/html-to-figma-mcp`
+  - Add clear README with usage instructions
 
-- [ ] **2.2** Create environment-based plugin builds
-  - Development build: connects to `localhost:3003`
-  - Production build: connects to production server URL
-  - Use build script or environment flag to switch URLs
+- [ ] **2.2** Create production plugin build
+  - Plugin pre-configured with Render server URL
+  - Build production version
+  - Create .zip for distribution
 
-- [ ] **2.3** Modify MCP Server for remote server
-  - Connect to central server instead of writing local file
-  - Use HTTP/WebSocket for communication
-  - Environment variable for server URL
-
-- [ ] **2.4** Server deployment options
-  - **Option A**: Script for internal machine (Docker or direct Node)
-  - **Option B**: Configuration for Railway/Render/Fly.io
-  - Document both options
-
-- [ ] **2.5** Testing
-  - Test connection from multiple clients
-  - Verify that each user receives only their messages
-  - Test automatic reconnection
+- [ ] **2.3** Create installation guide
+  - Step-by-step with screenshots
+  - Configurations ready to copy/paste
+  - Troubleshooting section
 
 ---
 
 ### PHASE 3: Simplify Installation
 **Priority**: High
-**Effort**: Low
 
 #### Objective
-Installation in less than 5 minutes for users with minimal technical knowledge.
+Installation in less than 5 minutes.
 
 #### Tasks
 
-- [ ] **3.1** Create ready-to-import plugin package
-  - `.fig` file or manual import instructions
-  - Plugin pre-configured with team server URL
+- [ ] **3.1** Test complete flow
+  - Test with Cursor
+  - Test with Claude Desktop
+  - Test with Claude Code
+  - Verify each user receives only their messages
 
-- [ ] **3.2** Create ready-to-copy MCP configuration
-  - JSON for Cursor
-  - JSON for Claude Desktop
-  - Instructions for Claude Code
-
-- [ ] **3.3** Visual installation guide
-  - Document with step-by-step screenshots
-  - Short video (optional)
-  - FAQ for common issues
-
-- [ ] **3.4** Verification script
-  - Simple command to verify everything works
-  - Shows connection status
-
-#### Guide structure:
-```
-INSTALLATION (5 minutes)
-
-STEP 1: Figma
-- Open Figma
-- Go to Plugins > Import plugin from manifest
-- Select shared file
-- Done
-
-STEP 2: Cursor/Claude (choose one)
-
-For Cursor:
-- Open Settings > MCP
-- Paste this configuration: [JSON]
-- Restart Cursor
-
-For Claude Desktop:
-- Open ~/Library/Application Support/Claude/claude_desktop_config.json
-- Paste this configuration: [JSON]
-- Restart Claude
-
-STEP 3: Verify
-- In Figma: Open plugin, should say "Connected"
-- In Cursor/Claude: Write "test figma connection"
-```
+- [ ] **3.2** Create team onboarding document
+  - Simple PDF or Notion page
+  - Video walkthrough (optional)
 
 ---
 
-### PHASE 4: Multi-Client MCP Compatibility
-**Priority**: Medium
-**Effort**: Low
+## Configurations
 
-#### Objective
-Ensure functionality with all MCP clients.
-
-#### Tasks
-
-- [ ] **4.1** Test with Cursor
-  - Verify MCP configuration
-  - Test import commands
-  - Document any particularities
-
-- [ ] **4.2** Test with Claude Desktop
-  - Verify MCP configuration
-  - Test import commands
-  - Document any particularities
-
-- [ ] **4.3** Test with Claude Code (CLI)
-  - Verify MCP configuration
-  - Test import commands
-  - Document any particularities
-
-- [ ] **4.4** Create specific configurations
-  - Config file for each client
-  - Specific instructions if there are differences
-
----
-
-### PHASE 5: Plugin UX Improvements
-**Priority**: Medium
-**Effort**: Low
-
-#### Objective
-Simplify the interface for users with minimal technical knowledge.
-
-#### Tasks
-
-- [ ] **5.1** Simplify plugin UI
-  - Hide technical options (logs, debug)
-  - Show only: connection status + paste HTML area
-  - Add clear "Ready to receive" indicator
-
-- [ ] **5.2** Improve visual feedback
-  - Animation when HTML is received
-  - Clear success/error message
-  - History of recent conversions
-
-- [ ] **5.3** Add separate CSS input
-  - Field to paste external CSS
-  - Option to load CSS file
-
----
-
-## Example Configurations
-
-### Cursor MCP Config
-```json
-{
-  "html-to-figma": {
-    "command": "npx",
-    "args": ["-y", "html-to-figma-mcp"],
-    "env": {
-      "FIGMA_SERVER_URL": "https://figma-server.your-team.com",
-      "API_KEY": "your-team-api-key"
-    }
-  }
-}
-```
-
-### Claude Desktop Config
+### Claude Code / Cursor MCP Config
 ```json
 {
   "mcpServers": {
     "html-to-figma": {
       "command": "npx",
-      "args": ["-y", "html-to-figma-mcp"],
+      "args": ["-y", "github:your-org/html-to-figma"],
       "env": {
-        "FIGMA_SERVER_URL": "https://figma-server.your-team.com",
-        "API_KEY": "your-team-api-key"
+        "FIGMA_SERVER_URL": "https://html-to-figma.onrender.com",
+        "FIGMA_SESSION_ID": "user_7f3a2b",
+        "API_KEY": "team-shared-key"
+      }
+    }
+  }
+}
+```
+*Note: `FIGMA_SESSION_ID` comes from the plugin UI (copy button)*
+
+### Figma Plugin
+Pre-configured with server URL. Shows:
+- Session ID with "Copy" button (for first-time setup)
+- Connection status: "Connected as: user_7f3a2b"
+
+---
+
+## Decisions Made
+
+- **Render plan**: Free tier (cold starts ~30s acceptable for now, upgrade if team grows)
+- **Authentication**: Single shared API key for the team
+- **Session ID**: Auto-generated by plugin, shown in UI with "Copy" button. User copies once to MCP config.
+- **Distribution**: GitHub public repo (this same repo)
+
+---
+
+## Success Metrics
+
+- [ ] Complete installation in less than 5 minutes
+- [ ] Works with Cursor, Claude Desktop, and Claude Code
+- [ ] Each user receives only their own HTML
+- [ ] Stable connection (auto-reconnect if dropped)
+- [ ] No technical support needed after initial setup
+
+---
+
+---
+
+## Detailed Step-by-Step Execution Plan
+
+Based on current code analysis. Execute in order.
+
+### STEP 1: Add Session ID to Plugin
+**Files**: `src/ui.html`, `src/code.ts`
+
+- [ ] 1.1 Generate unique session ID on first plugin open
+  - Use `crypto.randomUUID()` or similar
+  - Store in `figma.clientStorage` (persists across sessions)
+  - Format: `user_` + 8 random chars (e.g., `user_7f3a2b1c`)
+
+- [ ] 1.2 Add Session ID display in plugin UI
+  - Show ID prominently: "Your Session ID: user_7f3a2b1c"
+  - Add "Copy" button next to it
+  - Show connection status: "Connected as: user_7f3a2b1c"
+
+- [ ] 1.3 Include session ID in SSE connection
+  - Modify EventSource URL: `/mcp-stream?sessionId=user_7f3a2b1c`
+  - Send session ID with every message to server
+
+---
+
+### STEP 2: Update SSE Server for Multi-User
+**File**: `sse-server.js`
+
+- [ ] 2.1 Track clients by session ID
+  - Change `sseConnections` from array to Map: `sessionId → connection`
+  - Parse sessionId from query params on connect
+  - Log: "Client connected: user_7f3a2b1c"
+
+- [ ] 2.2 Route messages to specific client
+  - Modify `/mcp-trigger` to accept `sessionId` in body
+  - Only send HTML to matching session ID (not broadcast)
+  - Return error if session ID not connected
+
+- [ ] 2.3 Add environment variables
+  ```javascript
+  const PORT = process.env.PORT || 3003;  // Render uses PORT
+  const API_KEY = process.env.API_KEY || 'dev-key';
+  const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*';
+  ```
+
+- [ ] 2.4 Add API key authentication
+  - Check `Authorization: Bearer <API_KEY>` header on `/mcp-trigger`
+  - Return 401 if invalid
+
+- [ ] 2.5 Configure CORS for production
+  - Allow requests from Figma plugin origin
+  - Handle preflight OPTIONS requests
+
+---
+
+### STEP 3: Update MCP Server
+**File**: `mcp-server.js`
+
+- [ ] 3.1 Read session ID from environment
+  ```javascript
+  const SESSION_ID = process.env.FIGMA_SESSION_ID;
+  const SERVER_URL = process.env.FIGMA_SERVER_URL || 'http://localhost:3003';
+  const API_KEY = process.env.API_KEY || 'dev-key';
+  ```
+
+- [ ] 3.2 Include session ID in trigger request
+  - Add `sessionId` to POST body
+  - Add `Authorization` header with API key
+
+- [ ] 3.3 Validate configuration on startup
+  - Warn if SESSION_ID is missing
+  - Log server URL being used
+
+---
+
+### STEP 4: Deploy to Render
+**Platform**: render.com (Free tier)
+
+- [ ] 4.1 Create Render account and project
+  - Connect GitHub repo
+  - Select "Web Service"
+  - Set build command: `npm install`
+  - Set start command: `node sse-server.js`
+
+- [ ] 4.2 Configure environment variables in Render
+  ```
+  PORT=10000 (Render assigns this)
+  API_KEY=your-team-secret-key
+  ALLOWED_ORIGINS=*
+  NODE_ENV=production
+  ```
+
+- [ ] 4.3 Deploy and get URL
+  - Note the URL: `https://html-to-figma-XXXX.onrender.com`
+  - Test with curl: `curl https://your-url.onrender.com/mcp-status`
+
+- [ ] 4.4 Test SSE connection
+  - Open in browser: `https://your-url.onrender.com/mcp-stream?sessionId=test`
+  - Should see heartbeat messages
+
+---
+
+### STEP 5: Build Production Plugin
+**Files**: `src/ui.html`, build scripts
+
+- [ ] 5.1 Add environment-based server URL
+  - For dev: `http://localhost:3003`
+  - For prod: `https://html-to-figma-XXXX.onrender.com`
+  - Use build flag or hardcode for team distribution
+
+- [ ] 5.2 Build production version
+  ```bash
+  npm run build
+  ```
+
+- [ ] 5.3 Create distribution package
+  - Zip: `manifest.json`, `code.js`, `ui.html`
+  - Name: `html-to-figma-plugin-prod.zip`
+
+---
+
+### STEP 6: Prepare GitHub Distribution for MCP
+**Files**: `package.json`, `mcp-server.js`
+
+- [ ] 6.1 Ensure package.json has bin entry
+  ```json
+  {
+    "name": "html-to-figma-mcp",
+    "bin": {
+      "html-to-figma-mcp": "./mcp-server.js"
+    }
+  }
+  ```
+
+- [ ] 6.2 Add shebang to mcp-server.js
+  ```javascript
+  #!/usr/bin/env node
+  ```
+
+- [ ] 6.3 Test local npx installation
+  ```bash
+  npx github:your-username/html-to-figma
+  ```
+
+---
+
+### STEP 7: Create Team Installation Guide
+**File**: `docs/INSTALLATION_GUIDE.md`
+
+- [ ] 7.1 Write Figma plugin installation steps
+  - Download zip
+  - Import in Figma
+  - Copy session ID
+
+- [ ] 7.2 Write MCP configuration for each client
+  - Claude Code config
+  - Cursor config
+  - Claude Desktop config
+
+- [ ] 7.3 Add troubleshooting section
+  - Common errors and solutions
+  - How to verify connection
+
+---
+
+### STEP 8: End-to-End Testing
+**Goal**: Verify complete flow works
+
+- [ ] 8.1 Test with your own setup
+  - Fresh plugin install
+  - Copy session ID to MCP config
+  - Send HTML from Claude Code
+  - Verify design appears in Figma
+
+- [ ] 8.2 Test with one team member
+  - Have them follow installation guide
+  - Verify they receive only their HTML (not yours)
+
+- [ ] 8.3 Test edge cases
+  - Multiple users sending simultaneously
+  - Server cold start (after 15 min idle)
+  - Reconnection after disconnect
+
+---
+
+## Current Code Status
+
+| Component | File | Status | Changes Needed |
+|-----------|------|--------|----------------|
+| SSE Server | `sse-server.js` | ✅ Works locally | Add session routing, auth, env vars |
+| MCP Server | `mcp-server.js` | ✅ Works locally | Add session ID, remote URL support |
+| Plugin | `src/code.ts` + `src/ui.html` | ✅ Works locally | Add session ID UI, remote URL |
+| Config | `config/server-config.js` | ✅ Exists | Add production settings |
+
+---
+
+## Quick Reference: Final Configuration
+
+### User's MCP Config (Claude Code/Cursor)
+```json
+{
+  "mcpServers": {
+    "html-to-figma": {
+      "command": "npx",
+      "args": ["-y", "github:figmaflor/html-to-figma"],
+      "env": {
+        "FIGMA_SERVER_URL": "https://html-to-figma-XXXX.onrender.com",
+        "FIGMA_SESSION_ID": "user_XXXXXXXX",
+        "API_KEY": "team-shared-key"
       }
     }
   }
 }
 ```
 
-### Plugin Configuration (pre-built)
-The Figma plugin comes **pre-configured** with the server URL. No user configuration needed.
-
-| Environment | Server URL | Plugin Version |
-|-------------|------------|----------------|
-| Development | `http://localhost:3003` | `plugin-dev.zip` |
-| Production | `https://figma-server.your-team.com` | `plugin-prod.zip` |
-
-Team members simply install the production plugin - the URL is already embedded in the code.
+### Render Environment Variables
+```
+PORT=10000
+API_KEY=team-shared-key
+ALLOWED_ORIGINS=*
+NODE_ENV=production
+```
 
 ---
 
-## Suggested Timeline
-
-| Phase | Description | Estimated duration |
-|-------|-------------|-------------------|
-| 1 | Internal CSS Support | 2-3 sessions |
-| 2 | Centralized Server | 2-3 sessions |
-| 3 | Simplify Installation | 1 session |
-| 4 | Multi-Client Compatibility | 1 session |
-| 5 | UX Improvements | 1-2 sessions |
-
-**Total estimated**: 7-10 work sessions
-
----
-
-## Pending Decisions
-
-### Server
-- [ ] **Server location**: Internal machine or cloud service?
-- [ ] **Domain**: Use team subdomain or external service?
-- [ ] **Authentication**: Shared API key or per user?
-
-### Plugin
-- [ ] **Distribution**: Publish on Figma Community or internal only?
-- [ ] **Updates**: How to notify the team of new versions?
-
----
-
-## Success Metrics
-
-- [ ] Complete installation in less than 10 minutes
-- [ ] Works with Cursor, Claude Desktop, and Claude Code
-- [ ] Correctly processes HTML with internal CSS
-- [ ] Stable connection without manual intervention
-- [ ] Clear documentation that doesn't require technical support
-
----
-
-## Next Steps
-
-1. **Approve** this work plan
-2. **Decide** server location (internal vs cloud)
-3. **Start** with Phase 1 (CSS Support)
-4. **Iterate** based on team feedback
-
----
-
-**Last updated**: January 23, 2026
+**Last updated**: January 28, 2026
