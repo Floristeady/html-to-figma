@@ -84,3 +84,4 @@ coverage/
 
 # AI assistant files
 .claude/
+.mcp.json
