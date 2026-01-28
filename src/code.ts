@@ -2796,8 +2796,13 @@ figma.ui.onmessage = async (msg) => {
     if (detectedDesignWidth) {
       // Update CSS_CONFIG.viewportWidth for vw calculations
       (CSS_CONFIG as any).viewportWidth = detectedDesignWidth;
-      // Debug log removed
-      // Debug log removed
+    }
+
+    // ✅ REM BASE DETECTION: Use root font-size detected by UI (from html/root CSS)
+    const detectedRemBase: number | null = msg.detectedRemBase || null;
+    if (detectedRemBase && detectedRemBase > 0) {
+      // Update CSS_CONFIG.remBase for rem unit calculations
+      (CSS_CONFIG as any).remBase = detectedRemBase;
     }
 
     // Detect full page layout pattern (sidebar + main content, grid layouts, etc.)

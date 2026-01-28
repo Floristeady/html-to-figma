@@ -2335,6 +2335,10 @@
       if (detectedDesignWidth) {
         CSS_CONFIG.viewportWidth = detectedDesignWidth;
       }
+      const detectedRemBase = msg.detectedRemBase || null;
+      if (detectedRemBase && detectedRemBase > 0) {
+        CSS_CONFIG.remBase = detectedRemBase;
+      }
       const detectFullPageLayout = (structure) => {
         if (!structure || structure.length === 0) return false;
         const checkNode = (node) => {

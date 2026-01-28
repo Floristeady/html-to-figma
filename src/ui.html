@@ -843,9 +843,19 @@ function parseInlineStyles(styleStr) {
     if (decl) {
       var colonIdx = decl.indexOf(':');
       if (colonIdx > 0) {
-        var prop = decl.substring(0, colonIdx).trim();
+        // Normalize property names to lowercase for consistency
+        var prop = decl.substring(0, colonIdx).trim().toLowerCase();
         var val = decl.substring(colonIdx + 1).trim();
         styles[prop] = val;
+
+        // Parse 'font' shorthand to extract font-size
+        // font: [style] [variant] [weight] [stretch] size[/line-height] family
+        if (prop === 'font' && val) {
+          var fontMatch = val.match(/(?:^|\s)(\d+(?:\.\d+)?(?:px|rem|em|pt|vh|vw|%)?)\s*(?:\/\s*[\d.]+(?:px|rem|em|%|[a-z]+)?)?\s+/i);
+          if (fontMatch && !styles['font-size']) {
+            styles['font-size'] = fontMatch[1];
+          }
+        }
       }
     }
   }
@@ -1059,6 +1069,51 @@ function extractCSS(htmlStr) {
   }
 
   return cssRules;
+}
+
+// Detect root font-size from CSS (for rem unit conversion)
+// Returns the font-size in pixels, defaults to 16 if not found
+function detectRootFontSize(htmlStr) {
+  var cssRules = extractCSS(htmlStr);
+  var DEFAULT_REM_BASE = 16;
+
+  // Check html selector first
+  if (cssRules['html'] && cssRules['html']['font-size']) {
+    var fontSize = cssRules['html']['font-size'];
+    // Handle percentage: 62.5% = 10px, 100% = 16px
+    if (fontSize.indexOf('%') !== -1) {
+      var percent = parseFloat(fontSize);
+      if (!isNaN(percent)) {
+        return (percent / 100) * DEFAULT_REM_BASE;
+      }
+    }
+    // Handle px value
+    if (fontSize.indexOf('px') !== -1) {
+      var px = parseFloat(fontSize);
+      if (!isNaN(px)) {
+        return px;
+      }
+    }
+  }
+
+  // Check :root selector
+  if (cssRules[':root'] && cssRules[':root']['font-size']) {
+    var fontSize = cssRules[':root']['font-size'];
+    if (fontSize.indexOf('%') !== -1) {
+      var percent = parseFloat(fontSize);
+      if (!isNaN(percent)) {
+        return (percent / 100) * DEFAULT_REM_BASE;
+      }
+    }
+    if (fontSize.indexOf('px') !== -1) {
+      var px = parseFloat(fontSize);
+      if (!isNaN(px)) {
+        return px;
+      }
+    }
+  }
+
+  return DEFAULT_REM_BASE;
 }
 
 // Viewport presets for design width detection (UI context)
@@ -1661,12 +1716,14 @@ document.getElementById('send-btn').onclick = function() {
 
   var structure = simpleParseHTML(htmlValue);
   var detectedWidth = detectDesignWidthFromHTML(htmlValue);
+  var detectedRemBase = detectRootFontSize(htmlValue);
 
   parent.postMessage({
     pluginMessage: {
       type: 'html-structure',
       structure: structure,
-      detectedWidth: detectedWidth
+      detectedWidth: detectedWidth,
+      detectedRemBase: detectedRemBase
     }
   }, '*');
 };
@@ -1924,7 +1981,8 @@ function handleSSEMCPRequest(data) {
 
       // Detect design width from meta tags and CSS
       var detectedWidth = detectDesignWidthFromHTML(htmlContent);
-      debugLog('[SSE] Detected design width:', detectedWidth);
+      var detectedRemBase = detectRootFontSize(htmlContent);
+      debugLog('[SSE] Detected design width:', detectedWidth, 'rem base:', detectedRemBase);
 
       // Send html-structure directly to main handler (skip parse-mcp-html)
       parent.postMessage({
@@ -1936,7 +1994,8 @@ function handleSSEMCPRequest(data) {
           mcpSource: 'sse',
           requestId: data.requestId,
           timestamp: data.timestamp,
-          detectedWidth: detectedWidth  // Pass detected width
+          detectedWidth: detectedWidth,
+          detectedRemBase: detectedRemBase
         }
       }, '*');
 

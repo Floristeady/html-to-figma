@@ -1526,30 +1526,32 @@ These are existing bugs that should be addressed during the refactoring process:
 
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
-| ~~**Container width defaults to 100px**~~ | ~~When HTML is sent via MCP/SSE, the root container frame is created with 100px width and HUG content mode, causing content to be clipped~~ | ~~`renderer/figma-nodes.ts`~~ | ✅ **FIXED** (commit 8b6c969) |
-| **REM units not properly converted** | `font-size: 3.5rem` renders too small, base font size calculation is incorrect | `utils/css-units.ts` | HIGH |
-| **Viewport units (vh/vw) not working** | `height: 100vh` doesn't apply correctly | `utils/css-units.ts` | HIGH |
+| ~~**Container width defaults to 100px**~~ | ~~When HTML is sent via MCP/SSE, the root container frame is created with 100px width and HUG content mode, causing content to be clipped~~ | ~~`src/code.ts`~~ | ✅ **FIXED** (commit 8b6c969) |
+| ~~**REM units not properly converted**~~ | ~~`font-size: 3.5rem` renders too small, base font size calculation is incorrect~~ | ~~`src/utils/css-units.ts`, `src/ui.html`~~ | ✅ **FIXED** - Now detects root font-size from `html` or `:root` CSS rules and updates rem base dynamically |
+| ~~**Viewport units (vh/vw) not working**~~ | ~~`height: 100vh` doesn't apply correctly~~ | ~~`src/utils/css-units.ts`, `src/code.ts`~~ | ✅ **FIXED** - VW now uses detected design width, VH uses 900px default (reasonable desktop height) |
 
 ### High
 
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
-| **Fixed 1440px design width** | All designs render at 1440px regardless of content or meta tags | `utils/design-detection.ts` | Medium |
-| **position: fixed** | Elements with `position: fixed` don't position correctly | `converter/layout.ts` | Medium |
-| **Inline style priority** | Some inline styles don't override CSS rules properly | `parser/css-cascade.ts` | Medium |
+| ~~**Fixed 1440px design width**~~ | ~~All designs render at 1440px regardless of content or meta tags~~ | ~~`src/ui.html`, `src/code.ts`~~ | ✅ **FIXED** (commit 5032cec) - Wide layouts (8+ column grids) now use 1920px |
+| ~~**position: fixed**~~ | ~~Elements with `position: fixed` don't position correctly~~ | ~~`src/code.ts`~~ | ✅ **FIXED** (commit 5032cec) - Converts to relative, propagates `_shouldFillWidth` to children |
+| **Inline style priority** | Some inline styles don't override CSS rules properly | `src/ui.html` (extractCSS function) | Medium |
 
 ### Medium
 
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
-| **Grid decimal fractions** | `1.3fr 2.7fr` doesn't respect exact proportions | `converter/layout.ts` | Low |
-| **Complex calc() expressions** | `calc()` with mixed units fails | `utils/css-units.ts` | Low |
+| **Grid decimal fractions** | `1.3fr 2.7fr` doesn't respect exact proportions | `src/utils/grid.ts` | Low |
+| **Complex calc() expressions** | `calc()` with mixed units fails | `src/utils/css-units.ts` | Low |
 
 ### Investigation Needed
 
-- [ ] Root cause of 100px default width - is it in `createFigmaNodesFromStructure` or in message handler?
-- [ ] Check if design width detection is being called for MCP requests
-- [ ] Verify sizing mode (HUG vs FILL vs FIXED) logic for root container
+- [x] Root cause of 100px default width - FIXED in message handler
+- [x] Check if design width detection is being called for MCP requests - YES, working
+- [x] Verify sizing mode (HUG vs FILL vs FIXED) logic for root container - FIXED
+- [x] REM units not converted correctly - FIXED: Added root font-size detection from CSS, property name normalization, and font shorthand parsing
+- [x] Viewport units (vh/vw) - FIXED: VW uses detected design width, parseSize correctly handles vh/vw units
 
 ---
 
@@ -1573,7 +1575,7 @@ These are existing bugs that should be addressed during the refactoring process:
 ---
 
 *Document created: 2025-01-26*
-*Last updated: 2025-01-26*
+*Last updated: 2026-01-28*
 
 ---
 
@@ -1582,6 +1584,10 @@ These are existing bugs that should be addressed during the refactoring process:
 ### Completed
 - ✅ **Phase 0**: esbuild configured and working (build in 14ms, 156kb output)
 - ✅ **Width bug fixed**: MCP/SSE imports now detect inline width or fallback to 400px
+- ✅ **REM units fixed**: Added `detectRootFontSize()` function in `src/ui.html` that extracts root font-size from `html` or `:root` CSS selectors, handles percentage values (62.5% = 10px), and updates `CSS_CONFIG.remBase` dynamically
+- ✅ **Viewport units fixed**: VW now uses detected design width from meta tags/CSS, VH uses 900px default
+- ✅ **CSS property normalization**: Property names in `parseInlineStyles()` are now normalized to lowercase for consistent matching
+- ✅ **Font shorthand parsing**: The `font` shorthand property is now parsed to extract `font-size` value
 
 ### Next Steps (Resume Here)
 1. **Phase 1**: Extract types/IR to `src/types/`
@@ -1589,9 +1595,10 @@ These are existing bugs that should be addressed during the refactoring process:
    - Define explicit interfaces for intermediate representation
 
 2. **Remaining issues to investigate**:
-   - REM units not properly converted
-   - Viewport units (vh/vw) not working
    - Consider making fallback width configurable (currently hardcoded 400px)
+   - Inline style priority (Medium)
+   - Grid decimal fractions (Low)
+   - Complex calc() expressions (Low)
 
 ### Commands Reference
 ```bash
