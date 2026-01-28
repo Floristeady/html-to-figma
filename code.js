@@ -460,6 +460,30 @@
 
   // src/code.ts
   figma.showUI(__html__, { width: 360, height: 380 });
+  function generateSessionId() {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "user_";
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+  async function initializeSessionId() {
+    let sessionId = await figma.clientStorage.getAsync("figma-session-id");
+    if (!sessionId) {
+      sessionId = generateSessionId();
+      await figma.clientStorage.setAsync("figma-session-id", sessionId);
+      console.log("[Session] Generated new session ID:", sessionId);
+    } else {
+      console.log("[Session] Using existing session ID:", sessionId);
+    }
+    figma.ui.postMessage({
+      type: "session-id",
+      sessionId
+    });
+    return sessionId;
+  }
+  initializeSessionId();
   function calculatePercentageWidth(widthValue, parentFrame) {
     if (!parentFrame || !widthValue) return null;
     const percentage = parsePercentage(widthValue);

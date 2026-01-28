@@ -233,6 +233,69 @@
       opacity: 0.8;
     }
 
+    /* MCP CONFIG PANEL STYLES */
+    .config-panel {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+    }
+
+    .config-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .config-code {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 10px;
+      line-height: 1.4;
+      overflow-x: auto;
+      white-space: pre;
+      margin: 0;
+    }
+
+    .config-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .config-note code {
+      background: #e9ecef;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+    .copy-btn {
+      background: #9747FF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: #8232FF;
+    }
+
+    .copy-btn.copied {
+      background: #22c55e;
+    }
+
     /* CONNECTION STATUS STYLES - Minimalist */
     .connection-status {
       margin: 12px 0;
@@ -330,71 +393,6 @@
       color: white;
     }
 
-    /* ADVANCED PANEL STYLES */
-    .advanced-panel {
-      margin-top: 12px;
-      padding: 12px;
-      background: #ffffff;
-      border: 1px solid #dee2e6;
-      border-radius: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .panel-header {
-      font-weight: 600;
-      font-size: 14px;
-      color: #333;
-      margin-bottom: 15px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #dee2e6;
-    }
-
-    .setting-group {
-      margin-bottom: 15px;
-    }
-
-    .setting-label {
-      display: block;
-      font-weight: 500;
-      font-size: 12px;
-      color: #495057;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-
-
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      margin: 6px 0;
-    }
-
-    .checkbox-row input[type="checkbox"] {
-      margin-right: 8px;
-    }
-
-    .checkbox-row label {
-      font-size: 13px;
-      color: #333;
-      cursor: pointer;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 6px 0;
-      font-size: 12px;
-    }
-
-    .info-row code {
-      background: #f8f9fa;
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-size: 11px;
-      color: #e83e8c;
-    }
 
     /* Floating Minimize Button - Always in same position */
     .minimize-btn {
@@ -520,32 +518,29 @@
 
     <!-- ACTIONS -->
     <div class="action-buttons">
+      <button id="mcp-config-btn" class="button secondary">MCP Config</button>
       <button id="test-broadcast-btn" class="button secondary">Test Connection</button>
-      <button id="advanced-btn" class="button secondary">Advanced</button>
     </div>
 
-    <!-- ADVANCED SETTINGS PANEL (Hidden by default) -->
-    <div class="advanced-panel" id="advanced-panel" style="display: none;">
-      <div class="panel-header">Debug & Status</div>
-
-      <div class="setting-group">
-        <label class="setting-label">Debug Options</label>
-        <div class="checkbox-row">
-          <input type="checkbox" id="detailed-logs" checked>
-          <label for="detailed-logs">Show detailed console logs</label>
-        </div>
+    <!-- MCP CONFIG PANEL (Hidden by default) -->
+    <div class="config-panel" id="mcp-config-panel" style="display: none;">
+      <div class="config-header">
+        <span>Copy this to your MCP config:</span>
+        <button class="copy-btn" id="copy-config-btn">Copy All</button>
       </div>
-
-      <div class="setting-group">
-        <label class="setting-label">Connection Info</label>
-        <div class="info-row">
-          <span>Endpoint:</span>
-          <code>localhost:3003/mcp-stream</code>
-        </div>
-        <div class="info-row">
-          <span>Status:</span>
-          <span id="detailed-status">Ready</span>
-        </div>
+      <pre class="config-code" id="mcp-config-code">{
+  "html-to-figma": {
+    "command": "npx",
+    "args": ["-y", "github:user/html-to-figma"],
+    "env": {
+      "FIGMA_SERVER_URL": "http://localhost:3003",
+      "FIGMA_SESSION_ID": "loading...",
+      "API_KEY": "dev-key"
+    }
+  }
+}</pre>
+      <div class="config-note">
+        Paste in: <code>~/.cursor/mcp.json</code> or Claude Desktop config
       </div>
     </div>
   </div>
@@ -570,6 +565,85 @@
 <script>
 // Global variable to control detailed logging
 var detailedLogsEnabled = true;
+
+// Global session ID (received from plugin)
+var currentSessionId = null;
+
+// Copy to clipboard function (works in Figma plugin context)
+function copyToClipboard(text) {
+  var textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    return true;
+  } catch (err) {
+    console.error('Copy failed:', err);
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+// MCP Config - Server URL (change for production)
+var MCP_SERVER_URL = 'http://localhost:3003';
+var MCP_API_KEY = 'dev-key';
+var MCP_GITHUB_REPO = 'github:user/html-to-figma';
+
+// Generate MCP config JSON
+function generateMCPConfig() {
+  return JSON.stringify({
+    "html-to-figma": {
+      "command": "npx",
+      "args": ["-y", MCP_GITHUB_REPO],
+      "env": {
+        "FIGMA_SERVER_URL": MCP_SERVER_URL,
+        "FIGMA_SESSION_ID": currentSessionId || "loading...",
+        "API_KEY": MCP_API_KEY
+      }
+    }
+  }, null, 2);
+}
+
+// Update config display when session ID changes
+function updateConfigDisplay() {
+  var configCode = document.getElementById('mcp-config-code');
+  if (configCode) {
+    configCode.textContent = generateMCPConfig();
+  }
+}
+
+// MCP Config panel toggle
+document.getElementById('mcp-config-btn').addEventListener('click', function() {
+  var panel = document.getElementById('mcp-config-panel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    this.textContent = 'Hide Config';
+    updateConfigDisplay();
+  } else {
+    panel.style.display = 'none';
+    this.textContent = 'MCP Config';
+  }
+});
+
+// Copy full config button handler
+document.getElementById('copy-config-btn').addEventListener('click', function() {
+  var configText = generateMCPConfig();
+
+  if (copyToClipboard(configText)) {
+    var btn = document.getElementById('copy-config-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+
+    setTimeout(function() {
+      btn.textContent = 'Copy All';
+      btn.classList.remove('copied');
+    }, 2000);
+  }
+});
 
 // Function for conditional debugging logs
 function debugLog(...args) {
@@ -658,28 +732,6 @@ document.getElementById('mcp-switch').addEventListener('change', function() {
       }
     }, '*');
   }
-});
-
-// Advanced settings panel toggle
-document.getElementById('advanced-btn').addEventListener('click', function() {
-  var panel = document.getElementById('advanced-panel');
-  if (panel.style.display === 'none') {
-    panel.style.display = 'block';
-    this.textContent = 'Hide Advanced';
-  } else {
-    panel.style.display = 'none';
-    this.textContent = 'Advanced';
-  }
-});
-
-// Detailed logs toggle
-document.getElementById('detailed-logs').addEventListener('change', function() {
-  detailedLogsEnabled = this.checked;
-  var statusElement = document.getElementById('detailed-status');
-  if (statusElement) {
-    statusElement.textContent = this.checked ? 'Debug logs enabled' : 'Debug logs disabled';
-  }
-  updateConnectionDetails(this.checked ? 'Detailed logs enabled' : 'Detailed logs disabled');
 });
 
 // Test connection button
@@ -834,9 +886,10 @@ function filterUnsupportedCSS(styles) {
   return filteredStyles;
 }
 
-function parseInlineStyles(styleStr) {
+function parseInlineStyles(styleStr, trackImportant) {
   var styles = {};
-  if (!styleStr) return styles;
+  var importantStyles = {}; // Track !important properties separately
+  if (!styleStr) return trackImportant ? { styles: styles, important: importantStyles } : styles;
   var declarations = styleStr.split(';');
   for (var i = 0; i < declarations.length; i++) {
     var decl = declarations[i].trim();
@@ -846,20 +899,53 @@ function parseInlineStyles(styleStr) {
         // Normalize property names to lowercase for consistency
         var prop = decl.substring(0, colonIdx).trim().toLowerCase();
         var val = decl.substring(colonIdx + 1).trim();
-        styles[prop] = val;
+
+        // Check for and strip !important, tracking it separately
+        var isImportant = val.indexOf('!important') !== -1;
+        if (isImportant) {
+          val = val.replace(/\s*!important\s*/gi, '').trim();
+        }
+
+        if (isImportant) {
+          importantStyles[prop] = val;
+        } else {
+          styles[prop] = val;
+        }
 
         // Parse 'font' shorthand to extract font-size
         // font: [style] [variant] [weight] [stretch] size[/line-height] family
         if (prop === 'font' && val) {
           var fontMatch = val.match(/(?:^|\s)(\d+(?:\.\d+)?(?:px|rem|em|pt|vh|vw|%)?)\s*(?:\/\s*[\d.]+(?:px|rem|em|%|[a-z]+)?)?\s+/i);
-          if (fontMatch && !styles['font-size']) {
-            styles['font-size'] = fontMatch[1];
+          if (fontMatch && !styles['font-size'] && !importantStyles['font-size']) {
+            if (isImportant) {
+              importantStyles['font-size'] = fontMatch[1];
+            } else {
+              styles['font-size'] = fontMatch[1];
+            }
           }
         }
       }
     }
   }
-  return filterUnsupportedCSS(styles);
+
+  if (trackImportant) {
+    return {
+      styles: filterUnsupportedCSS(styles),
+      important: filterUnsupportedCSS(importantStyles)
+    };
+  }
+
+  // For CSS rules storage: preserve !important marker in values
+  // This allows getElementStyles to detect !important later
+  var result = filterUnsupportedCSS(styles);
+  var importantFiltered = filterUnsupportedCSS(importantStyles);
+  for (var key in importantFiltered) {
+    if (importantFiltered.hasOwnProperty(key)) {
+      // Re-add !important marker so it can be detected in getElementStyles
+      result[key] = importantFiltered[key] + ' !important';
+    }
+  }
+  return result;
 }
 
 // Función para verificar si un selector CSS es problemático
@@ -1595,20 +1681,45 @@ function simpleParseHTML(htmlStr) {
 
   function getElementStyles(element) {
     var styles = {};
+    var cssImportantStyles = {}; // CSS rules with !important
 
     // Obtener todos los selectores que coinciden y aplicar en orden de especificidad
     var matchingSelectors = getAllMatchingSelectors(element);
 
     for (var i = 0; i < matchingSelectors.length; i++) {
-      styles = Object.assign(styles, matchingSelectors[i].styles);
+      var selectorStyles = matchingSelectors[i].styles;
+      // Separate !important CSS properties
+      for (var prop in selectorStyles) {
+        if (selectorStyles.hasOwnProperty(prop)) {
+          var val = selectorStyles[prop];
+          if (typeof val === 'string' && val.indexOf('!important') !== -1) {
+            cssImportantStyles[prop] = val.replace(/\s*!important\s*/gi, '').trim();
+          } else {
+            styles[prop] = val;
+          }
+        }
+      }
     }
 
-    // Apply inline styles last (highest priority)
+    // Apply inline styles (with !important tracking)
     var inlineStyle = element.getAttribute('style');
+    var inlineNormal = {};
+    var inlineImportant = {};
+
     if (inlineStyle) {
-      var inlineStyles = parseInlineStyles(inlineStyle);
-      styles = Object.assign(styles, inlineStyles);
+      var parsed = parseInlineStyles(inlineStyle, true);
+      inlineNormal = parsed.styles;
+      inlineImportant = parsed.important;
     }
+
+    // CSS cascade order:
+    // 1. Normal CSS (already in styles)
+    // 2. Normal inline styles (override CSS)
+    styles = Object.assign(styles, inlineNormal);
+    // 3. CSS !important (override inline normal)
+    styles = Object.assign(styles, cssImportantStyles);
+    // 4. Inline !important (override everything)
+    styles = Object.assign(styles, inlineImportant);
 
     return styles;
   }
@@ -1844,14 +1955,26 @@ var maxReconnectAttempts = 5;
 var sseReconnectDelay = 3000;
 
 function startRealSSEConnection() {
-          debugLog('[SSE] Starting real SSE connection...');
+  debugLog('[SSE] Starting real SSE connection...');
 
   if (eventSource) {
     eventSource.close();
   }
 
+  // Check if we have a session ID
+  if (!currentSessionId) {
+    debugLog('[SSE] Warning: No session ID available yet, waiting...');
+    updateSSEStatus('Waiting for Session ID', 'warning');
+    // Retry after a short delay
+    setTimeout(startRealSSEConnection, 500);
+    return;
+  }
+
   try {
-            eventSource = new EventSource('http://localhost:3003/mcp-stream');
+    // Include session ID in the SSE connection URL
+    var sseUrl = 'http://localhost:3003/mcp-stream?sessionId=' + encodeURIComponent(currentSessionId);
+    debugLog('[SSE] Connecting to:', sseUrl);
+    eventSource = new EventSource(sseUrl);
 
     eventSource.onopen = function(event) {
       debugLog('[SSE] Connection opened successfully');
@@ -1859,7 +1982,7 @@ function startRealSSEConnection() {
       sseReconnectAttempts = 0;
       updateSSEStatus('SSE Connected', 'connected');
       updateConnectionStatus('connected');
-      updateConnectionDetails('Ready for MCP requests');
+      updateConnectionDetails('Connected as: ' + currentSessionId);
     };
 
     eventSource.onmessage = function(event) {
@@ -2017,6 +2140,13 @@ function handleSSEMCPRequest(data) {
 window.addEventListener('message', function(event) {
   if (event.data.pluginMessage) {
     var msg = event.data.pluginMessage;
+
+    // Handle session ID from plugin
+    if (msg.type === 'session-id') {
+      currentSessionId = msg.sessionId;
+      updateConfigDisplay(); // Update the MCP config with the new session ID
+      debugLog('[Session] Received session ID:', msg.sessionId);
+    }
 
     // Handle SSE control messages
     if (msg.type === 'start-sse-connection') {
