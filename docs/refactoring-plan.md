@@ -1547,7 +1547,7 @@ These are existing bugs that should be addressed during the refactoring process:
 | ~~**transform: scale/translate**~~ | ~~Only rotate is implemented~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
 | ~~**filter/backdrop-filter**~~ | ~~blur, drop-shadow, background blur~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
 | **clip-path** | CSS clip-path not supported | N/A | Low |
-| **Text centering in flex containers** | Text doesn't respect `justify-content: center` in flex containers | `src/code.ts` | Medium |
+| ~~**Text centering in flex containers**~~ | ~~Text doesn't respect `justify-content: center` in flex containers~~ | ~~`src/code.ts`~~ | ✅ FIXED |
 
 ### Investigation Needed
 
@@ -1561,6 +1561,7 @@ These are existing bugs that should be addressed during the refactoring process:
 - [x] Complex calc() - FIXED: Support mixed units, multiplication/division
 - [x] transform: scale/translate - FIXED: Full transform support (rotate, scale, scaleX/Y, translate, translateX/Y)
 - [x] filter/backdrop-filter - FIXED: blur(), drop-shadow(), backdrop-filter: blur()
+- [x] Text centering in flex containers - FIXED: Added centering logic to legacy text path with `textAlignHorizontal = 'CENTER'` and `layoutSizingHorizontal = 'FILL'`
 
 ---
 
@@ -1584,7 +1585,7 @@ These are existing bugs that should be addressed during the refactoring process:
 ---
 
 *Document created: 2025-01-26*
-*Last updated: 2026-01-28*
+*Last updated: 2026-01-29*
 
 ---
 
@@ -1598,6 +1599,12 @@ These are existing bugs that should be addressed during the refactoring process:
 - ✅ **CSS property normalization**: Property names in `parseInlineStyles()` are now normalized to lowercase for consistent matching
 - ✅ **Font shorthand parsing**: The `font` shorthand property is now parsed to extract `font-size` value
 - ✅ **CSS !important cascade**: Proper cascade order: CSS normal → inline normal → CSS !important → inline !important (commit d3a34fb)
+- ✅ **Grid decimal fractions**: `parseGridColumnWidths()` calculates proportional widths for `1.3fr 2.7fr` patterns
+- ✅ **Complex calc()**: Support for mixed units (`calc(100% - 20px)`), multiplication, division
+- ✅ **transform complete**: rotate, scale, scaleX/Y, translate, translateX/Y all supported
+- ✅ **filter**: blur() and drop-shadow() effects
+- ✅ **backdrop-filter**: blur() for frosted glass effects
+- ✅ **Text centering**: `justify-content: center` now properly centers text in flex containers
 
 ### Next Steps (Resume Here)
 1. **Phase 1**: Extract types/IR to `src/types/`
@@ -1605,10 +1612,12 @@ These are existing bugs that should be addressed during the refactoring process:
    - Define explicit interfaces for intermediate representation
 
 2. **Remaining issues (Low priority)**:
-   - Grid decimal fractions (Low)
-   - Complex calc() expressions (Low)
-   - transform: scale/translate (Low)
-   - filter/backdrop-filter/clip-path (Low)
+   - ~~Grid decimal fractions~~ ✅ DONE
+   - ~~Complex calc() expressions~~ ✅ DONE
+   - ~~transform: scale/translate~~ ✅ DONE
+   - ~~filter/backdrop-filter~~ ✅ DONE
+   - ~~Text centering in flex containers~~ ✅ DONE
+   - clip-path (Low priority)
 
 ### Commands Reference
 ```bash

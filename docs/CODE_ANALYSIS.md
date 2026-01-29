@@ -1,6 +1,6 @@
 # Análisis Completo del Código HTML-to-Figma
 
-**Fecha:** 2026-01-28 (Actualizado)
+**Fecha:** 2026-01-29 (Actualizado)
 **Archivo Principal:** `src/code.ts`
 
 ---
@@ -192,11 +192,11 @@ Aplica como `x`/`y` y configura constraints.
 | `display: none` | ✅ Implementado (skip element) |
 | `@media queries` | ✅ Ignoradas gracefully |
 | `CSS variables (--var)` | ✅ Implementado |
-| `calc()` | ✅ Implementado (básico) |
+| `calc()` | ✅ Implementado (completo - mixed units, */÷) |
 | `transition/animation` | N/A para Figma |
-| `transform: scale/translate` | ❌ Parcial (solo rotate) |
-| `filter` | ❌ No implementado |
-| `backdrop-filter` | ❌ No implementado |
+| `transform: rotate/scale/translate` | ✅ Implementado (rotate, scale, scaleX/Y, translate, translateX/Y) |
+| `filter` | ✅ Implementado (blur, drop-shadow) |
+| `backdrop-filter` | ✅ Implementado (blur) |
 | `clip-path` | ❌ No implementado |
 
 ---
@@ -254,11 +254,15 @@ Aplica como `x`/`y` y configura constraints.
 48. **Styling inline (bold, italic, mono)** - estilos automáticos ✅ NEW
 49. **Empty text fix** - elementos con hijos procesan hijos ✅ NEW
 50. **hexToRgb null guard** - previene crash con colores null ✅ NEW
+51. **calc() completo** - soporta mixed units, multiplicación, división ✅ NEW
+52. **transform completo** - rotate, scale, scaleX/Y, translate, translateX/Y ✅ NEW
+53. **filter** - blur(), drop-shadow() ✅ NEW
+54. **backdrop-filter** - blur() para background blur ✅ NEW
+55. **Text centering en flex** - justify-content: center respetado en texto ✅ NEW
 
-### ⚠️ PENDIENTES - BAJA PRIORIDAD (3)
+### ⚠️ PENDIENTES - BAJA PRIORIDAD (2)
 1. **Orden de herencia** - cascada CSS completa
-2. **transform: scale/translate** - solo rotate implementado
-3. **filter/backdrop-filter/clip-path** - efectos visuales avanzados
+2. **clip-path** - recorte de formas CSS
 
 ---
 
@@ -331,15 +335,14 @@ Aplica como `x`/`y` y configura constraints.
 ### 🟡 PENDIENTES (Low priority)
 | # | Problema | Esfuerzo | Impacto |
 |---|----------|----------|---------|
-| 1 | Complex calc() | Bajo | Bajo - casos edge |
-| 2 | transform: scale/translate | Bajo | Bajo - solo rotate funciona |
-| 3 | filter/backdrop-filter | Alto | Bajo - efectos avanzados |
+| 1 | clip-path | Alto | Bajo - recorte de formas |
+| 2 | Orden de herencia CSS completo | Medio | Bajo - casos edge |
 
 ---
 
-## 📊 ESTADO ACTUALIZADO: 59/62 (95% completo)
+## 📊 ESTADO ACTUALIZADO: 64/66 (97% completo)
 
-- ✅ Resueltos: 59
+- ✅ Resueltos: 64
 - ❌ Críticos pendientes: 0
 - ⚠️ Altos pendientes: 0
-- 🔷 Bajos pendientes: 3
+- 🔷 Bajos pendientes: 2
