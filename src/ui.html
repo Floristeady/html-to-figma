@@ -1331,7 +1331,6 @@ function detectDesignWidthFromHTML(htmlStr) {
   if (widthMetaMatch) {
     var width = parseInt(widthMetaMatch[1], 10);
     if (!isNaN(width) && width > 0) {
-      console.log('[WIDTH-UI] Detected from meta figma-width:', width);
       return width;
     }
   }
@@ -1343,7 +1342,6 @@ function detectDesignWidthFromHTML(htmlStr) {
   if (viewportMetaMatch) {
     var preset = viewportMetaMatch[1].toLowerCase();
     if (VIEWPORT_PRESETS_UI[preset]) {
-      console.log('[WIDTH-UI] Detected from meta figma-viewport:', preset, '=', VIEWPORT_PRESETS_UI[preset]);
       return VIEWPORT_PRESETS_UI[preset];
     }
   }
@@ -1353,7 +1351,6 @@ function detectDesignWidthFromHTML(htmlStr) {
   if (commentMatch) {
     var width = parseInt(commentMatch[1], 10);
     if (!isNaN(width) && width > 0) {
-      console.log('[WIDTH-UI] Detected from HTML comment:', width);
       return width;
     }
   }
@@ -1373,7 +1370,6 @@ function detectDesignWidthFromHTML(htmlStr) {
         var maxWidthStr = rule['max-width'];
         var maxWidth = parseFloat(maxWidthStr);
         if (!isNaN(maxWidth) && maxWidth > 0 && maxWidth < 3000) {
-          console.log('[WIDTH-UI] Detected from CSS max-width on', selector, ':', maxWidth);
           return maxWidth + 80; // Container + padding compensation
         }
       }
@@ -1383,7 +1379,6 @@ function detectDesignWidthFromHTML(htmlStr) {
         var widthStr = rule['width'];
         var width = parseFloat(widthStr);
         if (!isNaN(width) && width > 100 && width < 3000) {
-          console.log('[WIDTH-UI] Detected from CSS width on', selector, ':', width);
           return width;
         }
       }
@@ -1407,7 +1402,6 @@ function detectDesignWidthFromHTML(htmlStr) {
   }
 
   if (largestWidth > 0) {
-    console.log('[WIDTH-UI] Detected largest CSS width on', largestWidthSelector, ':', largestWidth);
     return largestWidth;
   }
 
@@ -1416,7 +1410,6 @@ function detectDesignWidthFromHTML(htmlStr) {
   if (inlineWidthMatch) {
     var inlineWidth = parseFloat(inlineWidthMatch[1]);
     if (!isNaN(inlineWidth) && inlineWidth > 50 && inlineWidth < 3000) {
-      console.log('[WIDTH-UI] Detected from inline style width:', inlineWidth);
       return inlineWidth;
     }
   }
@@ -1448,7 +1441,6 @@ function detectDesignWidthFromHTML(htmlStr) {
     }
 
     if (wideLayoutNeeded) {
-      console.log('[WIDTH-UI] Wide layout detected (8+ column grid), using 1920px');
       return 1920;
     }
 
@@ -1486,24 +1478,20 @@ function detectDesignWidthFromHTML(htmlStr) {
     if (sidebarWidth > 0 || mainMarginLeft > 0) {
       // Sidebar layout: sidebar + main content area (~1200px typical)
       var calculatedWidth = Math.max(sidebarWidth, mainMarginLeft) + 1200;
-      console.log('[WIDTH-UI] Detected sidebar layout, calculated width:', calculatedWidth);
       return calculatedWidth;
     }
 
     // Full page without sidebar, use desktop default
-    console.log('[WIDTH-UI] Full page detected, using desktop default: 1440');
     return 1440;
   }
 
   // 7. Component/snippet - use smaller default
   var hasContent = htmlStr.match(/<(?:div|section|article|p|h[1-6]|span)[^>]*>/i);
   if (hasContent) {
-    console.log('[WIDTH-UI] Component detected, using fallback 400px');
     return 400;
   }
 
   // 8. No width detected and no meaningful content
-  console.log('[WIDTH-UI] No content detected');
   return null;
 }
 

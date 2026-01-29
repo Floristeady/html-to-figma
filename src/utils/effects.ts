@@ -311,3 +311,87 @@ export function parseBackdropFilter(filterValue: string): BackdropFilterResult {
 
   return result;
 }
+
+export interface ClipPathResult {
+  type: 'inset' | 'circle' | 'ellipse' | 'polygon' | 'none';
+  hasClip: boolean;
+  // For inset: top, right, bottom, left values
+  inset?: { top: number; right: number; bottom: number; left: number };
+  // For circle: radius and optional center position
+  circle?: { radius: number; radiusUnit: '%' | 'px'; centerX?: number; centerY?: number };
+  // For ellipse: radiusX, radiusY and optional center
+  ellipse?: { radiusX: number; radiusY: number; centerX?: number; centerY?: number };
+}
+
+/**
+ * Parse CSS clip-path property
+ * Supports: inset(), circle(), ellipse(), polygon() (detection only)
+ * Note: Figma doesn't have direct clip-path support, but we can:
+ * - Use clipsContent=true for basic clipping
+ * - Create mask shapes for circle/ellipse (future enhancement)
+ */
+export function parseClipPath(clipPathValue: string): ClipPathResult {
+  const result: ClipPathResult = { type: 'none', hasClip: false };
+
+  if (!clipPathValue || clipPathValue === 'none') {
+    return result;
+  }
+
+  // Parse inset(top right bottom left) or inset(all) or inset(vertical horizontal)
+  const insetMatch = clipPathValue.match(/inset\(([^)]+)\)/);
+  if (insetMatch) {
+    result.type = 'inset';
+    result.hasClip = true;
+
+    const values = insetMatch[1].trim().split(/\s+/).map(v => parseFloat(v) || 0);
+
+    if (values.length === 1) {
+      result.inset = { top: values[0], right: values[0], bottom: values[0], left: values[0] };
+    } else if (values.length === 2) {
+      result.inset = { top: values[0], right: values[1], bottom: values[0], left: values[1] };
+    } else if (values.length === 3) {
+      result.inset = { top: values[0], right: values[1], bottom: values[2], left: values[1] };
+    } else if (values.length >= 4) {
+      result.inset = { top: values[0], right: values[1], bottom: values[2], left: values[3] };
+    }
+
+    return result;
+  }
+
+  // Parse circle(radius at centerX centerY) or circle(radius)
+  const circleMatch = clipPathValue.match(/circle\((\d+(?:\.\d+)?)(%)?\s*(?:at\s+(\d+(?:\.\d+)?)(%)?\s+(\d+(?:\.\d+)?)(%)?)?\)/);
+  if (circleMatch) {
+    result.type = 'circle';
+    result.hasClip = true;
+    result.circle = {
+      radius: parseFloat(circleMatch[1]),
+      radiusUnit: circleMatch[2] === '%' ? '%' : 'px',
+      centerX: circleMatch[3] ? parseFloat(circleMatch[3]) : 50,
+      centerY: circleMatch[5] ? parseFloat(circleMatch[5]) : 50
+    };
+    return result;
+  }
+
+  // Parse ellipse(radiusX radiusY at centerX centerY)
+  const ellipseMatch = clipPathValue.match(/ellipse\((\d+(?:\.\d+)?)(%)?\s+(\d+(?:\.\d+)?)(%)?\s*(?:at\s+(\d+(?:\.\d+)?)(%)?\s+(\d+(?:\.\d+)?)(%)?)?\)/);
+  if (ellipseMatch) {
+    result.type = 'ellipse';
+    result.hasClip = true;
+    result.ellipse = {
+      radiusX: parseFloat(ellipseMatch[1]),
+      radiusY: parseFloat(ellipseMatch[3]),
+      centerX: ellipseMatch[5] ? parseFloat(ellipseMatch[5]) : 50,
+      centerY: ellipseMatch[7] ? parseFloat(ellipseMatch[7]) : 50
+    };
+    return result;
+  }
+
+  // Detect polygon (complex to implement, just flag it)
+  if (clipPathValue.includes('polygon(')) {
+    result.type = 'polygon';
+    result.hasClip = true;
+    return result;
+  }
+
+  return result;
+}

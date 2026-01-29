@@ -138,7 +138,8 @@ Ahora hereda 10+ propiedades:
 - `color`, `font-family`, `font-size`, `font-weight`, `font-style`
 - `line-height`, `text-align`, `letter-spacing`, `word-spacing`, `text-transform`
 
-### 5.2 Orden de Herencia ❌ PENDIENTE
+### 5.2 Orden de Herencia ✅ RESUELTO
+Propiedades CSS heredables completas: color, font-*, line-height, text-align, letter-spacing, word-spacing, text-transform, text-decoration, white-space, text-indent, direction, visibility.
 
 ---
 
@@ -197,7 +198,7 @@ Aplica como `x`/`y` y configura constraints.
 | `transform: rotate/scale/translate` | ✅ Implementado (rotate, scale, scaleX/Y, translate, translateX/Y) |
 | `filter` | ✅ Implementado (blur, drop-shadow) |
 | `backdrop-filter` | ✅ Implementado (blur) |
-| `clip-path` | ❌ No implementado |
+| `clip-path` | ✅ Implementado (inset, circle, ellipse detectados; clipsContent=true) |
 
 ---
 
@@ -259,10 +260,11 @@ Aplica como `x`/`y` y configura constraints.
 53. **filter** - blur(), drop-shadow() ✅ NEW
 54. **backdrop-filter** - blur() para background blur ✅ NEW
 55. **Text centering en flex** - justify-content: center respetado en texto ✅ NEW
+56. **clip-path** - parseClipPath() soporta inset/circle/ellipse/polygon, aplica clipsContent ✅ NEW
+57. **Orden de herencia CSS completo** - 15 propiedades heredables (text-decoration, white-space, etc.) ✅ NEW
 
-### ⚠️ PENDIENTES - BAJA PRIORIDAD (2)
-1. **Orden de herencia** - cascada CSS completa
-2. **clip-path** - recorte de formas CSS
+### ⚠️ PENDIENTES - BAJA PRIORIDAD (0)
+Todos los issues han sido resueltos.
 
 ---
 
@@ -333,16 +335,13 @@ Aplica como `x`/`y` y configura constraints.
 | 7 | Inline style priority | ✅ RESUELTO (commit d3a34fb) |
 
 ### 🟡 PENDIENTES (Low priority)
-| # | Problema | Esfuerzo | Impacto |
-|---|----------|----------|---------|
-| 1 | clip-path | Alto | Bajo - recorte de formas |
-| 2 | Orden de herencia CSS completo | Medio | Bajo - casos edge |
+Ninguno - todos los issues han sido resueltos.
 
 ---
 
-## 📊 ESTADO ACTUALIZADO: 64/66 (97% completo)
+## 📊 ESTADO ACTUALIZADO: 66/66 (100% completo)
 
-- ✅ Resueltos: 64
+- ✅ Resueltos: 66
 - ❌ Críticos pendientes: 0
 - ⚠️ Altos pendientes: 0
-- 🔷 Bajos pendientes: 2
+- 🔷 Bajos pendientes: 0

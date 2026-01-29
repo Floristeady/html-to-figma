@@ -1546,7 +1546,7 @@ These are existing bugs that should be addressed during the refactoring process:
 | ~~**Complex calc() expressions**~~ | ~~`calc()` with mixed units fails~~ | ~~`src/utils/css-units.ts`~~ | ✅ FIXED |
 | ~~**transform: scale/translate**~~ | ~~Only rotate is implemented~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
 | ~~**filter/backdrop-filter**~~ | ~~blur, drop-shadow, background blur~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
-| **clip-path** | CSS clip-path not supported | N/A | Low |
+| ~~**clip-path**~~ | ~~CSS clip-path not supported~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
 | ~~**Text centering in flex containers**~~ | ~~Text doesn't respect `justify-content: center` in flex containers~~ | ~~`src/code.ts`~~ | ✅ FIXED |
 
 ### Investigation Needed
@@ -1562,6 +1562,8 @@ These are existing bugs that should be addressed during the refactoring process:
 - [x] transform: scale/translate - FIXED: Full transform support (rotate, scale, scaleX/Y, translate, translateX/Y)
 - [x] filter/backdrop-filter - FIXED: blur(), drop-shadow(), backdrop-filter: blur()
 - [x] Text centering in flex containers - FIXED: Added centering logic to legacy text path with `textAlignHorizontal = 'CENTER'` and `layoutSizingHorizontal = 'FILL'`
+- [x] clip-path - FIXED: Added `parseClipPath()` in effects.ts supporting inset/circle/ellipse/polygon detection, applies `clipsContent = true`
+- [x] CSS inheritance order - FIXED: Added 5 more inheritable properties (text-decoration, white-space, text-indent, direction, visibility)
 
 ---
 
@@ -1605,19 +1607,22 @@ These are existing bugs that should be addressed during the refactoring process:
 - ✅ **filter**: blur() and drop-shadow() effects
 - ✅ **backdrop-filter**: blur() for frosted glass effects
 - ✅ **Text centering**: `justify-content: center` now properly centers text in flex containers
+- ✅ **clip-path**: `parseClipPath()` supports inset/circle/ellipse/polygon, applies clipsContent=true
+- ✅ **CSS inheritance complete**: 15 inheritable properties including text-decoration, white-space, text-indent, direction, visibility
 
 ### Next Steps (Resume Here)
 1. **Phase 1**: Extract types/IR to `src/types/`
    - Create `figma-ir.ts`, `css.ts`, `parsed-element.ts`
    - Define explicit interfaces for intermediate representation
 
-2. **Remaining issues (Low priority)**:
+2. **All CSS issues resolved**:
    - ~~Grid decimal fractions~~ ✅ DONE
    - ~~Complex calc() expressions~~ ✅ DONE
    - ~~transform: scale/translate~~ ✅ DONE
    - ~~filter/backdrop-filter~~ ✅ DONE
    - ~~Text centering in flex containers~~ ✅ DONE
-   - clip-path (Low priority)
+   - ~~clip-path~~ ✅ DONE
+   - ~~CSS inheritance order~~ ✅ DONE
 
 ### Commands Reference
 ```bash

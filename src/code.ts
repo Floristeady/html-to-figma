@@ -7,7 +7,7 @@ import { hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractF
 // Import CSS unit utilities
 import { CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePadding } from './utils/css-units';
 // Import effects utilities
-import { parseBoxShadow, parseTransform, parseLinearGradient, parseFilter, parseBackdropFilter } from './utils/effects';
+import { parseBoxShadow, parseTransform, parseLinearGradient, parseFilter, parseBackdropFilter, parseClipPath } from './utils/effects';
 // Import grid utilities
 import { parseGridColumns, parseGridTemplateAreas, getGridRowCount, getGridColCount, parseGridColumnWidths } from './utils/grid';
 
@@ -37,9 +37,6 @@ async function initializeSessionId(): Promise<string> {
     // Generate new session ID if none exists
     sessionId = generateSessionId();
     await figma.clientStorage.setAsync('figma-session-id', sessionId);
-    console.log('[Session] Generated new session ID:', sessionId);
-  } else {
-    console.log('[Session] Using existing session ID:', sessionId);
   }
 
   // Send session ID to UI
@@ -460,6 +457,17 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
   // Overflow: hidden - clip content
   if (styles['overflow'] === 'hidden' || styles['overflow-x'] === 'hidden' || styles['overflow-y'] === 'hidden') {
     frame.clipsContent = true;
+  }
+
+  // clip-path support - enables clipping for the frame
+  if (styles['clip-path']) {
+    const clipPath = parseClipPath(styles['clip-path']);
+    if (clipPath.hasClip) {
+      frame.clipsContent = true;
+      // For inset, we could adjust the frame size/padding, but Figma doesn't have direct clip-path
+      // The clipsContent=true provides basic clipping behavior
+      // For circle/ellipse/polygon, a future enhancement would create mask shapes
+    }
   }
 
   // TEXT-ALIGN: center support (for containers with text children)
@@ -1346,8 +1354,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 
   for (const node of structure) {
     debugLog('[NODE CREATION] Processing node:', node.tagName, node.type);
-    console.log('[NODE DEBUG] Tag:', node.tagName, 'Text:', node.text?.substring(0, 20), 'mixedContent:', node.mixedContent?.length, 'children:', node.children?.length);
-    
+
     if (node.type === 'element') {
       // Skip script, style, and other non-visual elements
       if (['script', 'style', 'meta', 'link', 'title'].includes(node.tagName)) {
@@ -1815,7 +1822,7 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           '_parentJustifyContent': isFlex ? justifyContent : inheritedStyles?.['_parentJustifyContent'],
           '_parentAlignItems': isFlex ? alignItems : inheritedStyles?.['_parentAlignItems'],
 
-          // TEXT PROPERTIES - CSS inherited properties
+          // TEXT PROPERTIES - CSS inherited properties (complete list per CSS spec)
           color: node.styles?.color || inheritedStyles?.color,
           'font-family': node.styles?.['font-family'] || inheritedStyles?.['font-family'],
           'font-size': node.styles?.['font-size'] || inheritedStyles?.['font-size'],
@@ -1826,6 +1833,11 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           'letter-spacing': node.styles?.['letter-spacing'] || inheritedStyles?.['letter-spacing'],
           'word-spacing': node.styles?.['word-spacing'] || inheritedStyles?.['word-spacing'],
           'text-transform': node.styles?.['text-transform'] || inheritedStyles?.['text-transform'],
+          'text-decoration': node.styles?.['text-decoration'] || inheritedStyles?.['text-decoration'],
+          'white-space': node.styles?.['white-space'] || inheritedStyles?.['white-space'],
+          'text-indent': node.styles?.['text-indent'] || inheritedStyles?.['text-indent'],
+          'direction': node.styles?.['direction'] || inheritedStyles?.['direction'],
+          'visibility': node.styles?.['visibility'] || inheritedStyles?.['visibility'],
 
           // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
           'parent-has-gradient': (node.styles?.['background'] && node.styles['background'].includes('linear-gradient')) ||
@@ -1847,11 +1859,6 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
                                  justifyContent === 'flex-end' ||
                                  justifyContent === 'end';
 
-          console.log('[TEXT CENTER] hasOnlyText:', hasOnlyText);
-          console.log('[TEXT CENTER] justifyContent:', justifyContent);
-          console.log('[TEXT CENTER] wantsCentering:', wantsCentering);
-          console.log('[TEXT CENTER] frame.layoutMode:', frame.layoutMode);
-
           for (const item of node.mixedContent) {
             if (item.type === 'text' && item.text && item.text.trim()) {
               // Create inline text node
@@ -1861,16 +1868,12 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 
               // Apply inherited styles and specific text styles
               const textStyles = { ...inheritableStyles, ...node.styles };
-              console.log('[TEXT CENTER] textStyles._parentJustifyContent:', textStyles['_parentJustifyContent']);
-              console.log('[TEXT CENTER] textStyles.justify-content:', textStyles['justify-content']);
               applyStylesToText(textNode, textStyles);
 
               frame.appendChild(textNode);
 
               // For flex containers with centering and only text, use FILL to enable text alignment
-              console.log('[TEXT CENTER] Condition check:', frame.layoutMode === 'HORIZONTAL', hasOnlyText, wantsCentering);
               if (frame.layoutMode === 'HORIZONTAL' && hasOnlyText && wantsCentering) {
-                console.log('[TEXT CENTER] Using FILL for centered text');
                 textNode.layoutSizingHorizontal = 'FILL';
                 textNode.textAutoResize = 'HEIGHT';
               } else if (frame.layoutMode === 'HORIZONTAL') {
