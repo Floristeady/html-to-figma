@@ -649,31 +649,87 @@ function copyToClipboard(text) {
   }
 }
 
-// MCP Config - Local Development Server
-var MCP_SERVER_URL = 'http://localhost:3003';
-var MCP_API_KEY = 'dev-key';
+// MCP Config - Auto-detect server (localhost first, then production)
+var LOCAL_SERVER = 'http://localhost:3003';
+var PROD_SERVER = 'https://html-to-figma.onrender.com';
+var LOCAL_API_KEY = 'dev-key';
+var PROD_API_KEY = 'figma-team-2026';
+
+// Will be set after detection
+var MCP_SERVER_URL = null;
+var MCP_API_KEY = null;
+var serverDetected = false;
+
 var MCP_GITHUB_REPO = 'github:Floristeady/html-to-figma';
 
-// Generate Claude Code command
+// Auto-detect which server to use
+function detectServer(callback) {
+  if (serverDetected) {
+    callback();
+    return;
+  }
+
+  debugLog('[SERVER] Detecting server...');
+  updateConnectionDetails('Detecting server...');
+
+  // Try localhost first with a short timeout
+  var timeoutId = setTimeout(function() {
+    // Timeout - localhost not responding, use production
+    debugLog('[SERVER] Localhost timeout, using production');
+    MCP_SERVER_URL = PROD_SERVER;
+    MCP_API_KEY = PROD_API_KEY;
+    serverDetected = true;
+    updateConnectionDetails('Using production server');
+    callback();
+  }, 1500);
+
+  fetch(LOCAL_SERVER + '/mcp-status', { method: 'GET' })
+    .then(function(response) {
+      if (response.ok) {
+        clearTimeout(timeoutId);
+        debugLog('[SERVER] Localhost detected, using local server');
+        MCP_SERVER_URL = LOCAL_SERVER;
+        MCP_API_KEY = LOCAL_API_KEY;
+        serverDetected = true;
+        updateConnectionDetails('Using local server');
+        callback();
+      } else {
+        throw new Error('Not OK');
+      }
+    })
+    .catch(function(error) {
+      clearTimeout(timeoutId);
+      if (!serverDetected) {
+        debugLog('[SERVER] Localhost not available, using production');
+        MCP_SERVER_URL = PROD_SERVER;
+        MCP_API_KEY = PROD_API_KEY;
+        serverDetected = true;
+        updateConnectionDetails('Using production server');
+        callback();
+      }
+    });
+}
+
+// Generate Claude Code command (always show production values for user to copy)
 function generateClaudeCodeCmd() {
   var sessionId = currentSessionId || 'YOUR_SESSION_ID';
   return 'claude mcp add figma-html-bridge -s local \\\n' +
-    '  -e FIGMA_SERVER_URL=' + MCP_SERVER_URL + ' \\\n' +
+    '  -e FIGMA_SERVER_URL=' + PROD_SERVER + ' \\\n' +
     '  -e FIGMA_SESSION_ID=' + sessionId + ' \\\n' +
-    '  -e API_KEY=' + MCP_API_KEY + ' \\\n' +
-    '  -- node mcp-server.js';
+    '  -e API_KEY=' + PROD_API_KEY + ' \\\n' +
+    '  -- npx -y ' + MCP_GITHUB_REPO;
 }
 
-// Generate Cursor/Desktop config JSON
+// Generate Cursor/Desktop config JSON (always show production values for user to copy)
 function generateCursorConfig() {
   return JSON.stringify({
-    "html-to-figma": {
+    "figma-html-bridge": {
       "command": "npx",
       "args": ["-y", MCP_GITHUB_REPO],
       "env": {
-        "FIGMA_SERVER_URL": MCP_SERVER_URL,
+        "FIGMA_SERVER_URL": PROD_SERVER,
         "FIGMA_SESSION_ID": currentSessionId || "YOUR_SESSION_ID",
-        "API_KEY": MCP_API_KEY
+        "API_KEY": PROD_API_KEY
       }
     }
   }, null, 2);
@@ -1956,6 +2012,13 @@ function startRealSSEConnection() {
     return;
   }
 
+  // Detect server first, then connect
+  detectServer(function() {
+    connectToSSE();
+  });
+}
+
+function connectToSSE() {
   try {
     // Include session ID in the SSE connection URL
     var sseUrl = MCP_SERVER_URL + '/mcp-stream?sessionId=' + encodeURIComponent(currentSessionId);
