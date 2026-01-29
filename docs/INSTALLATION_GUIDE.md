@@ -2,80 +2,56 @@
 
 ## Quick Start (5 minutes)
 
-This guide helps you set up the HTML-to-Figma plugin to convert HTML from Claude Code, Cursor, or Claude Desktop directly into Figma designs.
+Convert HTML from Claude Code, Cursor, or Claude Desktop directly into Figma designs.
 
 ---
 
 ## Step 1: Install the Figma Plugin
 
-1. Open Figma Desktop
-2. Go to **Menu > Plugins > Development > Import plugin from manifest...**
-3. Select the `manifest.json` file from this project folder
-4. Done! The plugin is now available in Figma
+1. Download the plugin files: `manifest.json`, `code.js`, `ui.html`
+2. Open Figma Desktop
+3. Go to **Menu → Plugins → Development → Import plugin from manifest...**
+4. Select the `manifest.json` file
+5. Done! The plugin is now available in Figma
 
 ---
 
-## Step 2: Start the SSE Server
+## Step 2: Get Your Session ID
 
-Open a terminal in the project folder and run:
-
-```bash
-node sse-server.js
-```
-
-Keep this terminal open. You should see:
-```
-[SSE-SERVER] Starting dedicated SSE server for Figma plugin...
-[SSE-SERVER] Environment: development
-[SSE-SERVER] Server listening on port 3003
-```
+1. Open Figma and run the **HTML to Figma** plugin
+2. Enable the **"Enable MCP"** toggle
+3. You'll see your **Session ID** displayed (e.g., `user_abc12345`)
+4. Click **"Copy"** to copy it - you'll need it in the next step
 
 ---
 
-## Step 3: Get Your Session ID
+## Step 3: Configure Your AI Client
 
-1. Open the HTML to Figma plugin in Figma
-2. Go to the **MCP Bridge** tab
-3. Enable the **MCP Bridge** switch
-4. Click **"MCP Config"** button
-5. Copy your unique Session ID (e.g., `user_abc12345`)
+Choose your AI client and add the MCP configuration:
 
----
+### Claude Code
 
-## Step 4: Configure Your AI Client
+Add to `~/.claude/mcp.json`:
 
-### Claude Code (CLI) - RECOMMENDED
-
-Run this command in your terminal:
-
-```bash
-claude mcp add figma-html-bridge -s local \
-  -e FIGMA_SERVER_URL=http://localhost:3003 \
-  -e FIGMA_SESSION_ID=YOUR_SESSION_ID \
-  -e API_KEY=dev-key \
-  -- node /FULL/PATH/TO/html-to-figma/mcp-server.js
+```json
+{
+  "mcpServers": {
+    "figma-html-bridge": {
+      "command": "npx",
+      "args": ["-y", "github:Floristeady/html-to-figma"],
+      "env": {
+        "FIGMA_SERVER_URL": "https://html-to-figma.onrender.com",
+        "FIGMA_SESSION_ID": "YOUR_SESSION_ID",
+        "API_KEY": "figma-team-2026"
+      }
+    }
+  }
+}
 ```
 
-**Replace:**
-- `YOUR_SESSION_ID` with your session ID from the plugin
-- `/FULL/PATH/TO/html-to-figma` with the actual path to the project
+**Replace `YOUR_SESSION_ID`** with your Session ID from Step 2.
 
-**Then restart Claude Code** (`/exit` and reopen).
-
-**To verify it worked:**
-```bash
-claude mcp get figma-html-bridge
-```
-
-Should show:
-```
-figma-html-bridge:
-  Status: ✓ Connected
-  Environment:
-    FIGMA_SERVER_URL=http://localhost:3003
-    FIGMA_SESSION_ID=user_xxxxx
-    API_KEY=dev-key
-```
+Then restart Claude Code (`/exit` and reopen).
 
 ---
 
@@ -86,127 +62,121 @@ Add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "html-to-figma": {
+    "figma-html-bridge": {
       "command": "npx",
       "args": ["-y", "github:Floristeady/html-to-figma"],
       "env": {
-        "FIGMA_SERVER_URL": "http://localhost:3003",
+        "FIGMA_SERVER_URL": "https://html-to-figma.onrender.com",
         "FIGMA_SESSION_ID": "YOUR_SESSION_ID",
-        "API_KEY": "dev-key"
+        "API_KEY": "figma-team-2026"
       }
     }
   }
 }
 ```
 
-**Then restart Cursor.**
+Then restart Cursor.
 
 ---
 
 ### Claude Desktop
 
 Add to your config file:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
-    "html-to-figma": {
+    "figma-html-bridge": {
       "command": "npx",
       "args": ["-y", "github:Floristeady/html-to-figma"],
       "env": {
-        "FIGMA_SERVER_URL": "http://localhost:3003",
+        "FIGMA_SERVER_URL": "https://html-to-figma.onrender.com",
         "FIGMA_SESSION_ID": "YOUR_SESSION_ID",
-        "API_KEY": "dev-key"
+        "API_KEY": "figma-team-2026"
       }
     }
   }
 }
 ```
 
-**Then restart Claude Desktop.**
+Then restart Claude Desktop.
 
 ---
 
-## Step 5: Test the Connection
+## Step 4: Test the Connection
 
 1. Make sure the Figma plugin shows **"SSE Connected"** (green indicator)
-2. In your AI client, ask:
-   > "Send this HTML to Figma: `<div style='background:blue;width:100px;height:100px'></div>`"
-3. A blue square should appear in your Figma canvas
+2. In your AI client, say:
+   > "Send this HTML to Figma: `<div style='background:blue; padding:40px; border-radius:8px;'><h1 style='color:white;'>Hello!</h1></div>`"
+3. The design should appear in your Figma canvas
 
 ---
 
-## Environment Variables
+## Configuration Reference
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FIGMA_SERVER_URL` | URL of the SSE server | `http://localhost:3003` |
-| `FIGMA_SESSION_ID` | Your unique session ID from the plugin | Required |
-| `API_KEY` | Authentication key | `dev-key` |
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `FIGMA_SERVER_URL` | `https://html-to-figma.onrender.com` | Production server |
+| `FIGMA_SESSION_ID` | Your unique ID from plugin | Routes HTML to your Figma |
+| `API_KEY` | `figma-team-2026` | Team authentication |
 
 ---
 
 ## Troubleshooting
 
 ### "FIGMA_SESSION_ID not configured"
-- You didn't include the Session ID in your MCP config
-- Copy your Session ID from the plugin's "MCP Config" panel
-- For Claude Code, make sure you used the `-e FIGMA_SESSION_ID=xxx` flag
+- Add your Session ID to the MCP config
+- Get it from the Figma plugin (enable MCP toggle to see it)
 
 ### "Session not found"
 - The Figma plugin is not connected
-- Make sure the plugin shows "SSE Connected"
-- Check that the Session ID matches exactly (case-sensitive)
+- Make sure plugin shows "SSE Connected" (green)
+- Verify Session ID matches exactly (case-sensitive)
 
 ### MCP tool not appearing
-- Restart your AI client after configuration
-- For Claude Code: run `claude mcp list` to verify it's installed
+- Restart your AI client after adding the config
+- Check the config file path is correct
 
-### Connection keeps disconnecting
-- Keep the SSE server running (`node sse-server.js`)
-- If it disconnects, the plugin will auto-reconnect
-
-### "Cannot find module" error
-- Make sure Node.js is installed
-- Make sure you're using the correct path to mcp-server.js
+### Plugin shows "Disconnected"
+- Check your internet connection
+- The server may be waking up (free tier has ~30s cold start)
+- Wait a moment and it will auto-reconnect
 
 ---
 
 ## Architecture
 
 ```
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│ Claude Code   │     │  MCP Server   │     │  SSE Server   │
-│ / Cursor      │────▶│               │────▶│  (port 3003)  │
-│               │stdio│ Sends HTML +  │HTTP │               │
-│               │     │ Session ID    │     │ Routes to     │
-└───────────────┘     └───────────────┘     │ correct user  │
-                                            └───────┬───────┘
-                                                    │ SSE
-                                                    ▼
-                                            ┌───────────────┐
-                                            │ Figma Plugin  │
-                                            │ (your session)│
-                                            │               │
-                                            │ Creates       │
-                                            │ design nodes  │
-                                            └───────────────┘
+┌─────────────────┐      ┌──────────────────────────────┐
+│  Claude Code    │      │     Render Server            │
+│  / Cursor       │─────▶│  html-to-figma.onrender.com  │
+│                 │ HTTP │                              │
+└─────────────────┘      └──────────────┬───────────────┘
+                                        │ SSE
+                                        ▼
+                         ┌──────────────────────────────┐
+                         │       Figma Plugin           │
+                         │    (your Session ID)         │
+                         │                              │
+                         │    Creates design nodes      │
+                         └──────────────────────────────┘
 ```
 
-Each user has their own Session ID, so multiple people can use the system simultaneously without receiving each other's HTML.
+Each user has their own Session ID, so multiple team members can use the system simultaneously.
 
 ---
 
-## For Production (Remote Server)
+## For Local Development
 
-When the team server is deployed on Render:
+If you need to run the server locally for development:
 
-1. Change `FIGMA_SERVER_URL` to: `https://html-to-figma-XXXX.onrender.com`
-2. Change `API_KEY` to the team's shared key
-3. The Session ID remains your personal one from the plugin
+1. Clone the repo and checkout the `dev` branch
+2. Run `node sse-server.js`
+3. Change `FIGMA_SERVER_URL` to `http://localhost:3003`
+4. Change `API_KEY` to `dev-key`
 
 ---
 
-**Last updated:** January 28, 2026
+**Last updated:** January 29, 2026
