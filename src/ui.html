@@ -649,9 +649,9 @@ function copyToClipboard(text) {
   }
 }
 
-// MCP Config - Server URL (change for production)
-var MCP_SERVER_URL = 'http://localhost:3003';
-var MCP_API_KEY = 'dev-key';
+// MCP Config - Production Server URL (Render)
+var MCP_SERVER_URL = 'https://html-to-figma.onrender.com';
+var MCP_API_KEY = 'figma-team-2026';
 var MCP_GITHUB_REPO = 'github:Floristeady/html-to-figma';
 
 // Generate Claude Code command
@@ -1958,7 +1958,7 @@ function startRealSSEConnection() {
 
   try {
     // Include session ID in the SSE connection URL
-    var sseUrl = 'http://localhost:3003/mcp-stream?sessionId=' + encodeURIComponent(currentSessionId);
+    var sseUrl = MCP_SERVER_URL + '/mcp-stream?sessionId=' + encodeURIComponent(currentSessionId);
     debugLog('[SSE] Connecting to:', sseUrl);
     eventSource = new EventSource(sseUrl);
 
