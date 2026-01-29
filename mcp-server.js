@@ -10,6 +10,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs';
 import path from 'path';
+import https from 'https';
+import http from 'http';
 import { fileURLToPath } from 'url';
 import { SERVER_CONFIG } from './config/server-config.js';
 
@@ -168,10 +170,13 @@ class FigmaMCPServer {
       // Write to shared file for SSE server to pick up
       this.writeToSharedFile(mcpData);
 
-      // Notify SSE server via HTTP request (non-blocking)
-      this.notifySSEServer(mcpData).catch(err => {
+      // Notify SSE server via HTTP request (BLOCKING - must wait for completion)
+      try {
+        const notifyResult = await this.notifySSEServer(mcpData);
+        console.error(`[MCP-SERVER] SSE notification completed with status: ${notifyResult}`);
+      } catch (err) {
         console.error('[MCP-SERVER] Failed to notify SSE server:', err.message);
-      });
+      }
 
       console.error(`[MCP-SERVER] HTML import processed successfully`);
 
@@ -266,7 +271,7 @@ class FigmaMCPServer {
       // Parse server URL to determine http vs https
       const serverUrl = new URL(MCP_CONFIG.SERVER_URL);
       const isHttps = serverUrl.protocol === 'https:';
-      const httpModule = isHttps ? await import('https') : await import('http');
+      const httpModule = isHttps ? https : http;
 
       const postData = JSON.stringify(data);
       const options = {
