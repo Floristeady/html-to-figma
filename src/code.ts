@@ -1,7 +1,5 @@
 /// <reference types="@figma/plugin-typings" />
 
-// Import constants from parser module
-import { VIEWPORT_PRESETS, CONTAINER_SELECTORS } from './parser/css-constants';
 // Import color utilities
 import { hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractFallbackColor } from './utils/colors';
 // Import CSS unit utilities
@@ -54,7 +52,6 @@ initializeSessionId();
 // Color utilities imported from ./utils/colors
 // CSS unit utilities (CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePadding)
 // imported from ./utils/css-units
-// VIEWPORT_PRESETS and CONTAINER_SELECTORS imported from ./parser/css-constants
 
 function calculatePercentageWidth(widthValue: string, parentFrame: FrameNode | null): number | null {
   if (!parentFrame || !widthValue) return null;
@@ -66,68 +63,200 @@ function calculatePercentageWidth(widthValue: string, parentFrame: FrameNode | n
   return Math.round((percentage / 100) * availableWidth);
 }
 
-// Detect design width from HTML meta tags and CSS
-function detectDesignWidth(htmlStr: string, cssRules: { [key: string]: any }): number | null {
-  const DEFAULT_WIDTH = 1440;
+// ============================================
+// UNIFIED WIDTH DETECTION SYSTEM
+// ============================================
 
-  // 1. Check for meta tag: <meta name="figma-width" content="375">
-  const widthMetaMatch = htmlStr.match(/<meta\s+name=["']figma-width["']\s+content=["'](\d+)["']/i);
-  if (widthMetaMatch) {
-    const width = parseInt(widthMetaMatch[1], 10);
-    if (!isNaN(width) && width > 0) {
-      // Debug log removed
-      return width;
-    }
-  }
+interface StructureAnalysis {
+  explicitWidth: number | null;      // width explícito en body/root
+  sidebarWidth: number;              // ancho del sidebar detectado
+  mainContentMargin: number;         // margin-left del contenido principal
+  hasWideGrid: boolean;              // grid con 8+ columnas
+  isFullPage: boolean;               // indicadores de página completa
+  hasMultipleSections: boolean;      // múltiples <section>
+}
 
-  // 2. Check for viewport preset: <meta name="figma-viewport" content="mobile">
-  const viewportMetaMatch = htmlStr.match(/<meta\s+name=["']figma-viewport["']\s+content=["'](\w+)["']/i);
-  if (viewportMetaMatch) {
-    const preset = viewportMetaMatch[1].toLowerCase();
-    if (VIEWPORT_PRESETS[preset]) {
-      // Debug log removed
-      return VIEWPORT_PRESETS[preset];
-    }
-  }
+/**
+ * Analiza la estructura parseada para detectar patrones de layout
+ */
+function analyzeStructure(structure: any[]): StructureAnalysis {
+  const result: StructureAnalysis = {
+    explicitWidth: null,
+    sidebarWidth: 0,
+    mainContentMargin: 0,
+    hasWideGrid: false,
+    isFullPage: false,
+    hasMultipleSections: false
+  };
 
-  // 3. Check for HTML comment: <!-- figma-width: 1920 -->
-  const commentMatch = htmlStr.match(/<!--\s*figma-width:\s*(\d+)\s*-->/i);
-  if (commentMatch) {
-    const width = parseInt(commentMatch[1], 10);
-    if (!isNaN(width) && width > 0) {
-      // Debug log removed
-      return width;
-    }
-  }
+  if (!structure || structure.length === 0) return result;
 
-  // 4. Check for max-width on container selectors from CSS
-  for (const selector of CONTAINER_SELECTORS) {
-    const rule = cssRules[selector];
-    if (rule) {
-      // Check max-width first (more reliable indicator of design width)
-      if (rule['max-width']) {
-        const maxWidth = parseSize(rule['max-width']);
-        if (maxWidth && maxWidth > 0 && maxWidth < 3000) {
-          // Debug log removed
-          // Add typical padding/margins to container max-width for full page width
-          // Most designs have ~20-40px padding on sides
-          return maxWidth + 80; // Container + padding compensation
-        }
-      }
+  let sectionCount = 0;
 
-      // Check explicit width (non-percentage)
-      if (rule['width'] && !rule['width'].includes('%')) {
-        const width = parseSize(rule['width']);
-        if (width && width > 100 && width < 3000) {
-          // Debug log removed
-          return width;
-        }
+  const analyzeNode = (node: any, depth: number = 0): void => {
+    if (!node) return;
+
+    const tagName = node.tagName?.toLowerCase();
+    const className = node.styles?.class || '';
+    const position = node.styles?.position;
+
+    // Detectar width explícito en body/html (depth 0-1)
+    if (depth <= 1 && node.styles?.width) {
+      const width = parseSize(node.styles.width);
+      if (width && width > 400 && width < 3000 && position !== 'fixed' && position !== 'absolute') {
+        result.explicitWidth = width;
       }
     }
+
+    // Detectar sidebar (position:fixed con width, o aside/nav con width)
+    const isSidebarTag = tagName === 'aside' || tagName === 'nav';
+    const isSidebarClass = className.includes('sidebar') || className.includes('sidenav');
+    const hasFixedPosition = position === 'fixed' || position === 'absolute';
+
+    if ((isSidebarTag || isSidebarClass || hasFixedPosition) && node.styles?.width) {
+      const width = parseSize(node.styles.width);
+      if (width && width > 0 && width < 400) { // Sidebars típicamente < 400px
+        result.sidebarWidth = Math.max(result.sidebarWidth, width);
+      }
+    }
+
+    // Detectar main content con margin-left (patrón sidebar)
+    if (node.styles?.['margin-left']) {
+      const margin = parseSize(node.styles['margin-left']);
+      if (margin && margin > 50) {
+        result.mainContentMargin = Math.max(result.mainContentMargin, margin);
+      }
+    }
+
+    // Detectar grid ancho (8+ columnas)
+    if (node.styles?.display === 'grid' && node.styles?.['grid-template-columns']) {
+      const gridCols = node.styles['grid-template-columns'];
+      const repeatMatch = gridCols.match(/repeat\((\d+)/);
+      if (repeatMatch && parseInt(repeatMatch[1]) >= 8) {
+        result.hasWideGrid = true;
+      }
+      const colCount = gridCols.split(/\s+/).filter((c: string) => c && c.trim() !== '').length;
+      if (colCount >= 8) {
+        result.hasWideGrid = true;
+      }
+    }
+
+    // Contar secciones
+    if (tagName === 'section' || tagName === 'article') {
+      sectionCount++;
+    }
+
+    // Detectar indicadores de página completa
+    if (tagName === 'header' || tagName === 'footer' || tagName === 'main' || tagName === 'aside') {
+      result.isFullPage = true;
+    }
+    if (node.styles?.height === '100vh' || node.styles?.['min-height'] === '100vh') {
+      result.isFullPage = true;
+    }
+
+    // Analizar hijos
+    if (node.children) {
+      for (const child of node.children) {
+        analyzeNode(child, depth + 1);
+      }
+    }
+  };
+
+  // Analizar estructura
+  for (const node of structure) {
+    analyzeNode(node, 0);
+
+    // Verificar si body tiene 2+ hijos directos (indica página completa)
+    if (node.tagName?.toLowerCase() === 'body' && node.children && node.children.length >= 2) {
+      result.isFullPage = true;
+    }
   }
 
-  // 5. No width detected, return null (caller will use default)
-  // Debug log removed
+  result.hasMultipleSections = sectionCount >= 2;
+
+  // Si tiene múltiples secciones, es página completa
+  if (result.hasMultipleSections) {
+    result.isFullPage = true;
+  }
+
+  return result;
+}
+
+/**
+ * FUNCIÓN PRINCIPAL UNIFICADA
+ * Calcula el ancho del contenedor siguiendo un orden de prioridad lógico
+ *
+ * Prioridad:
+ * 1. Meta tags (figma-width, figma-viewport) - explícito del usuario
+ * 2. Width explícito en body/root
+ * 3. Patrón sidebar + main content
+ * 4. Grid ancho (8+ columnas) → 1920px
+ * 5. Indicadores de página completa → 1440px
+ * 6. Múltiples secciones → 1440px
+ * 7. Sin indicadores → AUTO (null)
+ *
+ * @param structure - Estructura HTML parseada
+ * @param metaWidth - Ancho de meta tags (detectado por ui.html)
+ */
+function calculateContainerWidth(
+  structure: any[],
+  metaWidth?: number | null
+): number | null {
+  const DEFAULT_PAGE_WIDTH = 1440;
+  const WIDE_LAYOUT_WIDTH = 1920;
+
+  console.log('[WIDTH] ========== CALCULATING CONTAINER WIDTH ==========');
+
+  // PASO 1: Meta tags explícitos (máxima prioridad - usuario lo definió)
+  if (metaWidth && metaWidth > 0) {
+    console.log('[WIDTH] RESULT: Using meta tag width:', metaWidth);
+    return metaWidth;
+  }
+
+  // PASO 2: Análisis de estructura
+  const analysis = analyzeStructure(structure);
+  console.log('[WIDTH] Structure analysis:', JSON.stringify(analysis));
+
+  // 2a. Width explícito en body/root
+  if (analysis.explicitWidth) {
+    console.log('[WIDTH] RESULT: Using explicit body/root width:', analysis.explicitWidth);
+    return analysis.explicitWidth;
+  }
+
+  // 2b. Patrón sidebar + main content
+  if (analysis.sidebarWidth > 0 && analysis.mainContentMargin > 0) {
+    const calculatedWidth = analysis.sidebarWidth + 1200;
+    console.log('[WIDTH] RESULT: Sidebar pattern detected, width:', calculatedWidth);
+    return calculatedWidth;
+  }
+
+  // 2c. Solo sidebar detectado (asumir contenido principal típico)
+  if (analysis.sidebarWidth > 0) {
+    const calculatedWidth = analysis.sidebarWidth + 1200;
+    console.log('[WIDTH] RESULT: Sidebar detected, assuming main content, width:', calculatedWidth);
+    return calculatedWidth;
+  }
+
+  // 2d. Grid ancho (8+ columnas)
+  if (analysis.hasWideGrid) {
+    console.log('[WIDTH] RESULT: Wide grid detected, using:', WIDE_LAYOUT_WIDTH);
+    return WIDE_LAYOUT_WIDTH;
+  }
+
+  // PASO 3: Indicadores de página completa
+  if (analysis.isFullPage) {
+    console.log('[WIDTH] RESULT: Full page indicators detected, using default:', DEFAULT_PAGE_WIDTH);
+    return DEFAULT_PAGE_WIDTH;
+  }
+
+  // PASO 4: Múltiples secciones = página completa
+  if (analysis.hasMultipleSections) {
+    console.log('[WIDTH] RESULT: Multiple sections detected, using default:', DEFAULT_PAGE_WIDTH);
+    return DEFAULT_PAGE_WIDTH;
+  }
+
+  // PASO 5: Sin indicadores claros → AUTO
+  console.log('[WIDTH] RESULT: No clear indicators, using AUTO (null)');
   return null;
 }
 
@@ -1134,13 +1263,13 @@ async function createGridLayoutWithSpansFallback(
   inheritedStyles?: any,
   gridTemplateColumns?: string
 ) {
-  // Calculate available width (subtract padding from parent width)
-  const parentWidth = parentFrame.width || 1200;
+  // Calculate available width (subtract padding from parent width, ensure minimum)
+  const parentWidth = Math.max(100, parentFrame.width || 1200);
   const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
-  const availableWidth = parentWidth - paddingH;
+  const availableWidth = Math.max(100, parentWidth - paddingH);
   const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
 
-  // Helper function to calculate width of a column span
+  // Helper function to calculate width of a column span (ensures minimum 1px)
   const getSpanWidth = (startCol: number, colSpan: number): number => {
     let width = 0;
     for (let i = startCol; i < startCol + colSpan && i < columnWidths.length; i++) {
@@ -1148,7 +1277,7 @@ async function createGridLayoutWithSpansFallback(
     }
     // Add gaps between columns in the span
     width += gap * (colSpan - 1);
-    return width;
+    return Math.max(1, width);
   };
 
   // Reset parent to vertical layout
@@ -1306,10 +1435,10 @@ async function createGridLayoutFallback(children: any[], parentFrame: FrameNode,
   parentFrame.layoutMode = 'VERTICAL';
   parentFrame.itemSpacing = gap;
 
-  // Calculate available width (subtract padding from parent width)
-  const parentWidth = parentFrame.width || 1200;
+  // Calculate available width (subtract padding from parent width, ensure minimum)
+  const parentWidth = Math.max(100, parentFrame.width || 1200);
   const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
-  const availableWidth = parentWidth - paddingH;
+  const availableWidth = Math.max(100, parentWidth - paddingH);
   const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
 
   for (let i = 0; i < children.length; i += columns) {
@@ -2961,12 +3090,8 @@ figma.ui.onmessage = async (msg) => {
     markRequestProcessed(requestId);
     // Debug log removed
 
-    // ✅ DESIGN WIDTH DETECTION: Use width detected by UI (from meta tags and CSS)
-    const detectedDesignWidth: number | null = msg.detectedWidth || null;
-    if (detectedDesignWidth) {
-      // Update CSS_CONFIG.viewportWidth for vw calculations
-      (CSS_CONFIG as any).viewportWidth = detectedDesignWidth;
-    }
+    // ✅ DESIGN WIDTH DETECTION: Meta tags detectados por UI (si los hay)
+    const metaTagWidth: number | null = msg.detectedWidth || null;
 
     // ✅ REM BASE DETECTION: Use root font-size detected by UI (from html/root CSS)
     const detectedRemBase: number | null = msg.detectedRemBase || null;
@@ -2975,140 +3100,13 @@ figma.ui.onmessage = async (msg) => {
       (CSS_CONFIG as any).remBase = detectedRemBase;
     }
 
-    // Detect full page layout pattern (sidebar + main content, grid layouts, etc.)
-    const detectFullPageLayout = (structure: any[]): boolean => {
-      if (!structure || structure.length === 0) return false;
+    // ✅ UNIFIED WIDTH DETECTION: Usa la función centralizada
+    const containerWidth = calculateContainerWidth(msg.structure, metaTagWidth);
 
-      const checkNode = (node: any): boolean => {
-        // Check for grid with grid-template-areas (complex layout = full page)
-        if (node.styles?.display === 'grid' && node.styles?.['grid-template-areas']) {
-          return true;
-        }
-
-        // Check for grid with multiple columns
-        if (node.styles?.display === 'grid' && node.styles?.['grid-template-columns']) {
-          const cols = parseGridColumns(node.styles['grid-template-columns']);
-          if (cols >= 3) return true; // 3+ column grid = likely full page
-        }
-
-        // Check for body/html with padding (indicates designed layout)
-        if ((node.tagName === 'body' || node.tagName === 'html') && node.styles?.padding) {
-          const padding = parseSize(node.styles.padding);
-          if (padding && padding >= 16) return true;
-        }
-
-        if (!node.children || node.children.length < 2) {
-          // Still check single children recursively
-          if (node.children) {
-            for (const child of node.children) {
-              if (checkNode(child)) return true;
-            }
-          }
-          return false;
-        }
-
-        // Look for sidebar pattern: position fixed/absolute with fixed width
-        const hasSidebar = node.children.some((child: any) => {
-          const pos = child.styles?.position;
-          const width = child.styles?.width;
-          return (pos === 'fixed' || pos === 'absolute') && width && !width.includes('%');
-        });
-
-        // Look for main content with margin-left
-        const hasMainContent = node.children.some((child: any) => {
-          const ml = child.styles?.['margin-left'];
-          return ml && parseSize(ml) && parseSize(ml)! > 50;
-        });
-
-        // Also detect 100vh height (full viewport)
-        const hasFullHeight = node.styles?.height === '100vh' ||
-                              node.styles?.['min-height'] === '100vh';
-
-        if (hasSidebar && hasMainContent) return true;
-        if (hasFullHeight) return true;
-
-        // Recursively check children
-        for (const child of node.children) {
-          if (checkNode(child)) return true;
-        }
-        return false;
-      };
-
-      for (const node of structure) {
-        if (checkNode(node)) return true;
-      }
-      return false;
-    };
-
-    const isFullPageLayout = detectFullPageLayout(msg.structure);
-    const DEFAULT_PAGE_WIDTH = 1440; // Standard desktop width
-
-    // Helper to calculate dynamic width based on layout structure
-    const calculateDynamicWidth = (structure: any[]): number | null => {
-      if (!structure || structure.length === 0) return null;
-
-      let sidebarWidth = 0;
-      let mainContentMargin = 0;
-      let explicitWidth: number | null = null;
-
-      const analyzeNode = (node: any, depth: number = 0): void => {
-        // Check for explicit width on root elements
-        if (depth <= 1 && node.styles?.width) {
-          const width = parseSize(node.styles.width);
-          if (width && width > 0 && !node.styles?.position?.includes('fixed')) {
-            // Debug log removed
-            explicitWidth = width;
-          }
-        }
-
-        // Detect fixed sidebar with explicit width
-        if (node.styles?.position === 'fixed' && node.styles?.width) {
-          const width = parseSize(node.styles.width);
-          if (width && width > 0) {
-            sidebarWidth = Math.max(sidebarWidth, width);
-            // Debug log removed
-          }
-        }
-
-        // Detect main content with margin-left (sidebar offset)
-        if (node.styles?.['margin-left']) {
-          const margin = parseSize(node.styles['margin-left']);
-          if (margin && margin > 0) {
-            mainContentMargin = Math.max(mainContentMargin, margin);
-            // Debug log removed
-          }
-        }
-
-        // Check children
-        if (node.children) {
-          for (const child of node.children) {
-            analyzeNode(child, depth + 1);
-          }
-        }
-      };
-
-      for (const node of structure) {
-        analyzeNode(node, 0);
-      }
-
-      // If we found explicit width, use it
-      if (explicitWidth) return explicitWidth;
-
-      // If we detected sidebar + main content pattern, calculate total width
-      // Main content should be ~1200px, so total = sidebar + 1200
-      if (sidebarWidth > 0 && mainContentMargin > 0) {
-        const calculatedWidth = sidebarWidth + 1200; // sidebar + reasonable main content width
-        // Debug log removed
-        return calculatedWidth;
-      }
-
-      return null;
-    };
-
-    const structureWidth = calculateDynamicWidth(msg.structure);
-    debugLog('[MAIN HANDLER] Full page layout detected:', isFullPageLayout);
-    debugLog('[MAIN HANDLER] Detected design width (meta/CSS):', detectedDesignWidth);
-    debugLog('[MAIN HANDLER] Structure-based width:', structureWidth);
+    // Update viewportWidth for vw calculations if we have a container width
+    if (containerWidth) {
+      (CSS_CONFIG as any).viewportWidth = containerWidth;
+    }
 
     // Create a main container frame for all HTML content
     const mainContainer = figma.createFrame();
@@ -3120,52 +3118,10 @@ figma.ui.onmessage = async (msg) => {
     mainContainer.layoutMode = 'VERTICAL';
     mainContainer.primaryAxisSizingMode = 'AUTO';
 
-    // Helper to detect if layout needs wider width (e.g., 12-column grids)
-    const detectWideLayout = (structure: any[]): boolean => {
-      const checkNode = (node: any): boolean => {
-        if (!node) return false;
-        // Check for grid-template-columns with many columns (8+)
-        const gridCols = node.styles?.['grid-template-columns'];
-        if (gridCols) {
-          const repeatMatch = gridCols.match(/repeat\((\d+)/);
-          if (repeatMatch && parseInt(repeatMatch[1]) >= 8) return true;
-          // Count explicit columns
-          const colCount = gridCols.split(/\s+/).filter((c: string) => c && c !== '').length;
-          if (colCount >= 8) return true;
-        }
-        // Check children recursively
-        if (node.children) {
-          for (const child of node.children) {
-            if (checkNode(child)) return true;
-          }
-        }
-        return false;
-      };
-      for (const node of structure) {
-        if (checkNode(node)) return true;
-      }
-      return false;
-    };
-
-    const needsWideLayout = detectWideLayout(msg.structure);
-
-    // Determine container width priority:
-    // 1. Wide layout (12-column grids) needs at least 1920px
-    // 2. Meta tag / CSS detection
-    // 3. Structure-based detection (sidebar patterns, explicit widths)
-    // 4. Full page layout default
-    // 5. Auto (null)
-    let containerWidth = detectedDesignWidth || structureWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
-
-    // Wide layouts need more space - override if detected width is too small
-    if (needsWideLayout && (containerWidth === null || containerWidth < 1920)) {
-      containerWidth = 1920;
-    }
-
+    // Aplicar ancho al contenedor
     if (containerWidth) {
       mainContainer.counterAxisSizingMode = 'FIXED';
       mainContainer.resize(containerWidth, mainContainer.height);
-      debugLog('[MAIN HANDLER] Set container width to:', containerWidth);
     } else {
       mainContainer.counterAxisSizingMode = 'AUTO';
     }

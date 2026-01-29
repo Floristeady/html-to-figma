@@ -669,13 +669,13 @@
         }
       }
     }
-    const frWidth = widthForColumns - fixedWidth;
+    const frWidth = Math.max(0, widthForColumns - fixedWidth);
     const frUnit = totalFr > 0 ? frWidth / totalFr : 0;
     return columnDefs.map((col) => {
       if (col.type === "px") {
-        return col.value;
+        return Math.max(1, col.value);
       } else {
-        return Math.round(col.value * frUnit);
+        return Math.max(1, Math.round(col.value * frUnit));
       }
     });
   }
@@ -709,6 +709,122 @@
     if (percentage === null) return null;
     const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
     return Math.round(percentage / 100 * availableWidth);
+  }
+  function analyzeStructure(structure) {
+    var _a;
+    const result = {
+      explicitWidth: null,
+      sidebarWidth: 0,
+      mainContentMargin: 0,
+      hasWideGrid: false,
+      isFullPage: false,
+      hasMultipleSections: false
+    };
+    if (!structure || structure.length === 0) return result;
+    let sectionCount = 0;
+    const analyzeNode = (node, depth = 0) => {
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+      if (!node) return;
+      const tagName = (_a2 = node.tagName) == null ? void 0 : _a2.toLowerCase();
+      const className = ((_b = node.styles) == null ? void 0 : _b.class) || "";
+      const position = (_c = node.styles) == null ? void 0 : _c.position;
+      if (depth <= 1 && ((_d = node.styles) == null ? void 0 : _d.width)) {
+        const width = parseSize(node.styles.width);
+        if (width && width > 400 && width < 3e3 && position !== "fixed" && position !== "absolute") {
+          result.explicitWidth = width;
+        }
+      }
+      const isSidebarTag = tagName === "aside" || tagName === "nav";
+      const isSidebarClass = className.includes("sidebar") || className.includes("sidenav");
+      const hasFixedPosition = position === "fixed" || position === "absolute";
+      if ((isSidebarTag || isSidebarClass || hasFixedPosition) && ((_e = node.styles) == null ? void 0 : _e.width)) {
+        const width = parseSize(node.styles.width);
+        if (width && width > 0 && width < 400) {
+          result.sidebarWidth = Math.max(result.sidebarWidth, width);
+        }
+      }
+      if ((_f = node.styles) == null ? void 0 : _f["margin-left"]) {
+        const margin = parseSize(node.styles["margin-left"]);
+        if (margin && margin > 50) {
+          result.mainContentMargin = Math.max(result.mainContentMargin, margin);
+        }
+      }
+      if (((_g = node.styles) == null ? void 0 : _g.display) === "grid" && ((_h = node.styles) == null ? void 0 : _h["grid-template-columns"])) {
+        const gridCols = node.styles["grid-template-columns"];
+        const repeatMatch = gridCols.match(/repeat\((\d+)/);
+        if (repeatMatch && parseInt(repeatMatch[1]) >= 8) {
+          result.hasWideGrid = true;
+        }
+        const colCount = gridCols.split(/\s+/).filter((c) => c && c.trim() !== "").length;
+        if (colCount >= 8) {
+          result.hasWideGrid = true;
+        }
+      }
+      if (tagName === "section" || tagName === "article") {
+        sectionCount++;
+      }
+      if (tagName === "header" || tagName === "footer" || tagName === "main" || tagName === "aside") {
+        result.isFullPage = true;
+      }
+      if (((_i = node.styles) == null ? void 0 : _i.height) === "100vh" || ((_j = node.styles) == null ? void 0 : _j["min-height"]) === "100vh") {
+        result.isFullPage = true;
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          analyzeNode(child, depth + 1);
+        }
+      }
+    };
+    for (const node of structure) {
+      analyzeNode(node, 0);
+      if (((_a = node.tagName) == null ? void 0 : _a.toLowerCase()) === "body" && node.children && node.children.length >= 2) {
+        result.isFullPage = true;
+      }
+    }
+    result.hasMultipleSections = sectionCount >= 2;
+    if (result.hasMultipleSections) {
+      result.isFullPage = true;
+    }
+    return result;
+  }
+  function calculateContainerWidth(structure, metaWidth) {
+    const DEFAULT_PAGE_WIDTH = 1440;
+    const WIDE_LAYOUT_WIDTH = 1920;
+    console.log("[WIDTH] ========== CALCULATING CONTAINER WIDTH ==========");
+    if (metaWidth && metaWidth > 0) {
+      console.log("[WIDTH] RESULT: Using meta tag width:", metaWidth);
+      return metaWidth;
+    }
+    const analysis = analyzeStructure(structure);
+    console.log("[WIDTH] Structure analysis:", JSON.stringify(analysis));
+    if (analysis.explicitWidth) {
+      console.log("[WIDTH] RESULT: Using explicit body/root width:", analysis.explicitWidth);
+      return analysis.explicitWidth;
+    }
+    if (analysis.sidebarWidth > 0 && analysis.mainContentMargin > 0) {
+      const calculatedWidth = analysis.sidebarWidth + 1200;
+      console.log("[WIDTH] RESULT: Sidebar pattern detected, width:", calculatedWidth);
+      return calculatedWidth;
+    }
+    if (analysis.sidebarWidth > 0) {
+      const calculatedWidth = analysis.sidebarWidth + 1200;
+      console.log("[WIDTH] RESULT: Sidebar detected, assuming main content, width:", calculatedWidth);
+      return calculatedWidth;
+    }
+    if (analysis.hasWideGrid) {
+      console.log("[WIDTH] RESULT: Wide grid detected, using:", WIDE_LAYOUT_WIDTH);
+      return WIDE_LAYOUT_WIDTH;
+    }
+    if (analysis.isFullPage) {
+      console.log("[WIDTH] RESULT: Full page indicators detected, using default:", DEFAULT_PAGE_WIDTH);
+      return DEFAULT_PAGE_WIDTH;
+    }
+    if (analysis.hasMultipleSections) {
+      console.log("[WIDTH] RESULT: Multiple sections detected, using default:", DEFAULT_PAGE_WIDTH);
+      return DEFAULT_PAGE_WIDTH;
+    }
+    console.log("[WIDTH] RESULT: No clear indicators, using AUTO (null)");
+    return null;
   }
   function applyStylesToFrame(frame, styles) {
     var _a, _b, _c, _d;
@@ -1360,9 +1476,9 @@
   }
   async function createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns) {
     var _a, _b;
-    const parentWidth = parentFrame.width || 1200;
+    const parentWidth = Math.max(100, parentFrame.width || 1200);
     const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
-    const availableWidth = parentWidth - paddingH;
+    const availableWidth = Math.max(100, parentWidth - paddingH);
     const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
     const getSpanWidth = (startCol, colSpan) => {
       let width = 0;
@@ -1370,7 +1486,7 @@
         width += columnWidths[i];
       }
       width += gap * (colSpan - 1);
-      return width;
+      return Math.max(1, width);
     };
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
@@ -1488,9 +1604,9 @@
   async function createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns) {
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
-    const parentWidth = parentFrame.width || 1200;
+    const parentWidth = Math.max(100, parentFrame.width || 1200);
     const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
-    const availableWidth = parentWidth - paddingH;
+    const availableWidth = Math.max(100, parentWidth - paddingH);
     const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
     for (let i = 0; i < children.length; i += columns) {
       const rowFrame = figma.createFrame();
@@ -2669,146 +2785,24 @@
         return;
       }
       markRequestProcessed(requestId);
-      const detectedDesignWidth = msg.detectedWidth || null;
-      if (detectedDesignWidth) {
-        CSS_CONFIG.viewportWidth = detectedDesignWidth;
-      }
+      const metaTagWidth = msg.detectedWidth || null;
       const detectedRemBase = msg.detectedRemBase || null;
       if (detectedRemBase && detectedRemBase > 0) {
         CSS_CONFIG.remBase = detectedRemBase;
       }
-      const detectFullPageLayout = (structure) => {
-        if (!structure || structure.length === 0) return false;
-        const checkNode = (node) => {
-          var _a2, _b, _c, _d, _e, _f, _g;
-          if (((_a2 = node.styles) == null ? void 0 : _a2.display) === "grid" && ((_b = node.styles) == null ? void 0 : _b["grid-template-areas"])) {
-            return true;
-          }
-          if (((_c = node.styles) == null ? void 0 : _c.display) === "grid" && ((_d = node.styles) == null ? void 0 : _d["grid-template-columns"])) {
-            const cols = parseGridColumns(node.styles["grid-template-columns"]);
-            if (cols >= 3) return true;
-          }
-          if ((node.tagName === "body" || node.tagName === "html") && ((_e = node.styles) == null ? void 0 : _e.padding)) {
-            const padding = parseSize(node.styles.padding);
-            if (padding && padding >= 16) return true;
-          }
-          if (!node.children || node.children.length < 2) {
-            if (node.children) {
-              for (const child of node.children) {
-                if (checkNode(child)) return true;
-              }
-            }
-            return false;
-          }
-          const hasSidebar = node.children.some((child) => {
-            var _a3, _b2;
-            const pos = (_a3 = child.styles) == null ? void 0 : _a3.position;
-            const width = (_b2 = child.styles) == null ? void 0 : _b2.width;
-            return (pos === "fixed" || pos === "absolute") && width && !width.includes("%");
-          });
-          const hasMainContent = node.children.some((child) => {
-            var _a3;
-            const ml = (_a3 = child.styles) == null ? void 0 : _a3["margin-left"];
-            return ml && parseSize(ml) && parseSize(ml) > 50;
-          });
-          const hasFullHeight = ((_f = node.styles) == null ? void 0 : _f.height) === "100vh" || ((_g = node.styles) == null ? void 0 : _g["min-height"]) === "100vh";
-          if (hasSidebar && hasMainContent) return true;
-          if (hasFullHeight) return true;
-          for (const child of node.children) {
-            if (checkNode(child)) return true;
-          }
-          return false;
-        };
-        for (const node of structure) {
-          if (checkNode(node)) return true;
-        }
-        return false;
-      };
-      const isFullPageLayout = detectFullPageLayout(msg.structure);
-      const DEFAULT_PAGE_WIDTH = 1440;
-      const calculateDynamicWidth = (structure) => {
-        if (!structure || structure.length === 0) return null;
-        let sidebarWidth = 0;
-        let mainContentMargin = 0;
-        let explicitWidth = null;
-        const analyzeNode = (node, depth = 0) => {
-          var _a2, _b, _c, _d, _e, _f;
-          if (depth <= 1 && ((_a2 = node.styles) == null ? void 0 : _a2.width)) {
-            const width = parseSize(node.styles.width);
-            if (width && width > 0 && !((_c = (_b = node.styles) == null ? void 0 : _b.position) == null ? void 0 : _c.includes("fixed"))) {
-              explicitWidth = width;
-            }
-          }
-          if (((_d = node.styles) == null ? void 0 : _d.position) === "fixed" && ((_e = node.styles) == null ? void 0 : _e.width)) {
-            const width = parseSize(node.styles.width);
-            if (width && width > 0) {
-              sidebarWidth = Math.max(sidebarWidth, width);
-            }
-          }
-          if ((_f = node.styles) == null ? void 0 : _f["margin-left"]) {
-            const margin = parseSize(node.styles["margin-left"]);
-            if (margin && margin > 0) {
-              mainContentMargin = Math.max(mainContentMargin, margin);
-            }
-          }
-          if (node.children) {
-            for (const child of node.children) {
-              analyzeNode(child, depth + 1);
-            }
-          }
-        };
-        for (const node of structure) {
-          analyzeNode(node, 0);
-        }
-        if (explicitWidth) return explicitWidth;
-        if (sidebarWidth > 0 && mainContentMargin > 0) {
-          const calculatedWidth = sidebarWidth + 1200;
-          return calculatedWidth;
-        }
-        return null;
-      };
-      const structureWidth = calculateDynamicWidth(msg.structure);
-      debugLog("[MAIN HANDLER] Full page layout detected:", isFullPageLayout);
-      debugLog("[MAIN HANDLER] Detected design width (meta/CSS):", detectedDesignWidth);
-      debugLog("[MAIN HANDLER] Structure-based width:", structureWidth);
+      const containerWidth = calculateContainerWidth(msg.structure, metaTagWidth);
+      if (containerWidth) {
+        CSS_CONFIG.viewportWidth = containerWidth;
+      }
       const mainContainer = figma.createFrame();
       const containerName = msg.fromMCP ? `${msg.name || "MCP Import"}` : "HTML Import Container";
       mainContainer.name = containerName;
       mainContainer.fills = [];
       mainContainer.layoutMode = "VERTICAL";
       mainContainer.primaryAxisSizingMode = "AUTO";
-      const detectWideLayout = (structure) => {
-        const checkNode = (node) => {
-          var _a2;
-          if (!node) return false;
-          const gridCols = (_a2 = node.styles) == null ? void 0 : _a2["grid-template-columns"];
-          if (gridCols) {
-            const repeatMatch = gridCols.match(/repeat\((\d+)/);
-            if (repeatMatch && parseInt(repeatMatch[1]) >= 8) return true;
-            const colCount = gridCols.split(/\s+/).filter((c) => c && c !== "").length;
-            if (colCount >= 8) return true;
-          }
-          if (node.children) {
-            for (const child of node.children) {
-              if (checkNode(child)) return true;
-            }
-          }
-          return false;
-        };
-        for (const node of structure) {
-          if (checkNode(node)) return true;
-        }
-        return false;
-      };
-      const needsWideLayout = detectWideLayout(msg.structure);
-      let containerWidth = detectedDesignWidth || structureWidth || (isFullPageLayout ? DEFAULT_PAGE_WIDTH : null);
-      if (needsWideLayout && (containerWidth === null || containerWidth < 1920)) {
-        containerWidth = 1920;
-      }
       if (containerWidth) {
         mainContainer.counterAxisSizingMode = "FIXED";
         mainContainer.resize(containerWidth, mainContainer.height);
-        debugLog("[MAIN HANDLER] Set container width to:", containerWidth);
       } else {
         mainContainer.counterAxisSizingMode = "AUTO";
       }

@@ -191,16 +191,16 @@ export function parseGridColumnWidths(
     }
   }
 
-  // Calculate available width for fr units
-  const frWidth = widthForColumns - fixedWidth;
+  // Calculate available width for fr units (ensure non-negative)
+  const frWidth = Math.max(0, widthForColumns - fixedWidth);
   const frUnit = totalFr > 0 ? frWidth / totalFr : 0;
 
-  // Calculate final widths
+  // Calculate final widths (ensure minimum of 1px to avoid Figma errors)
   return columnDefs.map(col => {
     if (col.type === 'px') {
-      return col.value;
+      return Math.max(1, col.value);
     } else {
-      return Math.round(col.value * frUnit);
+      return Math.max(1, Math.round(col.value * frUnit));
     }
   });
 }

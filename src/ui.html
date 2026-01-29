@@ -1319,10 +1319,8 @@ var VIEWPORT_PRESETS_UI = {
   'wide': 1920
 };
 
-// Container selectors to check for max-width
-var CONTAINER_SELECTORS_UI = ['.container', '.wrapper', '.main-container', '.page-container', 'main', '.content', 'body', 'html'];
-
-// Detect design width from HTML meta tags and CSS (UI context version)
+// Detect design width from HTML meta tags ONLY (UI context version)
+// El análisis completo de CSS y estructura se hace en code.ts con calculateContainerWidth()
 function detectDesignWidthFromHTML(htmlStr) {
   // 1. Check for meta tag: <meta name="figma-width" content="375"> (flexible order)
   var widthMatch1 = htmlStr.match(/<meta[^>]+name=["']figma-width["'][^>]+content=["'](\d+)["'][^>]*>/i);
@@ -1355,143 +1353,11 @@ function detectDesignWidthFromHTML(htmlStr) {
     }
   }
 
-  // 4. Scan ALL CSS rules for explicit widths (not just container selectors)
-  var cssRules = extractCSS(htmlStr);
-  var largestWidth = 0;
-  var largestWidthSelector = '';
+  // 4. UI solo detecta meta tags - el análisis de CSS/estructura se hace en code.ts
+  // Esto evita falsos positivos de elementos como .chapter-image-vertical: 160px
 
-  // First check common container selectors (higher priority)
-  for (var i = 0; i < CONTAINER_SELECTORS_UI.length; i++) {
-    var selector = CONTAINER_SELECTORS_UI[i];
-    var rule = cssRules[selector];
-    if (rule) {
-      // Check max-width first (more reliable indicator of design width)
-      if (rule['max-width']) {
-        var maxWidthStr = rule['max-width'];
-        var maxWidth = parseFloat(maxWidthStr);
-        if (!isNaN(maxWidth) && maxWidth > 0 && maxWidth < 3000) {
-          return maxWidth + 80; // Container + padding compensation
-        }
-      }
-
-      // Check explicit width (non-percentage)
-      if (rule['width'] && rule['width'].indexOf('%') === -1) {
-        var widthStr = rule['width'];
-        var width = parseFloat(widthStr);
-        if (!isNaN(width) && width > 100 && width < 3000) {
-          return width;
-        }
-      }
-    }
-  }
-
-  // Then scan ALL selectors for explicit widths - find the largest one
-  for (var selector in cssRules) {
-    var rule = cssRules[selector];
-    if (rule && rule['width'] && rule['width'].indexOf('%') === -1) {
-      var widthStr = rule['width'];
-      var width = parseFloat(widthStr);
-      // Consider any explicit width (100px - 2500px)
-      if (!isNaN(width) && width >= 100 && width < 2500) {
-        if (width > largestWidth) {
-          largestWidth = width;
-          largestWidthSelector = selector;
-        }
-      }
-    }
-  }
-
-  if (largestWidth > 0) {
-    return largestWidth;
-  }
-
-  // 5. Check for inline width on root element (first div/section/article in body)
-  var inlineWidthMatch = htmlStr.match(/<(?:div|section|article|main|header|nav)[^>]*style=["'][^"']*width:\s*(\d+(?:\.\d+)?)(px)?[^"']*["'][^>]*>/i);
-  if (inlineWidthMatch) {
-    var inlineWidth = parseFloat(inlineWidthMatch[1]);
-    if (!isNaN(inlineWidth) && inlineWidth > 50 && inlineWidth < 3000) {
-      return inlineWidth;
-    }
-  }
-
-  // 6. Detect if this is a full page vs a component/snippet
-  var isFullPage = /<!DOCTYPE|<html|<body/i.test(htmlStr);
-
-  if (isFullPage) {
-    // 6a. For full pages, analyze layout structure
-    var cssRules = extractCSS(htmlStr);
-
-    // 6b. Check for wide layouts (12-column grids need more space)
-    var wideLayoutNeeded = false;
-    for (var selector in cssRules) {
-      var rule = cssRules[selector];
-      if (rule && rule['grid-template-columns']) {
-        var gridCols = rule['grid-template-columns'];
-        var repeatMatch = gridCols.match(/repeat\((\d+)/);
-        if (repeatMatch && parseInt(repeatMatch[1]) >= 8) {
-          wideLayoutNeeded = true;
-          break;
-        }
-      }
-      if (rule && rule['grid-template-areas']) {
-        // grid-template-areas usually indicates complex layout
-        wideLayoutNeeded = true;
-        break;
-      }
-    }
-
-    if (wideLayoutNeeded) {
-      return 1920;
-    }
-
-    // Check for sidebar + main layout pattern
-    var sidebarWidth = 0;
-    var mainMarginLeft = 0;
-
-    // Common sidebar selectors
-    var sidebarSelectors = ['.sidebar', '.side-bar', '.sidenav', 'aside'];
-    for (var i = 0; i < sidebarSelectors.length; i++) {
-      var rule = cssRules[sidebarSelectors[i]];
-      if (rule && rule['width']) {
-        var w = parseFloat(rule['width']);
-        if (!isNaN(w) && w > 0 && w < 400) {
-          sidebarWidth = w;
-          break;
-        }
-      }
-    }
-
-    // Check for main wrapper with margin-left (indicates sidebar offset)
-    var mainSelectors = ['.main-wrapper', '.main', 'main', '.content', '.main-content', '.page-content'];
-    for (var i = 0; i < mainSelectors.length; i++) {
-      var rule = cssRules[mainSelectors[i]];
-      if (rule && rule['margin-left']) {
-        var ml = parseFloat(rule['margin-left']);
-        if (!isNaN(ml) && ml > 0) {
-          mainMarginLeft = ml;
-          break;
-        }
-      }
-    }
-
-    // If we found a sidebar layout, calculate total width
-    if (sidebarWidth > 0 || mainMarginLeft > 0) {
-      // Sidebar layout: sidebar + main content area (~1200px typical)
-      var calculatedWidth = Math.max(sidebarWidth, mainMarginLeft) + 1200;
-      return calculatedWidth;
-    }
-
-    // Full page without sidebar, use desktop default
-    return 1440;
-  }
-
-  // 7. Component/snippet - use smaller default
-  var hasContent = htmlStr.match(/<(?:div|section|article|p|h[1-6]|span)[^>]*>/i);
-  if (hasContent) {
-    return 400;
-  }
-
-  // 8. No width detected and no meaningful content
+  // Solo retornamos null aquí - code.ts usará calculateContainerWidth()
+  // para el análisis completo de estructura y CSS
   return null;
 }
 

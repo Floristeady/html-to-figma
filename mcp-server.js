@@ -62,21 +62,24 @@ class FigmaMCPServer {
         tools: [
           {
             name: 'mcp_html_to_design_import-html',
-            description: 'Import HTML content and convert it to Figma design elements',
+            description: 'Import HTML content and convert it to Figma design elements. Automatically resolves external CSS files and inlines them.',
             inputSchema: {
               type: 'object',
               properties: {
                 html: {
                   type: 'string',
-                  description: 'HTML content to convert to Figma design'
+                  description: 'HTML content to convert to Figma design (required if htmlPath not provided)'
+                },
+                htmlPath: {
+                  type: 'string',
+                  description: 'Path to HTML file. If provided, CSS files referenced with <link> tags will be automatically resolved and inlined'
                 },
                 name: {
                   type: 'string',
                   description: 'Name for the imported design (optional)',
                   default: 'MCP HTML Import'
                 }
-              },
-              required: ['html']
+              }
             }
           }
         ]
@@ -112,15 +115,35 @@ class FigmaMCPServer {
   }
 
   async handleHtmlImport(args) {
-    const { html, name = 'MCP HTML Import' } = args;
-    
+    let { html, htmlPath, name = 'MCP HTML Import' } = args;
+    let baseDir = null;
+    let cssResolved = 0;
+
     console.error(`[MCP-SERVER] Processing HTML import: ${name}`);
-    console.error(`[MCP-SERVER] HTML length: ${html.length} characters`);
 
     try {
+      // If htmlPath is provided, read the HTML file
+      if (htmlPath) {
+        if (!fs.existsSync(htmlPath)) {
+          throw new Error(`HTML file not found: ${htmlPath}`);
+        }
+        html = fs.readFileSync(htmlPath, 'utf-8');
+        baseDir = path.dirname(htmlPath);
+        console.error(`[MCP-SERVER] Read HTML from: ${htmlPath}`);
+      }
+
       // Validate HTML
       if (!html || typeof html !== 'string') {
-        throw new Error('Invalid HTML content provided');
+        throw new Error('Invalid HTML content provided. Use either "html" or "htmlPath" parameter.');
+      }
+
+      console.error(`[MCP-SERVER] HTML length: ${html.length} characters`);
+
+      // Resolve external CSS if baseDir is available (from htmlPath)
+      if (baseDir) {
+        const result = this.resolveExternalCSS(html, baseDir);
+        html = result.html;
+        cssResolved = result.cssCount;
       }
 
       // Validate session ID
@@ -152,15 +175,21 @@ class FigmaMCPServer {
 
       console.error(`[MCP-SERVER] HTML import processed successfully`);
 
+      let resultMessage = `HTML import "${name}" processed successfully.\n` +
+            `- Content length: ${html.length} characters\n`;
+
+      if (cssResolved > 0) {
+        resultMessage += `- CSS files resolved and inlined: ${cssResolved}\n`;
+      }
+
+      resultMessage += `- SSE server notification sent\n` +
+            `- Request ID: ${mcpData.requestId}`;
+
       return {
         content: [
           {
             type: 'text',
-            text: `HTML import "${name}" processed successfully.\n` +
-                  `- Content length: ${html.length} characters\n` +
-                  `- Data written to shared file\n` +
-                  `- SSE server notification sent\n` +
-                  `- Request ID: ${mcpData.requestId}`
+            text: resultMessage
           }
         ]
       };
@@ -169,6 +198,58 @@ class FigmaMCPServer {
       console.error('[MCP-SERVER] Error in HTML import:', error);
       throw error;
     }
+  }
+
+  /**
+   * Resolves external CSS files and inlines them into the HTML
+   * @param {string} html - The HTML content
+   * @param {string} baseDir - The base directory for resolving relative paths
+   * @returns {object} - { html: processedHtml, cssCount: numberOfCSSFilesResolved }
+   */
+  resolveExternalCSS(html, baseDir) {
+    // Regex to find <link rel="stylesheet" href="...">
+    const linkRegex = /<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["'][^>]*>|<link[^>]+href=["']([^"']+)["'][^>]+rel=["']stylesheet["'][^>]*>/gi;
+
+    let cssCount = 0;
+    const processedHtml = html.replace(linkRegex, (match, href1, href2) => {
+      const href = href1 || href2;
+
+      // Skip external URLs (http://, https://, //)
+      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//')) {
+        console.error(`[MCP-SERVER] Skipping external CSS URL: ${href}`);
+        return match; // Keep the original link tag
+      }
+
+      // Resolve the CSS file path
+      const cssPath = path.resolve(baseDir, href);
+
+      // Check if file exists
+      if (!fs.existsSync(cssPath)) {
+        console.error(`[MCP-SERVER] CSS file not found: ${cssPath}`);
+        return match; // Keep the original link tag
+      }
+
+      try {
+        // Read the CSS file
+        const cssContent = fs.readFileSync(cssPath, 'utf-8');
+        console.error(`[MCP-SERVER] Resolved CSS: ${href} (${cssContent.length} chars)`);
+        cssCount++;
+
+        // Return inline style tag
+        return `<style>\n/* Inlined from: ${href} */\n${cssContent}\n</style>`;
+      } catch (error) {
+        console.error(`[MCP-SERVER] Error reading CSS file ${cssPath}:`, error.message);
+        return match; // Keep the original link tag on error
+      }
+    });
+
+    if (cssCount > 0) {
+      console.error(`[MCP-SERVER] Total CSS files inlined: ${cssCount}`);
+    } else {
+      console.error(`[MCP-SERVER] No external CSS files found to inline`);
+    }
+
+    return { html: processedHtml, cssCount };
   }
 
   writeToSharedFile(data) {
