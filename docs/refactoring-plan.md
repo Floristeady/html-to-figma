@@ -1543,9 +1543,11 @@ These are existing bugs that should be addressed during the refactoring process:
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
 | ~~**Grid decimal fractions**~~ | ~~`1.3fr 2.7fr` doesn't respect exact proportions~~ | ~~`src/utils/grid.ts`~~ | ✅ FIXED |
-| **Complex calc() expressions** | `calc()` with mixed units fails | `src/utils/css-units.ts` | Low |
-| **transform: scale/translate** | Only rotate is implemented | `src/utils/effects.ts` | Low |
-| **filter/backdrop-filter/clip-path** | Advanced visual effects not supported | N/A | Low |
+| ~~**Complex calc() expressions**~~ | ~~`calc()` with mixed units fails~~ | ~~`src/utils/css-units.ts`~~ | ✅ FIXED |
+| ~~**transform: scale/translate**~~ | ~~Only rotate is implemented~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
+| ~~**filter/backdrop-filter**~~ | ~~blur, drop-shadow, background blur~~ | ~~`src/utils/effects.ts`~~ | ✅ FIXED |
+| **clip-path** | CSS clip-path not supported | N/A | Low |
+| **Text centering in flex containers** | Text doesn't respect `justify-content: center` in flex containers | `src/code.ts` | Medium |
 
 ### Investigation Needed
 
@@ -1556,6 +1558,9 @@ These are existing bugs that should be addressed during the refactoring process:
 - [x] Viewport units (vh/vw) - FIXED: VW uses detected design width, parseSize correctly handles vh/vw units
 - [x] Inline style priority - FIXED: Proper CSS cascade with !important support (commit d3a34fb)
 - [x] Grid decimal fractions - FIXED: Added `parseGridColumnWidths()` for proportional fr/px calculations
+- [x] Complex calc() - FIXED: Support mixed units, multiplication/division
+- [x] transform: scale/translate - FIXED: Full transform support (rotate, scale, scaleX/Y, translate, translateX/Y)
+- [x] filter/backdrop-filter - FIXED: blur(), drop-shadow(), backdrop-filter: blur()
 
 ---
 

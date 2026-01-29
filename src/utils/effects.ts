@@ -23,6 +23,15 @@ export interface TransformResult {
   translateY?: number;
 }
 
+export interface FilterResult {
+  blur?: number;           // Layer blur radius in px
+  dropShadow?: FigmaShadow; // Drop shadow from filter
+}
+
+export interface BackdropFilterResult {
+  blur?: number;           // Background blur radius in px
+}
+
 export interface GradientStop {
   position: number;
   color: { r: number; g: number; b: number; a: number };
@@ -230,4 +239,75 @@ export function parseLinearGradient(gradientStr: string): GradientResult | null 
   } catch (error) {
     return null;
   }
+}
+
+/**
+ * Parse CSS filter property
+ * Supports: blur(Npx), drop-shadow(x y blur color)
+ */
+export function parseFilter(filterValue: string): FilterResult {
+  const result: FilterResult = {};
+
+  if (!filterValue) return result;
+
+  // Parse blur(Npx)
+  const blurMatch = filterValue.match(/blur\((\d+(?:\.\d+)?)(px)?\)/);
+  if (blurMatch) {
+    result.blur = parseFloat(blurMatch[1]);
+  }
+
+  // Parse drop-shadow(x y blur color) or drop-shadow(x y blur spread color)
+  const dropShadowMatch = filterValue.match(/drop-shadow\(([^)]+)\)/);
+  if (dropShadowMatch) {
+    const shadowParts = dropShadowMatch[1].trim();
+    // Parse shadow parts: offsetX offsetY blur [spread] color
+    const values = shadowParts.match(/(-?\d+(?:\.\d+)?(?:px)?)\s+(-?\d+(?:\.\d+)?(?:px)?)\s+(\d+(?:\.\d+)?(?:px)?)\s*(.*)/);
+    if (values) {
+      const offsetX = parseSize(values[1]) || 0;
+      const offsetY = parseSize(values[2]) || 0;
+      const blurRadius = parseSize(values[3]) || 0;
+      const colorPart = values[4]?.trim() || 'rgba(0,0,0,0.5)';
+
+      // Parse color
+      let color = { r: 0, g: 0, b: 0, a: 0.5 };
+      const rgba = hexToRgba(colorPart);
+      if (rgba) {
+        color = rgba;
+      } else {
+        const rgb = hexToRgb(colorPart);
+        if (rgb) {
+          color = { ...rgb, a: 1 };
+        }
+      }
+
+      result.dropShadow = {
+        type: 'DROP_SHADOW',
+        offset: { x: offsetX, y: offsetY },
+        radius: blurRadius,
+        color,
+        blendMode: 'NORMAL',
+        visible: true
+      };
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Parse CSS backdrop-filter property
+ * Supports: blur(Npx)
+ */
+export function parseBackdropFilter(filterValue: string): BackdropFilterResult {
+  const result: BackdropFilterResult = {};
+
+  if (!filterValue) return result;
+
+  // Parse blur(Npx)
+  const blurMatch = filterValue.match(/blur\((\d+(?:\.\d+)?)(px)?\)/);
+  if (blurMatch) {
+    result.blur = parseFloat(blurMatch[1]);
+  }
+
+  return result;
 }

@@ -461,6 +461,54 @@
       return null;
     }
   }
+  function parseFilter(filterValue) {
+    var _a;
+    const result = {};
+    if (!filterValue) return result;
+    const blurMatch = filterValue.match(/blur\((\d+(?:\.\d+)?)(px)?\)/);
+    if (blurMatch) {
+      result.blur = parseFloat(blurMatch[1]);
+    }
+    const dropShadowMatch = filterValue.match(/drop-shadow\(([^)]+)\)/);
+    if (dropShadowMatch) {
+      const shadowParts = dropShadowMatch[1].trim();
+      const values = shadowParts.match(/(-?\d+(?:\.\d+)?(?:px)?)\s+(-?\d+(?:\.\d+)?(?:px)?)\s+(\d+(?:\.\d+)?(?:px)?)\s*(.*)/);
+      if (values) {
+        const offsetX = parseSize(values[1]) || 0;
+        const offsetY = parseSize(values[2]) || 0;
+        const blurRadius = parseSize(values[3]) || 0;
+        const colorPart = ((_a = values[4]) == null ? void 0 : _a.trim()) || "rgba(0,0,0,0.5)";
+        let color = { r: 0, g: 0, b: 0, a: 0.5 };
+        const rgba = hexToRgba(colorPart);
+        if (rgba) {
+          color = rgba;
+        } else {
+          const rgb = hexToRgb(colorPart);
+          if (rgb) {
+            color = __spreadProps(__spreadValues({}, rgb), { a: 1 });
+          }
+        }
+        result.dropShadow = {
+          type: "DROP_SHADOW",
+          offset: { x: offsetX, y: offsetY },
+          radius: blurRadius,
+          color,
+          blendMode: "NORMAL",
+          visible: true
+        };
+      }
+    }
+    return result;
+  }
+  function parseBackdropFilter(filterValue) {
+    const result = {};
+    if (!filterValue) return result;
+    const blurMatch = filterValue.match(/blur\((\d+(?:\.\d+)?)(px)?\)/);
+    if (blurMatch) {
+      result.blur = parseFloat(blurMatch[1]);
+    }
+    return result;
+  }
 
   // src/utils/grid.ts
   function parseGridColumns(gridTemplate) {
@@ -749,6 +797,43 @@
       if (transform.translateX !== void 0 || transform.translateY !== void 0) {
         frame.x += (_c = transform.translateX) != null ? _c : 0;
         frame.y += (_d = transform.translateY) != null ? _d : 0;
+      }
+    }
+    if (styles.filter) {
+      const filter = parseFilter(styles.filter);
+      const effects = [...frame.effects || []];
+      if (filter.blur !== void 0 && filter.blur > 0) {
+        effects.push({
+          type: "LAYER_BLUR",
+          radius: filter.blur,
+          visible: true
+        });
+      }
+      if (filter.dropShadow) {
+        effects.push({
+          type: "DROP_SHADOW",
+          color: filter.dropShadow.color,
+          offset: filter.dropShadow.offset,
+          radius: filter.dropShadow.radius,
+          spread: 0,
+          visible: true,
+          blendMode: "NORMAL"
+        });
+      }
+      if (effects.length > 0) {
+        frame.effects = effects;
+      }
+    }
+    if (styles["backdrop-filter"]) {
+      const backdropFilter = parseBackdropFilter(styles["backdrop-filter"]);
+      if (backdropFilter.blur !== void 0 && backdropFilter.blur > 0) {
+        const effects = [...frame.effects || []];
+        effects.push({
+          type: "BACKGROUND_BLUR",
+          radius: backdropFilter.blur,
+          visible: true
+        });
+        frame.effects = effects;
       }
     }
     if (styles.margin) {

@@ -5,11 +5,12 @@
 import { CSSProperties, CSSVariables, CSSRules } from '../types';
 
 // CSS properties that are not supported and should be filtered out
+// Note: transform, filter, backdrop-filter are now supported
 export const UNSUPPORTED_CSS_PROPERTIES = [
   'animation', 'animation-name', 'animation-duration', 'animation-timing-function',
   'animation-delay', 'animation-iteration-count', 'animation-direction',
   'animation-fill-mode', 'animation-play-state', 'transition', 'transition-property',
-  'transition-duration', 'transition-timing-function', 'transition-delay', 'transform'
+  'transition-duration', 'transition-timing-function', 'transition-delay'
 ] as const;
 
 // Supported content values for pseudo-elements (::before, ::after)

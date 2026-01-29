@@ -7,7 +7,7 @@ import { hexToRgb, hexToRgba, extractBorderColor, extractGradientColor, extractF
 // Import CSS unit utilities
 import { CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePadding } from './utils/css-units';
 // Import effects utilities
-import { parseBoxShadow, parseTransform, parseLinearGradient } from './utils/effects';
+import { parseBoxShadow, parseTransform, parseLinearGradient, parseFilter, parseBackdropFilter } from './utils/effects';
 // Import grid utilities
 import { parseGridColumns, parseGridTemplateAreas, getGridRowCount, getGridColCount, parseGridColumnWidths } from './utils/grid';
 
@@ -323,6 +323,53 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
     if (transform.translateX !== undefined || transform.translateY !== undefined) {
       frame.x += transform.translateX ?? 0;
       frame.y += transform.translateY ?? 0;
+    }
+  }
+
+  // CSS filter (blur, drop-shadow)
+  if (styles.filter) {
+    const filter = parseFilter(styles.filter);
+    const effects: Effect[] = [...(frame.effects || [])];
+
+    // Apply layer blur
+    if (filter.blur !== undefined && filter.blur > 0) {
+      effects.push({
+        type: 'LAYER_BLUR',
+        radius: filter.blur,
+        visible: true
+      });
+    }
+
+    // Apply drop shadow from filter
+    if (filter.dropShadow) {
+      effects.push({
+        type: 'DROP_SHADOW',
+        color: filter.dropShadow.color,
+        offset: filter.dropShadow.offset,
+        radius: filter.dropShadow.radius,
+        spread: 0,
+        visible: true,
+        blendMode: 'NORMAL'
+      });
+    }
+
+    if (effects.length > 0) {
+      frame.effects = effects;
+    }
+  }
+
+  // CSS backdrop-filter (background blur)
+  if (styles['backdrop-filter']) {
+    const backdropFilter = parseBackdropFilter(styles['backdrop-filter']);
+
+    if (backdropFilter.blur !== undefined && backdropFilter.blur > 0) {
+      const effects: Effect[] = [...(frame.effects || [])];
+      effects.push({
+        type: 'BACKGROUND_BLUR',
+        radius: backdropFilter.blur,
+        visible: true
+      });
+      frame.effects = effects;
     }
   }
 
