@@ -113,3 +113,94 @@ export function getGridColCount(areasString: string | undefined): number {
   const firstRow = rowMatches[0].replace(/"/g, '').trim();
   return firstRow.split(/\s+/).length;
 }
+
+/**
+ * Parse grid-template-columns and calculate actual pixel widths for each column
+ * Supports: fr units (including decimals), px, minmax(), repeat()
+ *
+ * @param gridTemplate - CSS grid-template-columns value (e.g., "1.3fr 2.7fr", "200px 1fr", "repeat(3, 1fr)")
+ * @param availableWidth - Total available width in pixels
+ * @param gap - Gap between columns in pixels
+ * @returns Array of column widths in pixels
+ */
+export function parseGridColumnWidths(
+  gridTemplate: string | undefined,
+  availableWidth: number,
+  gap: number = 0
+): number[] {
+  if (!gridTemplate) return [availableWidth];
+
+  // Expand repeat() notation
+  let expanded = gridTemplate;
+  const repeatMatch = gridTemplate.match(/repeat\((\d+),\s*([^)]+)\)/);
+  if (repeatMatch) {
+    const count = parseInt(repeatMatch[1], 10);
+    const value = repeatMatch[2].trim();
+    expanded = Array(count).fill(value).join(' ');
+  }
+
+  // Parse column definitions
+  // Handle minmax() by treating it as the max value or 1fr
+  expanded = expanded.replace(/minmax\([^,]+,\s*([^)]+)\)/g, '$1');
+
+  // Split by whitespace, preserving values
+  const parts = expanded.split(/\s+/).filter(p => p.trim());
+
+  if (parts.length === 0) return [availableWidth];
+
+  // Calculate total gaps
+  const totalGaps = (parts.length - 1) * gap;
+  const widthForColumns = availableWidth - totalGaps;
+
+  // Parse each column definition
+  const columnDefs: { type: 'fr' | 'px' | 'auto'; value: number }[] = [];
+  let totalFr = 0;
+  let fixedWidth = 0;
+
+  for (const part of parts) {
+    if (part.endsWith('fr')) {
+      const frValue = parseFloat(part) || 1;
+      columnDefs.push({ type: 'fr', value: frValue });
+      totalFr += frValue;
+    } else if (part.endsWith('px')) {
+      const pxValue = parseFloat(part) || 0;
+      columnDefs.push({ type: 'px', value: pxValue });
+      fixedWidth += pxValue;
+    } else if (part === 'auto' || part.endsWith('%')) {
+      // Treat auto and % as 1fr for simplicity
+      columnDefs.push({ type: 'fr', value: 1 });
+      totalFr += 1;
+    } else {
+      // Unknown unit, treat as 1fr
+      const numValue = parseFloat(part);
+      if (!isNaN(numValue) && numValue > 0) {
+        // Could be just a number (treated as px) or fr without unit
+        if (numValue < 10) {
+          // Likely fr value
+          columnDefs.push({ type: 'fr', value: numValue });
+          totalFr += numValue;
+        } else {
+          // Likely px value
+          columnDefs.push({ type: 'px', value: numValue });
+          fixedWidth += numValue;
+        }
+      } else {
+        columnDefs.push({ type: 'fr', value: 1 });
+        totalFr += 1;
+      }
+    }
+  }
+
+  // Calculate available width for fr units
+  const frWidth = widthForColumns - fixedWidth;
+  const frUnit = totalFr > 0 ? frWidth / totalFr : 0;
+
+  // Calculate final widths
+  return columnDefs.map(col => {
+    if (col.type === 'px') {
+      return col.value;
+    } else {
+      return Math.round(col.value * frUnit);
+    }
+  });
+}

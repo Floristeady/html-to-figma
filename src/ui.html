@@ -1357,8 +1357,12 @@ function detectDesignWidthFromHTML(htmlStr) {
     }
   }
 
-  // 4. Check for max-width on container selectors from CSS
+  // 4. Scan ALL CSS rules for explicit widths (not just container selectors)
   var cssRules = extractCSS(htmlStr);
+  var largestWidth = 0;
+  var largestWidthSelector = '';
+
+  // First check common container selectors (higher priority)
   for (var i = 0; i < CONTAINER_SELECTORS_UI.length; i++) {
     var selector = CONTAINER_SELECTORS_UI[i];
     var rule = cssRules[selector];
@@ -1369,7 +1373,6 @@ function detectDesignWidthFromHTML(htmlStr) {
         var maxWidth = parseFloat(maxWidthStr);
         if (!isNaN(maxWidth) && maxWidth > 0 && maxWidth < 3000) {
           console.log('[WIDTH-UI] Detected from CSS max-width on', selector, ':', maxWidth);
-          // Add typical padding/margins to container max-width for full page width
           return maxWidth + 80; // Container + padding compensation
         }
       }
@@ -1384,6 +1387,27 @@ function detectDesignWidthFromHTML(htmlStr) {
         }
       }
     }
+  }
+
+  // Then scan ALL selectors for explicit widths - find the largest one
+  for (var selector in cssRules) {
+    var rule = cssRules[selector];
+    if (rule && rule['width'] && rule['width'].indexOf('%') === -1) {
+      var widthStr = rule['width'];
+      var width = parseFloat(widthStr);
+      // Only consider widths that look like container widths (400px - 2500px)
+      if (!isNaN(width) && width >= 400 && width < 2500) {
+        if (width > largestWidth) {
+          largestWidth = width;
+          largestWidthSelector = selector;
+        }
+      }
+    }
+  }
+
+  if (largestWidth > 0) {
+    console.log('[WIDTH-UI] Detected largest CSS width on', largestWidthSelector, ':', largestWidth);
+    return largestWidth;
   }
 
   // 5. Check for inline width on root element (first div/section/article in body)

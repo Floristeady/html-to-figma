@@ -457,6 +457,61 @@
     const firstRow = rowMatches[0].replace(/"/g, "").trim();
     return firstRow.split(/\s+/).length;
   }
+  function parseGridColumnWidths(gridTemplate, availableWidth, gap = 0) {
+    if (!gridTemplate) return [availableWidth];
+    let expanded = gridTemplate;
+    const repeatMatch = gridTemplate.match(/repeat\((\d+),\s*([^)]+)\)/);
+    if (repeatMatch) {
+      const count = parseInt(repeatMatch[1], 10);
+      const value = repeatMatch[2].trim();
+      expanded = Array(count).fill(value).join(" ");
+    }
+    expanded = expanded.replace(/minmax\([^,]+,\s*([^)]+)\)/g, "$1");
+    const parts = expanded.split(/\s+/).filter((p) => p.trim());
+    if (parts.length === 0) return [availableWidth];
+    const totalGaps = (parts.length - 1) * gap;
+    const widthForColumns = availableWidth - totalGaps;
+    const columnDefs = [];
+    let totalFr = 0;
+    let fixedWidth = 0;
+    for (const part of parts) {
+      if (part.endsWith("fr")) {
+        const frValue = parseFloat(part) || 1;
+        columnDefs.push({ type: "fr", value: frValue });
+        totalFr += frValue;
+      } else if (part.endsWith("px")) {
+        const pxValue = parseFloat(part) || 0;
+        columnDefs.push({ type: "px", value: pxValue });
+        fixedWidth += pxValue;
+      } else if (part === "auto" || part.endsWith("%")) {
+        columnDefs.push({ type: "fr", value: 1 });
+        totalFr += 1;
+      } else {
+        const numValue = parseFloat(part);
+        if (!isNaN(numValue) && numValue > 0) {
+          if (numValue < 10) {
+            columnDefs.push({ type: "fr", value: numValue });
+            totalFr += numValue;
+          } else {
+            columnDefs.push({ type: "px", value: numValue });
+            fixedWidth += numValue;
+          }
+        } else {
+          columnDefs.push({ type: "fr", value: 1 });
+          totalFr += 1;
+        }
+      }
+    }
+    const frWidth = widthForColumns - fixedWidth;
+    const frUnit = totalFr > 0 ? frWidth / totalFr : 0;
+    return columnDefs.map((col) => {
+      if (col.type === "px") {
+        return col.value;
+      } else {
+        return Math.round(col.value * frUnit);
+      }
+    });
+  }
 
   // src/code.ts
   figma.showUI(__html__, { width: 360, height: 380 });
@@ -972,7 +1027,7 @@
     }
     return false;
   }
-  async function createGridLayoutWithSpans(children, parentFrame, columns, gap, inheritedStyles) {
+  async function createGridLayoutWithSpans(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns) {
     var _a, _b, _c;
     if (!children || children.length === 0) return;
     const grid = [];
@@ -1033,7 +1088,7 @@
       useNativeGrid = true;
     } catch (error) {
       testParent.remove();
-      await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
+      await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns);
       return;
     }
     try {
@@ -1051,7 +1106,7 @@
     } catch (error) {
       console.error("[GRID-NATIVE] Error configuring grid after test passed:", error);
       parentFrame.layoutMode = "VERTICAL";
-      await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
+      await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns);
       return;
     }
     for (let i = 0; i < children.length; i++) {
@@ -1081,11 +1136,20 @@
       await createFigmaNodesFromStructure([child], wrapper, 0, 0, gridInheritedStyles);
     }
   }
-  async function createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles) {
+  async function createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns) {
     var _a, _b;
     const parentWidth = parentFrame.width || 1200;
-    const totalGaps = (columns - 1) * gap;
-    const columnWidth = Math.floor((parentWidth - totalGaps) / columns);
+    const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
+    const availableWidth = parentWidth - paddingH;
+    const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
+    const getSpanWidth = (startCol, colSpan) => {
+      let width = 0;
+      for (let i = startCol; i < startCol + colSpan && i < columnWidths.length; i++) {
+        width += columnWidths[i];
+      }
+      width += gap * (colSpan - 1);
+      return width;
+    };
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
     parentFrame.counterAxisSizingMode = "FIXED";
@@ -1148,18 +1212,18 @@
           const placeholder = figma.createFrame();
           placeholder.name = `Empty`;
           placeholder.fills = [];
-          placeholder.resize(columnWidth, 10);
+          const colWidth = columnWidths[c] || 100;
+          placeholder.resize(colWidth, 10);
           rowFrames[r].appendChild(placeholder);
           try {
-            placeholder.layoutGrow = 1;
-            placeholder.layoutSizingHorizontal = "FILL";
+            placeholder.layoutSizingHorizontal = "FIXED";
           } catch (e) {
           }
           c++;
         } else {
           const pos = childPositions[childIndex];
           if (r === pos.row) {
-            const itemWidth = columnWidth * pos.colSpan + gap * (pos.colSpan - 1);
+            const itemWidth = getSpanWidth(pos.col, pos.colSpan);
             const wrapper = figma.createFrame();
             wrapper.name = `Grid Item (${pos.colSpan} cols)`;
             wrapper.fills = [];
@@ -1169,8 +1233,7 @@
             wrapper.resize(itemWidth, 100);
             rowFrames[r].appendChild(wrapper);
             try {
-              wrapper.layoutGrow = pos.colSpan;
-              wrapper.layoutSizingHorizontal = "FILL";
+              wrapper.layoutSizingHorizontal = "FIXED";
             } catch (e) {
             }
             await createFigmaNodesFromStructure([children[childIndex]], wrapper, 0, 0, __spreadProps(__spreadValues({}, inheritedStyles), {
@@ -1178,15 +1241,14 @@
               "_gridItemWidth": itemWidth
             }));
           } else {
-            const itemWidth = columnWidth * pos.colSpan + gap * (pos.colSpan - 1);
+            const itemWidth = getSpanWidth(pos.col, pos.colSpan);
             const placeholder = figma.createFrame();
             placeholder.name = `RowSpan placeholder (${pos.colSpan} cols)`;
             placeholder.fills = [];
             placeholder.resize(itemWidth, 1);
             rowFrames[r].appendChild(placeholder);
             try {
-              placeholder.layoutGrow = pos.colSpan;
-              placeholder.layoutSizingHorizontal = "FILL";
+              placeholder.layoutSizingHorizontal = "FIXED";
             } catch (e) {
             }
           }
@@ -1195,15 +1257,19 @@
       }
     }
   }
-  async function createGridLayout(children, parentFrame, columns, gap, inheritedStyles) {
+  async function createGridLayout(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns) {
     if (!children || children.length === 0) {
       return;
     }
-    await createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles);
+    await createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns);
   }
-  async function createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles) {
+  async function createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns) {
     parentFrame.layoutMode = "VERTICAL";
     parentFrame.itemSpacing = gap;
+    const parentWidth = parentFrame.width || 1200;
+    const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
+    const availableWidth = parentWidth - paddingH;
+    const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
     for (let i = 0; i < children.length; i += columns) {
       const rowFrame = figma.createFrame();
       rowFrame.name = `Grid Row`;
@@ -1226,8 +1292,10 @@
       for (let k = 0; k < rowFrame.children.length; k++) {
         try {
           const child = rowFrame.children[k];
-          child.layoutGrow = 1;
-          child.layoutSizingHorizontal = "FILL";
+          const colIndex = k % columns;
+          const targetWidth = columnWidths[colIndex] || 100;
+          child.layoutSizingHorizontal = "FIXED";
+          child.resize(targetWidth, child.height);
         } catch (e) {
         }
       }
@@ -1627,9 +1695,9 @@
                   const columns = parseGridColumns(gridTemplateColumns);
                   const finalColumns = columns > 0 ? columns : 2;
                   if (hasGridSpans(node.children)) {
-                    await createGridLayoutWithSpans(node.children, frame, finalColumns, gap2, inheritableStyles);
+                    await createGridLayoutWithSpans(node.children, frame, finalColumns, gap2, inheritableStyles, gridTemplateColumns);
                   } else {
-                    await createGridLayout(node.children, frame, finalColumns, gap2, inheritableStyles);
+                    await createGridLayout(node.children, frame, finalColumns, gap2, inheritableStyles, gridTemplateColumns);
                   }
                 }
               } else {

@@ -1542,7 +1542,7 @@ These are existing bugs that should be addressed during the refactoring process:
 
 | Issue | Description | Affected Module | Priority |
 |-------|-------------|-----------------|----------|
-| **Grid decimal fractions** | `1.3fr 2.7fr` doesn't respect exact proportions | `src/utils/grid.ts` | Low |
+| ~~**Grid decimal fractions**~~ | ~~`1.3fr 2.7fr` doesn't respect exact proportions~~ | ~~`src/utils/grid.ts`~~ | ✅ FIXED |
 | **Complex calc() expressions** | `calc()` with mixed units fails | `src/utils/css-units.ts` | Low |
 | **transform: scale/translate** | Only rotate is implemented | `src/utils/effects.ts` | Low |
 | **filter/backdrop-filter/clip-path** | Advanced visual effects not supported | N/A | Low |
@@ -1555,6 +1555,7 @@ These are existing bugs that should be addressed during the refactoring process:
 - [x] REM units not converted correctly - FIXED: Added root font-size detection from CSS, property name normalization, and font shorthand parsing
 - [x] Viewport units (vh/vw) - FIXED: VW uses detected design width, parseSize correctly handles vh/vw units
 - [x] Inline style priority - FIXED: Proper CSS cascade with !important support (commit d3a34fb)
+- [x] Grid decimal fractions - FIXED: Added `parseGridColumnWidths()` for proportional fr/px calculations
 
 ---
 

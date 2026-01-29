@@ -285,9 +285,10 @@ Aplica como `x`/`y` y configura constraints.
 - Parsea `rgba(r, g, b, a)` correctamente
 - Aplica alpha channel a fills
 
-### 11.5 Grid con fracciones decimales ❌ PENDIENTE (Low)
-**Problema:** `grid-template-columns: 1.3fr 2.7fr` no respeta proporciones exactas.
-**Archivo:** `src/utils/grid.ts`
+### 11.5 Grid con fracciones decimales ✅ RESUELTO
+- Implementado `parseGridColumnWidths()` en `src/utils/grid.ts`
+- Calcula anchos proporcionales para `1.3fr 2.7fr`, mixtos `200px 1fr 100px`, etc.
+- Usa `layoutGrow` proporcional para cada columna
 
 ### 11.6 position: fixed ✅ RESUELTO (commit 5032cec)
 - Convierte a `position: relative`
@@ -330,16 +331,15 @@ Aplica como `x`/`y` y configura constraints.
 ### 🟡 PENDIENTES (Low priority)
 | # | Problema | Esfuerzo | Impacto |
 |---|----------|----------|---------|
-| 1 | Grid fr decimales | Bajo | Bajo - proporciones |
-| 2 | Complex calc() | Bajo | Bajo - casos edge |
-| 3 | transform: scale/translate | Bajo | Bajo - solo rotate funciona |
-| 4 | filter/backdrop-filter | Alto | Bajo - efectos avanzados |
+| 1 | Complex calc() | Bajo | Bajo - casos edge |
+| 2 | transform: scale/translate | Bajo | Bajo - solo rotate funciona |
+| 3 | filter/backdrop-filter | Alto | Bajo - efectos avanzados |
 
 ---
 
-## 📊 ESTADO ACTUALIZADO: 58/62 (94% completo)
+## 📊 ESTADO ACTUALIZADO: 59/62 (95% completo)
 
-- ✅ Resueltos: 58
+- ✅ Resueltos: 59
 - ❌ Críticos pendientes: 0
 - ⚠️ Altos pendientes: 0
-- 🔷 Bajos pendientes: 4
+- 🔷 Bajos pendientes: 3

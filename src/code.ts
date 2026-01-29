@@ -9,7 +9,7 @@ import { CSS_CONFIG, parseSize, parseCalc, parsePercentage, parseMargin, parsePa
 // Import effects utilities
 import { parseBoxShadow, parseTransform, parseLinearGradient } from './utils/effects';
 // Import grid utilities
-import { parseGridColumns, parseGridTemplateAreas, getGridRowCount, getGridColCount } from './utils/grid';
+import { parseGridColumns, parseGridTemplateAreas, getGridRowCount, getGridColCount, parseGridColumnWidths } from './utils/grid';
 
 // __html__ is injected by Figma when using a separate ui.html file
 figma.showUI(__html__, { width: 360, height: 380 });
@@ -872,7 +872,8 @@ async function createGridLayoutWithSpans(
   parentFrame: FrameNode,
   columns: number,
   gap: number,
-  inheritedStyles?: any
+  inheritedStyles?: any,
+  gridTemplateColumns?: string
 ) {
   // Grid layout with spans - uses fallback since native Grid API not widely available
 
@@ -974,7 +975,7 @@ async function createGridLayoutWithSpans(
     // Clean up test frame
     testParent.remove();
     // Debug log removed
-    await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
+    await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns);
     return;
   }
 
@@ -1000,7 +1001,7 @@ async function createGridLayoutWithSpans(
   } catch (error) {
     console.error('[GRID-NATIVE] Error configuring grid after test passed:', error);
     parentFrame.layoutMode = 'VERTICAL';
-    await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles);
+    await createGridLayoutWithSpansFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns);
     return;
   }
 
@@ -1054,15 +1055,25 @@ async function createGridLayoutWithSpansFallback(
   parentFrame: FrameNode,
   columns: number,
   gap: number,
-  inheritedStyles?: any
+  inheritedStyles?: any,
+  gridTemplateColumns?: string
 ) {
-  // Debug log removed
-
-  // Calculate column width based on parent
+  // Calculate available width (subtract padding from parent width)
   const parentWidth = parentFrame.width || 1200;
-  const totalGaps = (columns - 1) * gap;
-  const columnWidth = Math.floor((parentWidth - totalGaps) / columns);
-  // Debug log removed
+  const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
+  const availableWidth = parentWidth - paddingH;
+  const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
+
+  // Helper function to calculate width of a column span
+  const getSpanWidth = (startCol: number, colSpan: number): number => {
+    let width = 0;
+    for (let i = startCol; i < startCol + colSpan && i < columnWidths.length; i++) {
+      width += columnWidths[i];
+    }
+    // Add gaps between columns in the span
+    width += gap * (colSpan - 1);
+    return width;
+  };
 
   // Reset parent to vertical layout
   parentFrame.layoutMode = 'VERTICAL';
@@ -1142,18 +1153,19 @@ async function createGridLayoutWithSpansFallback(
         const placeholder = figma.createFrame();
         placeholder.name = `Empty`;
         placeholder.fills = [];
-        placeholder.resize(columnWidth, 10);
+        const colWidth = columnWidths[c] || 100;
+        placeholder.resize(colWidth, 10);
         rowFrames[r].appendChild(placeholder);
         try {
-          placeholder.layoutGrow = 1;
-          placeholder.layoutSizingHorizontal = 'FILL';
+          // Use FIXED width for proportional sizing
+          placeholder.layoutSizingHorizontal = 'FIXED';
         } catch (e) {}
         c++;
       } else {
         const pos = childPositions[childIndex];
         if (r === pos.row) {
-          // Calculate item width: colSpan columns + (colSpan - 1) gaps between them
-          const itemWidth = columnWidth * pos.colSpan + gap * (pos.colSpan - 1);
+          // Calculate item width using proportional column widths
+          const itemWidth = getSpanWidth(pos.col, pos.colSpan);
 
           const wrapper = figma.createFrame();
           wrapper.name = `Grid Item (${pos.colSpan} cols)`;
@@ -1165,8 +1177,8 @@ async function createGridLayoutWithSpansFallback(
           rowFrames[r].appendChild(wrapper);
 
           try {
-            wrapper.layoutGrow = pos.colSpan;
-            wrapper.layoutSizingHorizontal = 'FILL';
+            // Use FIXED width for proportional sizing
+            wrapper.layoutSizingHorizontal = 'FIXED';
           } catch (e) {}
 
           // Debug log removed
@@ -1178,7 +1190,7 @@ async function createGridLayoutWithSpansFallback(
           });
         } else {
           // Subsequent row for multi-row item - add transparent placeholder (must be visible to take space)
-          const itemWidth = columnWidth * pos.colSpan + gap * (pos.colSpan - 1);
+          const itemWidth = getSpanWidth(pos.col, pos.colSpan);
           const placeholder = figma.createFrame();
           placeholder.name = `RowSpan placeholder (${pos.colSpan} cols)`;
           placeholder.fills = []; // Transparent
@@ -1186,8 +1198,8 @@ async function createGridLayoutWithSpansFallback(
           // Keep visible so it takes up space in auto-layout
           rowFrames[r].appendChild(placeholder);
           try {
-            placeholder.layoutGrow = pos.colSpan;
-            placeholder.layoutSizingHorizontal = 'FILL';
+            // Use FIXED width for proportional sizing
+            placeholder.layoutSizingHorizontal = 'FIXED';
           } catch (e) {}
           // Debug log removed
         }
@@ -1201,7 +1213,7 @@ async function createGridLayoutWithSpansFallback(
 
 // Grid layout genérico para N columnas (sin spans)
 // Uses row-based fallback since native Figma Grid API is not widely available
-async function createGridLayout(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
+async function createGridLayout(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any, gridTemplateColumns?: string) {
   // Debug log removed
 
   if (!children || children.length === 0) {
@@ -1210,15 +1222,19 @@ async function createGridLayout(children: any[], parentFrame: FrameNode, columns
   }
 
   // Use row-based fallback directly since native Grid API is not available in most Figma versions
-  await createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles);
+  await createGridLayoutFallback(children, parentFrame, columns, gap, inheritedStyles, gridTemplateColumns);
 }
 
 // Fallback for createGridLayout using horizontal rows
-async function createGridLayoutFallback(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any) {
-  // Debug log removed
-
+async function createGridLayoutFallback(children: any[], parentFrame: FrameNode, columns: number, gap: number, inheritedStyles?: any, gridTemplateColumns?: string) {
   parentFrame.layoutMode = 'VERTICAL';
   parentFrame.itemSpacing = gap;
+
+  // Calculate available width (subtract padding from parent width)
+  const parentWidth = parentFrame.width || 1200;
+  const paddingH = (parentFrame.paddingLeft || 0) + (parentFrame.paddingRight || 0);
+  const availableWidth = parentWidth - paddingH;
+  const columnWidths = parseGridColumnWidths(gridTemplateColumns, availableWidth, gap);
 
   for (let i = 0; i < children.length; i += columns) {
     const rowFrame = figma.createFrame();
@@ -1241,12 +1257,14 @@ async function createGridLayoutFallback(children: any[], parentFrame: FrameNode,
       }
     }
 
-    // Make items fill row equally
+    // Apply proportional widths using FIXED sizing (Figma layoutGrow only accepts 0 or 1)
     for (let k = 0; k < rowFrame.children.length; k++) {
       try {
         const child = rowFrame.children[k] as FrameNode;
-        child.layoutGrow = 1;
-        child.layoutSizingHorizontal = 'FILL';
+        const colIndex = k % columns;
+        const targetWidth = columnWidths[colIndex] || 100;
+        child.layoutSizingHorizontal = 'FIXED';
+        child.resize(targetWidth, child.height);
       } catch (e) {}
     }
   }
@@ -1831,10 +1849,10 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
                 if (hasGridSpans(node.children)) {
                   // Use bento grid layout with span support
                   // Debug log removed
-                  await createGridLayoutWithSpans(node.children, frame, finalColumns, gap, inheritableStyles);
+                  await createGridLayoutWithSpans(node.children, frame, finalColumns, gap, inheritableStyles, gridTemplateColumns);
                 } else {
                   // Simple grid layout without spans
-                  await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles);
+                  await createGridLayout(node.children, frame, finalColumns, gap, inheritableStyles, gridTemplateColumns);
                 }
               }
             } else {
