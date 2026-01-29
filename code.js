@@ -1640,7 +1640,7 @@
     }
   }
   async function createFigmaNodesFromStructure(structure, parentFrame, startX = 0, startY = 0, inheritedStyles) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va, _wa, _xa, _ya, _za, _Aa, _Ba, _Ca, _Da, _Ea, _Fa, _Ga, _Ha, _Ia, _Ja, _Ka, _La, _Ma, _Na, _Oa, _Pa, _Qa, _Ra, _Sa, _Ta, _Ua, _Va, _Wa, _Xa, _Ya, _Za, __a, _$a, _ab, _bb, _cb, _db, _eb, _fb, _gb, _hb, _ib, _jb, _kb, _lb, _mb, _nb, _ob, _pb, _qb, _rb, _sb, _tb, _ub, _vb, _wb, _xb, _yb, _zb, _Ab, _Bb, _Cb, _Db, _Eb, _Fb, _Gb, _Hb, _Ib, _Jb, _Kb, _Lb, _Mb, _Nb, _Ob, _Pb, _Qb, _Rb, _Sb, _Tb, _Ub, _Vb, _Wb, _Xb, _Yb, _Zb, __b, _$b, _ac, _bc, _cc, _dc, _ec, _fc, _gc, _hc, _ic, _jc, _kc, _lc, _mc, _nc, _oc, _pc, _qc, _rc, _sc, _tc, _uc, _vc, _wc, _xc, _yc, _zc, _Ac, _Bc, _Cc, _Dc, _Ec, _Fc, _Gc, _Hc, _Ic, _Jc, _Kc;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va, _wa, _xa, _ya, _za, _Aa, _Ba, _Ca, _Da, _Ea, _Fa, _Ga, _Ha, _Ia, _Ja, _Ka, _La, _Ma, _Na, _Oa, _Pa, _Qa, _Ra, _Sa, _Ta, _Ua, _Va, _Wa, _Xa, _Ya, _Za, __a, _$a, _ab, _bb, _cb, _db, _eb, _fb, _gb, _hb, _ib, _jb, _kb, _lb, _mb, _nb, _ob, _pb, _qb, _rb, _sb, _tb, _ub, _vb, _wb, _xb, _yb, _zb, _Ab, _Bb, _Cb, _Db, _Eb, _Fb, _Gb, _Hb, _Ib, _Jb, _Kb, _Lb, _Mb, _Nb, _Ob, _Pb, _Qb, _Rb, _Sb, _Tb, _Ub, _Vb, _Wb, _Xb, _Yb, _Zb, __b, _$b, _ac, _bc, _cc, _dc, _ec, _fc, _gc, _hc, _ic, _jc, _kc, _lc, _mc, _nc, _oc, _pc, _qc, _rc, _sc, _tc, _uc, _vc, _wc, _xc, _yc, _zc, _Ac, _Bc, _Cc, _Dc, _Ec, _Fc, _Gc, _Hc, _Ic, _Jc, _Kc, _Lc, _Mc;
     debugLog("[NODE CREATION] Starting createFigmaNodesFromStructure");
     debugLog("[NODE CREATION] Structure:", structure);
     debugLog("[NODE CREATION] ParentFrame:", (parentFrame == null ? void 0 : parentFrame.name) || "none");
@@ -1956,11 +1956,12 @@
           }
           const thisHasWidth = Boolean((_ua = node.styles) == null ? void 0 : _ua.width);
           const parentHadWidth = (inheritedStyles == null ? void 0 : inheritedStyles["_hasConstrainedWidth"]) === true;
+          const hasFlex1 = ((_va = node.styles) == null ? void 0 : _va.flex) === "1" || ((_wa = node.styles) == null ? void 0 : _wa["flex-grow"]) === "1";
           const isHorizontalFlex = frame.layoutMode === "HORIZONTAL";
-          const shouldPropagateWidthConstraint = isHorizontalFlex ? thisHasWidth : thisHasWidth || parentHadWidth;
+          const shouldPropagateWidthConstraint = isHorizontalFlex ? thisHasWidth || hasFlex1 : thisHasWidth || parentHadWidth || hasFlex1;
           const isFlex = display === "flex" || display === "inline-flex";
-          const justifyContent = (_va = node.styles) == null ? void 0 : _va["justify-content"];
-          const alignItems = (_wa = node.styles) == null ? void 0 : _wa["align-items"];
+          const justifyContent = (_xa = node.styles) == null ? void 0 : _xa["justify-content"];
+          const alignItems = (_ya = node.styles) == null ? void 0 : _ya["align-items"];
           const inheritableStyles = __spreadProps(__spreadValues({}, inheritedStyles), {
             // CRITICAL: Propagate width constraint - but not through horizontal flex containers
             "_hasConstrainedWidth": shouldPropagateWidthConstraint,
@@ -1970,30 +1971,30 @@
             "_parentJustifyContent": isFlex ? justifyContent : inheritedStyles == null ? void 0 : inheritedStyles["_parentJustifyContent"],
             "_parentAlignItems": isFlex ? alignItems : inheritedStyles == null ? void 0 : inheritedStyles["_parentAlignItems"],
             // TEXT PROPERTIES - CSS inherited properties (complete list per CSS spec)
-            color: ((_xa = node.styles) == null ? void 0 : _xa.color) || (inheritedStyles == null ? void 0 : inheritedStyles.color),
-            "font-family": ((_ya = node.styles) == null ? void 0 : _ya["font-family"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-family"]),
-            "font-size": ((_za = node.styles) == null ? void 0 : _za["font-size"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-size"]),
-            "font-weight": ((_Aa = node.styles) == null ? void 0 : _Aa["font-weight"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-weight"]),
-            "font-style": ((_Ba = node.styles) == null ? void 0 : _Ba["font-style"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-style"]),
-            "line-height": ((_Ca = node.styles) == null ? void 0 : _Ca["line-height"]) || (inheritedStyles == null ? void 0 : inheritedStyles["line-height"]),
-            "text-align": ((_Da = node.styles) == null ? void 0 : _Da["text-align"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-align"]),
-            "letter-spacing": ((_Ea = node.styles) == null ? void 0 : _Ea["letter-spacing"]) || (inheritedStyles == null ? void 0 : inheritedStyles["letter-spacing"]),
-            "word-spacing": ((_Fa = node.styles) == null ? void 0 : _Fa["word-spacing"]) || (inheritedStyles == null ? void 0 : inheritedStyles["word-spacing"]),
-            "text-transform": ((_Ga = node.styles) == null ? void 0 : _Ga["text-transform"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-transform"]),
-            "text-decoration": ((_Ha = node.styles) == null ? void 0 : _Ha["text-decoration"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-decoration"]),
-            "white-space": ((_Ia = node.styles) == null ? void 0 : _Ia["white-space"]) || (inheritedStyles == null ? void 0 : inheritedStyles["white-space"]),
-            "text-indent": ((_Ja = node.styles) == null ? void 0 : _Ja["text-indent"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-indent"]),
-            "direction": ((_Ka = node.styles) == null ? void 0 : _Ka["direction"]) || (inheritedStyles == null ? void 0 : inheritedStyles["direction"]),
-            "visibility": ((_La = node.styles) == null ? void 0 : _La["visibility"]) || (inheritedStyles == null ? void 0 : inheritedStyles["visibility"]),
+            color: ((_za = node.styles) == null ? void 0 : _za.color) || (inheritedStyles == null ? void 0 : inheritedStyles.color),
+            "font-family": ((_Aa = node.styles) == null ? void 0 : _Aa["font-family"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-family"]),
+            "font-size": ((_Ba = node.styles) == null ? void 0 : _Ba["font-size"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-size"]),
+            "font-weight": ((_Ca = node.styles) == null ? void 0 : _Ca["font-weight"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-weight"]),
+            "font-style": ((_Da = node.styles) == null ? void 0 : _Da["font-style"]) || (inheritedStyles == null ? void 0 : inheritedStyles["font-style"]),
+            "line-height": ((_Ea = node.styles) == null ? void 0 : _Ea["line-height"]) || (inheritedStyles == null ? void 0 : inheritedStyles["line-height"]),
+            "text-align": ((_Fa = node.styles) == null ? void 0 : _Fa["text-align"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-align"]),
+            "letter-spacing": ((_Ga = node.styles) == null ? void 0 : _Ga["letter-spacing"]) || (inheritedStyles == null ? void 0 : inheritedStyles["letter-spacing"]),
+            "word-spacing": ((_Ha = node.styles) == null ? void 0 : _Ha["word-spacing"]) || (inheritedStyles == null ? void 0 : inheritedStyles["word-spacing"]),
+            "text-transform": ((_Ia = node.styles) == null ? void 0 : _Ia["text-transform"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-transform"]),
+            "text-decoration": ((_Ja = node.styles) == null ? void 0 : _Ja["text-decoration"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-decoration"]),
+            "white-space": ((_Ka = node.styles) == null ? void 0 : _Ka["white-space"]) || (inheritedStyles == null ? void 0 : inheritedStyles["white-space"]),
+            "text-indent": ((_La = node.styles) == null ? void 0 : _La["text-indent"]) || (inheritedStyles == null ? void 0 : inheritedStyles["text-indent"]),
+            "direction": ((_Ma = node.styles) == null ? void 0 : _Ma["direction"]) || (inheritedStyles == null ? void 0 : inheritedStyles["direction"]),
+            "visibility": ((_Na = node.styles) == null ? void 0 : _Na["visibility"]) || (inheritedStyles == null ? void 0 : inheritedStyles["visibility"]),
             // FIXED: Don't inherit background/background-color - only pass info for gradient container detection
-            "parent-has-gradient": ((_Ma = node.styles) == null ? void 0 : _Ma["background"]) && node.styles["background"].includes("linear-gradient") || (inheritedStyles == null ? void 0 : inheritedStyles["parent-has-gradient"]),
+            "parent-has-gradient": ((_Oa = node.styles) == null ? void 0 : _Oa["background"]) && node.styles["background"].includes("linear-gradient") || (inheritedStyles == null ? void 0 : inheritedStyles["parent-has-gradient"]),
             // Pass parent class name to help with styling decisions
-            "parent-class": ((_Na = node.styles) == null ? void 0 : _Na.className) || (inheritedStyles == null ? void 0 : inheritedStyles["parent-class"])
+            "parent-class": ((_Pa = node.styles) == null ? void 0 : _Pa.className) || (inheritedStyles == null ? void 0 : inheritedStyles["parent-class"])
           });
           if (node.mixedContent && node.mixedContent.length > 0) {
             await figma.loadFontAsync({ family: "Inter", style: "Regular" });
             const hasOnlyText = node.mixedContent.every((item) => item.type === "text");
-            const justifyContent2 = (_Oa = node.styles) == null ? void 0 : _Oa["justify-content"];
+            const justifyContent2 = (_Qa = node.styles) == null ? void 0 : _Qa["justify-content"];
             const wantsCentering = justifyContent2 === "center" || justifyContent2 === "flex-end" || justifyContent2 === "end";
             for (const item of node.mixedContent) {
               if (item.type === "text" && item.text && item.text.trim()) {
@@ -2027,11 +2028,11 @@
               textNode.name = "DIV Text";
               applyStylesToText(textNode, __spreadValues(__spreadValues({}, inheritableStyles), node.styles));
               frame.appendChild(textNode);
-              const legacyJustifyContent = (_Pa = node.styles) == null ? void 0 : _Pa["justify-content"];
+              const legacyJustifyContent = (_Ra = node.styles) == null ? void 0 : _Ra["justify-content"];
               const legacyWantsCentering = legacyJustifyContent === "center" || legacyJustifyContent === "flex-end" || legacyJustifyContent === "end";
               const parentIsHorizontal = parentFrame && parentFrame.layoutMode === "HORIZONTAL";
-              const frameHasNoExplicitWidth = !((_Qa = node.styles) == null ? void 0 : _Qa.width);
-              const frameWillHugHorizontal = parentIsHorizontal && frameHasNoExplicitWidth && !((_Ra = node.styles) == null ? void 0 : _Ra.flex) && !((_Sa = node.styles) == null ? void 0 : _Sa["flex-grow"]);
+              const frameHasNoExplicitWidth = !((_Sa = node.styles) == null ? void 0 : _Sa.width);
+              const frameWillHugHorizontal = parentIsHorizontal && frameHasNoExplicitWidth && !((_Ta = node.styles) == null ? void 0 : _Ta.flex) && !((_Ua = node.styles) == null ? void 0 : _Ua["flex-grow"]);
               if (frameWillHugHorizontal) {
                 textNode.textAutoResize = "WIDTH_AND_HEIGHT";
               } else if (frame.layoutMode === "HORIZONTAL" && legacyWantsCentering) {
@@ -2046,10 +2047,10 @@
               }
             }
             if (node.children && node.children.length > 0) {
-              if (((_Ta = node.styles) == null ? void 0 : _Ta.display) === "grid") {
-                const gridTemplateAreas = (_Ua = node.styles) == null ? void 0 : _Ua["grid-template-areas"];
-                const gridTemplateColumns = (_Va = node.styles) == null ? void 0 : _Va["grid-template-columns"];
-                const gap2 = parseSize((_Wa = node.styles) == null ? void 0 : _Wa.gap) || parseSize((parentFrame == null ? void 0 : parentFrame.getPluginData("gridGap")) || "") || 12;
+              if (((_Va = node.styles) == null ? void 0 : _Va.display) === "grid") {
+                const gridTemplateAreas = (_Wa = node.styles) == null ? void 0 : _Wa["grid-template-areas"];
+                const gridTemplateColumns = (_Xa = node.styles) == null ? void 0 : _Xa["grid-template-columns"];
+                const gap2 = parseSize((_Ya = node.styles) == null ? void 0 : _Ya.gap) || parseSize((parentFrame == null ? void 0 : parentFrame.getPluginData("gridGap")) || "") || 12;
                 const areaMap = parseGridTemplateAreas(gridTemplateAreas);
                 if (areaMap) {
                   const numRows = getGridRowCount(gridTemplateAreas);
@@ -2070,15 +2071,15 @@
               reorderChildrenByZIndex(frame);
             }
           }
-          if ((_Xa = node.styles) == null ? void 0 : _Xa["z-index"]) {
+          if ((_Za = node.styles) == null ? void 0 : _Za["z-index"]) {
             const zIndex = parseInt(node.styles["z-index"], 10);
             if (!isNaN(zIndex)) {
               frame.setPluginData("zIndex", zIndex.toString());
             }
           }
           if (parentFrame && (parentFrame.layoutMode === "HORIZONTAL" || parentFrame.layoutMode === "VERTICAL")) {
-            const flexValue = (_Ya = node.styles) == null ? void 0 : _Ya.flex;
-            const flexGrowValue = (_Za = node.styles) == null ? void 0 : _Za["flex-grow"];
+            const flexValue = (__a = node.styles) == null ? void 0 : __a.flex;
+            const flexGrowValue = (_$a = node.styles) == null ? void 0 : _$a["flex-grow"];
             let shouldGrow = false;
             let shouldNotGrow = false;
             if (flexValue) {
@@ -2103,7 +2104,7 @@
                 frame.layoutSizingVertical = "HUG";
               } else if (shouldNotGrow) {
                 frame.layoutGrow = 0;
-                const minWidth = parseSize((__a = node.styles) == null ? void 0 : __a["min-width"]);
+                const minWidth = parseSize((_ab = node.styles) == null ? void 0 : _ab["min-width"]);
                 if (minWidth && minWidth > 0) {
                   frame.layoutSizingHorizontal = "FIXED";
                   frame.resize(Math.max(frame.width, minWidth), frame.height);
@@ -2114,7 +2115,7 @@
             } catch (error) {
             }
           }
-          if (((_$a = node.styles) == null ? void 0 : _$a["align-self"]) && parentFrame) {
+          if (((_bb = node.styles) == null ? void 0 : _bb["align-self"]) && parentFrame) {
             try {
               const alignSelf = node.styles["align-self"];
               if (alignSelf === "center") {
@@ -2133,12 +2134,12 @@
           form.layoutMode = "VERTICAL";
           form.primaryAxisSizingMode = "AUTO";
           form.counterAxisSizingMode = "AUTO";
-          const basePadding = parseSize((_ab = node.styles) == null ? void 0 : _ab.padding);
-          form.paddingLeft = (_db = (_cb = parseSize((_bb = node.styles) == null ? void 0 : _bb["padding-left"])) != null ? _cb : basePadding) != null ? _db : 0;
-          form.paddingRight = (_gb = (_fb = parseSize((_eb = node.styles) == null ? void 0 : _eb["padding-right"])) != null ? _fb : basePadding) != null ? _gb : 0;
-          form.paddingTop = (_jb = (_ib = parseSize((_hb = node.styles) == null ? void 0 : _hb["padding-top"])) != null ? _ib : basePadding) != null ? _jb : 0;
-          form.paddingBottom = (_mb = (_lb = parseSize((_kb = node.styles) == null ? void 0 : _kb["padding-bottom"])) != null ? _lb : basePadding) != null ? _mb : 0;
-          form.itemSpacing = (_ob = parseSize((_nb = node.styles) == null ? void 0 : _nb.gap)) != null ? _ob : 0;
+          const basePadding = parseSize((_cb = node.styles) == null ? void 0 : _cb.padding);
+          form.paddingLeft = (_fb = (_eb = parseSize((_db = node.styles) == null ? void 0 : _db["padding-left"])) != null ? _eb : basePadding) != null ? _fb : 0;
+          form.paddingRight = (_ib = (_hb = parseSize((_gb = node.styles) == null ? void 0 : _gb["padding-right"])) != null ? _hb : basePadding) != null ? _ib : 0;
+          form.paddingTop = (_lb = (_kb = parseSize((_jb = node.styles) == null ? void 0 : _jb["padding-top"])) != null ? _kb : basePadding) != null ? _lb : 0;
+          form.paddingBottom = (_ob = (_nb = parseSize((_mb = node.styles) == null ? void 0 : _mb["padding-bottom"])) != null ? _nb : basePadding) != null ? _ob : 0;
+          form.itemSpacing = (_qb = parseSize((_pb = node.styles) == null ? void 0 : _pb.gap)) != null ? _qb : 0;
           if (node.styles) {
             applyStylesToFrame(form, node.styles);
           }
@@ -2151,40 +2152,40 @@
           }
           await createFigmaNodesFromStructure(node.children, form, 0, 0, inheritedStyles);
         } else if (["input", "textarea", "select"].includes(node.tagName)) {
-          let inputWidth = parseSize((_pb = node.styles) == null ? void 0 : _pb.width);
-          const inputHeight = node.tagName === "textarea" ? (parseSize((_qb = node.attributes) == null ? void 0 : _qb.rows) || 3) * 20 + 20 : parseSize((_rb = node.styles) == null ? void 0 : _rb.height) || 40;
+          let inputWidth = parseSize((_rb = node.styles) == null ? void 0 : _rb.width);
+          const inputHeight = node.tagName === "textarea" ? (parseSize((_sb = node.attributes) == null ? void 0 : _sb.rows) || 3) * 20 + 20 : parseSize((_tb = node.styles) == null ? void 0 : _tb.height) || 40;
           const input = figma.createFrame();
           let bgColor = { r: 1, g: 1, b: 1 };
-          if (((_sb = node.styles) == null ? void 0 : _sb["background"]) && node.styles["background"] !== "transparent") {
+          if (((_ub = node.styles) == null ? void 0 : _ub["background"]) && node.styles["background"] !== "transparent") {
             const bgParsed = hexToRgb(node.styles["background"]);
             if (bgParsed) bgColor = bgParsed;
-          } else if (((_tb = node.styles) == null ? void 0 : _tb["background-color"]) && node.styles["background-color"] !== "transparent") {
+          } else if (((_vb = node.styles) == null ? void 0 : _vb["background-color"]) && node.styles["background-color"] !== "transparent") {
             const bgParsed = hexToRgb(node.styles["background-color"]);
             if (bgParsed) bgColor = bgParsed;
           }
           input.fills = [{ type: "SOLID", color: bgColor }];
           let borderColor = { r: 0.8, g: 0.8, b: 0.8 };
-          if (((_ub = node.styles) == null ? void 0 : _ub["border"]) || ((_vb = node.styles) == null ? void 0 : _vb["border-color"])) {
+          if (((_wb = node.styles) == null ? void 0 : _wb["border"]) || ((_xb = node.styles) == null ? void 0 : _xb["border-color"])) {
             const borderParsed = hexToRgb(node.styles["border-color"] || extractBorderColor(node.styles["border"]));
             if (borderParsed) borderColor = borderParsed;
           }
           input.strokes = [{ type: "SOLID", color: borderColor }];
-          input.strokeWeight = parseSize((_wb = node.styles) == null ? void 0 : _wb["border-width"]) || 1;
-          input.cornerRadius = parseSize((_xb = node.styles) == null ? void 0 : _xb["border-radius"]) || 4;
+          input.strokeWeight = parseSize((_yb = node.styles) == null ? void 0 : _yb["border-width"]) || 1;
+          input.cornerRadius = parseSize((_zb = node.styles) == null ? void 0 : _zb["border-radius"]) || 4;
           input.name = node.tagName.toUpperCase();
           input.layoutMode = "HORIZONTAL";
-          if (((_yb = node.styles) == null ? void 0 : _yb["text-align"]) === "center") {
+          if (((_Ab = node.styles) == null ? void 0 : _Ab["text-align"]) === "center") {
             input.primaryAxisAlignItems = "CENTER";
             input.counterAxisAlignItems = "CENTER";
           } else {
             input.primaryAxisAlignItems = "MIN";
             input.counterAxisAlignItems = "CENTER";
           }
-          input.paddingLeft = parseSize((_zb = node.styles) == null ? void 0 : _zb["padding-left"]) || 12;
-          input.paddingRight = parseSize((_Ab = node.styles) == null ? void 0 : _Ab["padding-right"]) || 12;
+          input.paddingLeft = parseSize((_Bb = node.styles) == null ? void 0 : _Bb["padding-left"]) || 12;
+          input.paddingRight = parseSize((_Cb = node.styles) == null ? void 0 : _Cb["padding-right"]) || 12;
           const parentIsAutoLayout = parentFrame && parentFrame.type === "FRAME" && parentFrame.layoutMode && parentFrame.layoutMode !== "NONE";
           let useFill = false;
-          if (((_Bb = node.styles) == null ? void 0 : _Bb.width) === "100%") {
+          if (((_Db = node.styles) == null ? void 0 : _Db.width) === "100%") {
             if (parentIsAutoLayout) {
               useFill = true;
             } else {
@@ -2201,13 +2202,13 @@
           }
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const inputText = figma.createText();
-          const displayText = ((_Cb = node.attributes) == null ? void 0 : _Cb.value) || ((_Db = node.attributes) == null ? void 0 : _Db.placeholder) || (node.tagName === "select" ? "Select option \u25BC" : "Input field");
+          const displayText = ((_Eb = node.attributes) == null ? void 0 : _Eb.value) || ((_Fb = node.attributes) == null ? void 0 : _Fb.placeholder) || (node.tagName === "select" ? "Select option \u25BC" : "Input field");
           inputText.characters = displayText;
           let textColor = { r: 0.2, g: 0.2, b: 0.2 };
-          if ((_Eb = node.styles) == null ? void 0 : _Eb.color) {
+          if ((_Gb = node.styles) == null ? void 0 : _Gb.color) {
             const colorParsed = hexToRgb(node.styles.color);
             if (colorParsed) textColor = colorParsed;
-          } else if (!((_Fb = node.attributes) == null ? void 0 : _Fb.value)) {
+          } else if (!((_Hb = node.attributes) == null ? void 0 : _Hb.value)) {
             textColor = { r: 0.6, g: 0.6, b: 0.6 };
           }
           inputText.fills = [{ type: "SOLID", color: textColor }];
@@ -2231,7 +2232,7 @@
             }
           }
         } else if (node.tagName === "table") {
-          const tableWidth = parseSize((_Gb = node.styles) == null ? void 0 : _Gb.width) || 500;
+          const tableWidth = parseSize((_Ib = node.styles) == null ? void 0 : _Ib.width) || 500;
           let tableHeight = 60;
           const bodyRows = node.children.filter(
             (c) => c.tagName === "tbody" || c.tagName === "tr"
@@ -2293,33 +2294,33 @@
           }
         } else if (["td", "th"].includes(node.tagName)) {
           const cell = figma.createFrame();
-          const cellWidth = parseSize((_Hb = node.styles) == null ? void 0 : _Hb.width) || 100;
-          const cellHeight = parseSize((_Ib = node.styles) == null ? void 0 : _Ib.height) || 40;
+          const cellWidth = parseSize((_Jb = node.styles) == null ? void 0 : _Jb.width) || 100;
+          const cellHeight = parseSize((_Kb = node.styles) == null ? void 0 : _Kb.height) || 40;
           cell.resize(cellWidth, cellHeight);
-          const bgColor = ((_Jb = node.styles) == null ? void 0 : _Jb["background-color"]) || ((_Kb = node.styles) == null ? void 0 : _Kb.background);
+          const bgColor = ((_Lb = node.styles) == null ? void 0 : _Lb["background-color"]) || ((_Mb = node.styles) == null ? void 0 : _Mb.background);
           if (bgColor && bgColor !== "transparent") {
             const parsedBg = hexToRgb(bgColor);
             cell.fills = parsedBg ? [{ type: "SOLID", color: parsedBg }] : [];
           } else {
             cell.fills = [];
           }
-          const borderColor = (_Lb = node.styles) == null ? void 0 : _Lb["border-color"];
+          const borderColor = (_Nb = node.styles) == null ? void 0 : _Nb["border-color"];
           if (borderColor) {
             const parsedBorder = hexToRgb(borderColor);
             cell.strokes = parsedBorder ? [{ type: "SOLID", color: parsedBorder }] : [];
           } else {
             cell.strokes = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
           }
-          cell.strokeWeight = (_Nb = parseSize((_Mb = node.styles) == null ? void 0 : _Mb["border-width"])) != null ? _Nb : 0.5;
+          cell.strokeWeight = (_Pb = parseSize((_Ob = node.styles) == null ? void 0 : _Ob["border-width"])) != null ? _Pb : 0.5;
           cell.name = node.tagName.toUpperCase();
           cell.layoutMode = "HORIZONTAL";
           cell.primaryAxisAlignItems = "CENTER";
           cell.counterAxisAlignItems = "CENTER";
-          const basePadding = parseSize((_Ob = node.styles) == null ? void 0 : _Ob.padding);
-          cell.paddingLeft = (_Rb = (_Qb = parseSize((_Pb = node.styles) == null ? void 0 : _Pb["padding-left"])) != null ? _Qb : basePadding) != null ? _Rb : 8;
-          cell.paddingRight = (_Ub = (_Tb = parseSize((_Sb = node.styles) == null ? void 0 : _Sb["padding-right"])) != null ? _Tb : basePadding) != null ? _Ub : 8;
-          cell.paddingTop = (_Xb = (_Wb = parseSize((_Vb = node.styles) == null ? void 0 : _Vb["padding-top"])) != null ? _Wb : basePadding) != null ? _Xb : 4;
-          cell.paddingBottom = (__b = (_Zb = parseSize((_Yb = node.styles) == null ? void 0 : _Yb["padding-bottom"])) != null ? _Zb : basePadding) != null ? __b : 4;
+          const basePadding = parseSize((_Qb = node.styles) == null ? void 0 : _Qb.padding);
+          cell.paddingLeft = (_Tb = (_Sb = parseSize((_Rb = node.styles) == null ? void 0 : _Rb["padding-left"])) != null ? _Sb : basePadding) != null ? _Tb : 8;
+          cell.paddingRight = (_Wb = (_Vb = parseSize((_Ub = node.styles) == null ? void 0 : _Ub["padding-right"])) != null ? _Vb : basePadding) != null ? _Wb : 8;
+          cell.paddingTop = (_Zb = (_Yb = parseSize((_Xb = node.styles) == null ? void 0 : _Xb["padding-top"])) != null ? _Yb : basePadding) != null ? _Zb : 4;
+          cell.paddingBottom = (_ac = (_$b = parseSize((__b = node.styles) == null ? void 0 : __b["padding-bottom"])) != null ? _$b : basePadding) != null ? _ac : 4;
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const cellText = figma.createText();
           let textContent = "";
@@ -2335,7 +2336,7 @@
             }).filter((text) => text.trim()).join(" ");
           }
           cellText.characters = textContent || "";
-          const textColor = (_$b = node.styles) == null ? void 0 : _$b.color;
+          const textColor = (_bc = node.styles) == null ? void 0 : _bc.color;
           if (textColor) {
             const parsedColor = hexToRgb(textColor);
             cellText.fills = parsedColor ? [{ type: "SOLID", color: parsedColor }] : [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
@@ -2353,11 +2354,11 @@
             applyStylesToText(cellText, node.styles);
           }
           if (parentFrame && parentFrame.getPluginData("textAlign") === "center") {
-            if (!((_ac = node.styles) == null ? void 0 : _ac["text-align"])) {
+            if (!((_cc = node.styles) == null ? void 0 : _cc["text-align"])) {
               cellText.textAlignHorizontal = "CENTER";
             }
           }
-          if ((_cc = (_bc = node.styles) == null ? void 0 : _bc.className) == null ? void 0 : _cc.includes("detail")) {
+          if ((_ec = (_dc = node.styles) == null ? void 0 : _dc.className) == null ? void 0 : _ec.includes("detail")) {
           }
           if (!parentFrame) {
             cell.x = startX;
@@ -2367,11 +2368,11 @@
             parentFrame.appendChild(cell);
           }
         } else if (node.tagName === "button") {
-          const buttonWidth = parseSize((_dc = node.styles) == null ? void 0 : _dc.width) || Math.max(120, (((_ec = node.text) == null ? void 0 : _ec.length) || 6) * 12);
-          const buttonHeight = parseSize((_fc = node.styles) == null ? void 0 : _fc.height) || 44;
+          const buttonWidth = parseSize((_fc = node.styles) == null ? void 0 : _fc.width) || Math.max(120, (((_gc = node.text) == null ? void 0 : _gc.length) || 6) * 12);
+          const buttonHeight = parseSize((_hc = node.styles) == null ? void 0 : _hc.height) || 44;
           const frame = figma.createFrame();
           frame.resize(buttonWidth, buttonHeight);
-          const bgColor = ((_gc = node.styles) == null ? void 0 : _gc["background-color"]) || ((_hc = node.styles) == null ? void 0 : _hc.background);
+          const bgColor = ((_ic = node.styles) == null ? void 0 : _ic["background-color"]) || ((_jc = node.styles) == null ? void 0 : _jc.background);
           if (bgColor) {
             const parsedColor = hexToRgb(bgColor);
             if (parsedColor) {
@@ -2382,24 +2383,24 @@
           } else {
             frame.fills = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
           }
-          const borderRadius = (_jc = parseSize((_ic = node.styles) == null ? void 0 : _ic["border-radius"])) != null ? _jc : 4;
+          const borderRadius = (_lc = parseSize((_kc = node.styles) == null ? void 0 : _kc["border-radius"])) != null ? _lc : 4;
           frame.cornerRadius = borderRadius;
           frame.name = "Button";
           frame.layoutMode = "HORIZONTAL";
           frame.primaryAxisAlignItems = "CENTER";
           frame.counterAxisAlignItems = "CENTER";
-          const basePadding = parseSize((_kc = node.styles) == null ? void 0 : _kc.padding);
-          frame.paddingLeft = (_nc = (_mc = parseSize((_lc = node.styles) == null ? void 0 : _lc["padding-left"])) != null ? _mc : basePadding) != null ? _nc : 16;
-          frame.paddingRight = (_qc = (_pc = parseSize((_oc = node.styles) == null ? void 0 : _oc["padding-right"])) != null ? _pc : basePadding) != null ? _qc : 16;
-          frame.paddingTop = (_tc = (_sc = parseSize((_rc = node.styles) == null ? void 0 : _rc["padding-top"])) != null ? _sc : basePadding) != null ? _tc : 8;
-          frame.paddingBottom = (_wc = (_vc = parseSize((_uc = node.styles) == null ? void 0 : _uc["padding-bottom"])) != null ? _vc : basePadding) != null ? _wc : 8;
+          const basePadding = parseSize((_mc = node.styles) == null ? void 0 : _mc.padding);
+          frame.paddingLeft = (_pc = (_oc = parseSize((_nc = node.styles) == null ? void 0 : _nc["padding-left"])) != null ? _oc : basePadding) != null ? _pc : 16;
+          frame.paddingRight = (_sc = (_rc = parseSize((_qc = node.styles) == null ? void 0 : _qc["padding-right"])) != null ? _rc : basePadding) != null ? _sc : 16;
+          frame.paddingTop = (_vc = (_uc = parseSize((_tc = node.styles) == null ? void 0 : _tc["padding-top"])) != null ? _uc : basePadding) != null ? _vc : 8;
+          frame.paddingBottom = (_yc = (_xc = parseSize((_wc = node.styles) == null ? void 0 : _wc["padding-bottom"])) != null ? _xc : basePadding) != null ? _yc : 8;
           if (node.styles) {
             applyStylesToFrame(frame, node.styles);
           }
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const buttonText = figma.createText();
           buttonText.characters = node.text || "Button";
-          const textColor = (_xc = node.styles) == null ? void 0 : _xc.color;
+          const textColor = (_zc = node.styles) == null ? void 0 : _zc.color;
           if (textColor) {
             const parsedTextColor = hexToRgb(textColor);
             if (parsedTextColor) {
@@ -2422,18 +2423,18 @@
             parentFrame.appendChild(frame);
           }
         } else if (node.tagName === "img") {
-          const width = parseSize((_yc = node.styles) == null ? void 0 : _yc.width) || 200;
-          const height = parseSize((_zc = node.styles) == null ? void 0 : _zc.height) || 150;
+          const width = parseSize((_Ac = node.styles) == null ? void 0 : _Ac.width) || 200;
+          const height = parseSize((_Bc = node.styles) == null ? void 0 : _Bc.height) || 150;
           const frame = figma.createFrame();
           frame.resize(width, height);
           frame.fills = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
-          frame.name = "Image: " + (((_Ac = node.attributes) == null ? void 0 : _Ac.alt) || "Unnamed");
+          frame.name = "Image: " + (((_Cc = node.attributes) == null ? void 0 : _Cc.alt) || "Unnamed");
           frame.layoutMode = "HORIZONTAL";
           frame.primaryAxisAlignItems = "CENTER";
           frame.counterAxisAlignItems = "CENTER";
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const placeholderText = figma.createText();
-          placeholderText.characters = ((_Bc = node.attributes) == null ? void 0 : _Bc.alt) || "Image";
+          placeholderText.characters = ((_Dc = node.attributes) == null ? void 0 : _Dc.alt) || "Image";
           placeholderText.fills = [{ type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.5 } }];
           frame.appendChild(placeholderText);
           if (!parentFrame) {
@@ -2468,7 +2469,7 @@
         } else if (node.tagName === "li") {
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
           const text = figma.createText();
-          const parentList = ((_Cc = parentFrame == null ? void 0 : parentFrame.name) == null ? void 0 : _Cc.includes("OL")) ? "OL" : "UL";
+          const parentList = ((_Ec = parentFrame == null ? void 0 : parentFrame.name) == null ? void 0 : _Ec.includes("OL")) ? "OL" : "UL";
           const bullet = parentList === "OL" ? "1. " : "\u2022 ";
           text.characters = bullet + (node.text || "List item");
           text.name = "List Item";
@@ -2476,11 +2477,11 @@
             applyStylesToText(text, node.styles);
           }
           if (parentFrame && parentFrame.getPluginData("textAlign") === "center") {
-            if (!((_Dc = node.styles) == null ? void 0 : _Dc["text-align"])) {
+            if (!((_Fc = node.styles) == null ? void 0 : _Fc["text-align"])) {
               text.textAlignHorizontal = "CENTER";
             }
           }
-          if ((_Fc = (_Ec = node.styles) == null ? void 0 : _Ec.className) == null ? void 0 : _Fc.includes("detail")) {
+          if ((_Hc = (_Gc = node.styles) == null ? void 0 : _Gc.className) == null ? void 0 : _Hc.includes("detail")) {
           }
           if (!parentFrame) {
             text.x = startX;
@@ -2496,7 +2497,7 @@
             await createFigmaNodesFromStructure(node.children, parentFrame, startX, startY, inheritedStyles);
             continue;
           }
-          const hasBackground = ((_Gc = node.styles) == null ? void 0 : _Gc["background"]) || ((_Hc = node.styles) == null ? void 0 : _Hc["background-color"]);
+          const hasBackground = ((_Ic = node.styles) == null ? void 0 : _Ic["background"]) || ((_Jc = node.styles) == null ? void 0 : _Jc["background-color"]);
           const isSpanWithBackground = node.tagName === "span" && hasBackground && hasBackground !== "transparent";
           if (isSpanWithBackground) {
             const spanFrame = figma.createFrame();
@@ -2573,11 +2574,11 @@
               applyStylesToText(text, node.styles);
             }
             if (parentFrame && parentFrame.getPluginData("textAlign") === "center") {
-              if (!((_Ic = node.styles) == null ? void 0 : _Ic["text-align"])) {
+              if (!((_Kc = node.styles) == null ? void 0 : _Kc["text-align"])) {
                 text.textAlignHorizontal = "CENTER";
               }
             }
-            if ((_Kc = (_Jc = node.styles) == null ? void 0 : _Jc.className) == null ? void 0 : _Kc.includes("detail")) {
+            if ((_Mc = (_Lc = node.styles) == null ? void 0 : _Lc.className) == null ? void 0 : _Mc.includes("detail")) {
             }
             if (!parentFrame) {
               text.x = startX;

@@ -1935,10 +1935,16 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         const thisHasWidth = Boolean(node.styles?.width);
         const parentHadWidth = inheritedStyles?.['_hasConstrainedWidth'] === true;
 
+        // FIX: Elements with flex:1 or flex-grow:1 WILL fill available space
+        // so they should propagate width constraint to children
+        const hasFlex1 = node.styles?.flex === '1' || node.styles?.['flex-grow'] === '1';
+
         // FIX: In HORIZONTAL flex containers, children should NOT inherit width constraint
-        // because flex row children size to their content, not to parent width
+        // UNLESS they have flex:1 (which means they'll fill the space)
         const isHorizontalFlex = frame.layoutMode === 'HORIZONTAL';
-        const shouldPropagateWidthConstraint = isHorizontalFlex ? thisHasWidth : (thisHasWidth || parentHadWidth);
+        const shouldPropagateWidthConstraint = isHorizontalFlex
+          ? (thisHasWidth || hasFlex1)  // In horizontal flex: only if has width OR flex:1
+          : (thisHasWidth || parentHadWidth || hasFlex1);  // In vertical: propagate from parent too
 
         // Detect if this is a flex container for text alignment inheritance
         const isFlex = display === 'flex' || display === 'inline-flex';
