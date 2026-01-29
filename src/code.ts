@@ -607,14 +607,20 @@ function applyStylesToText(text: TextNode, styles: any) {
     }
   }
   
-  // Text align
+  // Text align - check explicit text-align first, then inherit from flex justify-content
   if (styles['text-align']) {
     const align = styles['text-align'];
     if (align === 'center') text.textAlignHorizontal = 'CENTER';
     else if (align === 'right') text.textAlignHorizontal = 'RIGHT';
     else if (align === 'justify') text.textAlignHorizontal = 'JUSTIFIED';
     else text.textAlignHorizontal = 'LEFT';
-    
+  } else if (styles['_parentJustifyContent']) {
+    // Inherit horizontal alignment from parent flex container's justify-content
+    const justify = styles['_parentJustifyContent'];
+    if (justify === 'center') text.textAlignHorizontal = 'CENTER';
+    else if (justify === 'flex-end' || justify === 'end') text.textAlignHorizontal = 'RIGHT';
+    else if (justify === 'flex-start' || justify === 'start') text.textAlignHorizontal = 'LEFT';
+    // space-between, space-around, space-evenly default to LEFT
   }
   
   // Opacity
@@ -1337,9 +1343,10 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
   debugLog('[NODE CREATION] Structure:', structure);
   debugLog('[NODE CREATION] ParentFrame:', parentFrame?.name || 'none');
   debugLog('[NODE CREATION] Structure length:', structure?.length || 0);
-  
+
   for (const node of structure) {
     debugLog('[NODE CREATION] Processing node:', node.tagName, node.type);
+    console.log('[NODE DEBUG] Tag:', node.tagName, 'Text:', node.text?.substring(0, 20), 'mixedContent:', node.mixedContent?.length, 'children:', node.children?.length);
     
     if (node.type === 'element') {
       // Skip script, style, and other non-visual elements
@@ -1793,12 +1800,20 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
         const isHorizontalFlex = frame.layoutMode === 'HORIZONTAL';
         const shouldPropagateWidthConstraint = isHorizontalFlex ? thisHasWidth : (thisHasWidth || parentHadWidth);
 
+        // Detect if this is a flex container for text alignment inheritance
+        const isFlex = display === 'flex' || display === 'inline-flex';
+        const justifyContent = node.styles?.['justify-content'];
+        const alignItems = node.styles?.['align-items'];
+
         const inheritableStyles = {
           ...inheritedStyles,
           // CRITICAL: Propagate width constraint - but not through horizontal flex containers
           '_hasConstrainedWidth': shouldPropagateWidthConstraint,
           // CRITICAL: Propagate FILL vertical for grid rows with multi-row spans
           '_shouldFillVertical': inheritedStyles?.['_shouldFillVertical'],
+          // Pass flex alignment for text centering
+          '_parentJustifyContent': isFlex ? justifyContent : inheritedStyles?.['_parentJustifyContent'],
+          '_parentAlignItems': isFlex ? alignItems : inheritedStyles?.['_parentAlignItems'],
 
           // TEXT PROPERTIES - CSS inherited properties
           color: node.styles?.color || inheritedStyles?.color,
@@ -1825,6 +1840,18 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
           // Process mixed content in order
           await figma.loadFontAsync({ family: "Inter", style: "Regular" });
 
+          // Check if this is a flex container with centering and only text content
+          const hasOnlyText = node.mixedContent.every((item: any) => item.type === 'text');
+          const justifyContent = node.styles?.['justify-content'];
+          const wantsCentering = justifyContent === 'center' ||
+                                 justifyContent === 'flex-end' ||
+                                 justifyContent === 'end';
+
+          console.log('[TEXT CENTER] hasOnlyText:', hasOnlyText);
+          console.log('[TEXT CENTER] justifyContent:', justifyContent);
+          console.log('[TEXT CENTER] wantsCentering:', wantsCentering);
+          console.log('[TEXT CENTER] frame.layoutMode:', frame.layoutMode);
+
           for (const item of node.mixedContent) {
             if (item.type === 'text' && item.text && item.text.trim()) {
               // Create inline text node
@@ -1833,12 +1860,21 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
               textNode.name = 'Inline Text';
 
               // Apply inherited styles and specific text styles
-              applyStylesToText(textNode, { ...inheritableStyles, ...node.styles });
+              const textStyles = { ...inheritableStyles, ...node.styles };
+              console.log('[TEXT CENTER] textStyles._parentJustifyContent:', textStyles['_parentJustifyContent']);
+              console.log('[TEXT CENTER] textStyles.justify-content:', textStyles['justify-content']);
+              applyStylesToText(textNode, textStyles);
 
               frame.appendChild(textNode);
 
-              // For mixed content, use HUG so text sits inline with elements
-              if (frame.layoutMode === 'HORIZONTAL') {
+              // For flex containers with centering and only text, use FILL to enable text alignment
+              console.log('[TEXT CENTER] Condition check:', frame.layoutMode === 'HORIZONTAL', hasOnlyText, wantsCentering);
+              if (frame.layoutMode === 'HORIZONTAL' && hasOnlyText && wantsCentering) {
+                console.log('[TEXT CENTER] Using FILL for centered text');
+                textNode.layoutSizingHorizontal = 'FILL';
+                textNode.textAutoResize = 'HEIGHT';
+              } else if (frame.layoutMode === 'HORIZONTAL') {
+                // Mixed content with elements - use HUG so text sits inline
                 textNode.layoutSizingHorizontal = 'HUG';
                 textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
               } else if (frame.layoutMode === 'VERTICAL') {
@@ -1865,6 +1901,12 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
 
             frame.appendChild(textNode);
 
+            // Check for centering - same logic as mixedContent path
+            const legacyJustifyContent = node.styles?.['justify-content'];
+            const legacyWantsCentering = legacyJustifyContent === 'center' ||
+                                         legacyJustifyContent === 'flex-end' ||
+                                         legacyJustifyContent === 'end';
+
             // FIXED: Use FILL for text in auto-layout containers instead of hardcoded width
             // But if the parent is HORIZONTAL flex and this frame will HUG, text should expand naturally
             const parentIsHorizontal = parentFrame && parentFrame.layoutMode === 'HORIZONTAL';
@@ -1874,6 +1916,11 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
             if (frameWillHugHorizontal) {
               // Parent is horizontal flex and this frame will HUG - text should size naturally
               textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+            } else if (frame.layoutMode === 'HORIZONTAL' && legacyWantsCentering) {
+              // Flex container with centering - use FILL and center text
+              textNode.layoutSizingHorizontal = 'FILL';
+              textNode.textAutoResize = 'HEIGHT';
+              textNode.textAlignHorizontal = 'CENTER';
             } else if (frame.layoutMode === 'HORIZONTAL' || frame.layoutMode === 'VERTICAL') {
               // Text should fill the container width and wrap
               textNode.layoutSizingHorizontal = 'FILL';

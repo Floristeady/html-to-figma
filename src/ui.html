@@ -1396,8 +1396,8 @@ function detectDesignWidthFromHTML(htmlStr) {
     if (rule && rule['width'] && rule['width'].indexOf('%') === -1) {
       var widthStr = rule['width'];
       var width = parseFloat(widthStr);
-      // Only consider widths that look like container widths (400px - 2500px)
-      if (!isNaN(width) && width >= 400 && width < 2500) {
+      // Consider any explicit width (100px - 2500px)
+      if (!isNaN(width) && width >= 100 && width < 2500) {
         if (width > largestWidth) {
           largestWidth = width;
           largestWidthSelector = selector;
