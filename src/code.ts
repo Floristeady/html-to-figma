@@ -1530,7 +1530,11 @@ async function createFigmaNodesFromStructure(structure: any[], parentFrame?: Fra
       const nodeStyles = { ...inheritedStyles, ...node.styles };
       node.styles = nodeStyles;
       
-      if (['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside', 'blockquote', 'figure', 'figcaption', 'address', 'details', 'summary'].includes(node.tagName)) {
+      // Elementos que siempre son frames + cualquier elemento con display:flex/grid/inline-flex
+      const isFlexOrGrid = node.styles?.display === 'flex' || node.styles?.display === 'inline-flex' || node.styles?.display === 'grid';
+      const isContainerTag = ['body', 'div', 'section', 'article', 'nav', 'header', 'footer', 'main', 'aside', 'blockquote', 'figure', 'figcaption', 'address', 'details', 'summary', 'a', 'li', 'ul', 'ol'].includes(node.tagName);
+
+      if (isContainerTag || isFlexOrGrid) {
         const frame = figma.createFrame();
         frame.name = node.tagName.toUpperCase() + ' Frame';
         
