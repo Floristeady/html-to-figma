@@ -385,6 +385,27 @@
       color: #999;
     }
 
+    /* SERVER BADGE */
+    .server-badge {
+      margin-left: auto;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .server-badge.local {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .server-badge.prod {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
     /* ACTION BUTTONS */
     .action-buttons {
       display: flex;
@@ -541,6 +562,7 @@
       <div class="status-row">
         <span class="status-icon inactive" id="sse-indicator"></span>
         <span class="status-text" id="sse-status-text">SSE Disconnected</span>
+        <span class="server-badge" id="server-badge"></span>
       </div>
       <div class="status-row">
         <span class="status-icon inactive" id="mcp-indicator"></span>
@@ -679,6 +701,7 @@ function detectServer(callback) {
     MCP_SERVER_URL = PROD_SERVER;
     MCP_API_KEY = PROD_API_KEY;
     serverDetected = true;
+    updateServerBadge('prod');
     updateConnectionDetails('Using production server');
     callback();
   }, 1500);
@@ -691,6 +714,7 @@ function detectServer(callback) {
         MCP_SERVER_URL = LOCAL_SERVER;
         MCP_API_KEY = LOCAL_API_KEY;
         serverDetected = true;
+        updateServerBadge('local');
         updateConnectionDetails('Using local server');
         callback();
       } else {
@@ -704,10 +728,20 @@ function detectServer(callback) {
         MCP_SERVER_URL = PROD_SERVER;
         MCP_API_KEY = PROD_API_KEY;
         serverDetected = true;
+        updateServerBadge('prod');
         updateConnectionDetails('Using production server');
         callback();
       }
     });
+}
+
+// Update server badge display
+function updateServerBadge(type) {
+  var badge = document.getElementById('server-badge');
+  if (badge) {
+    badge.className = 'server-badge ' + type;
+    badge.textContent = type === 'local' ? 'LOCAL' : 'PROD';
+  }
 }
 
 // Generate Claude Code command (always show production values for user to copy)
