@@ -303,11 +303,26 @@ function applyStylesToFrame(frame: FrameNode, styles: any) {
     }
   }
 
-  // Transform
+  // Transform (rotation, scale, translate)
   if (styles.transform) {
     const transform = parseTransform(styles.transform);
+
+    // Apply rotation (Figma API uses degrees)
     if (transform.rotation !== undefined) {
       frame.rotation = transform.rotation;
+    }
+
+    // Apply scale by resizing the frame
+    if (transform.scaleX !== undefined || transform.scaleY !== undefined) {
+      const scaleX = transform.scaleX ?? 1;
+      const scaleY = transform.scaleY ?? 1;
+      frame.resize(frame.width * scaleX, frame.height * scaleY);
+    }
+
+    // Apply translate by offsetting position
+    if (transform.translateX !== undefined || transform.translateY !== undefined) {
+      frame.x += transform.translateX ?? 0;
+      frame.y += transform.translateY ?? 0;
     }
   }
 

@@ -159,10 +159,10 @@
     viewportWidth: 1440
     // 100vw = 1440px (reasonable desktop width)
   };
-  function parseSize(value) {
+  function parseSize(value, referenceWidth) {
     if (!value || value === "auto" || value === "inherit" || value === "initial") return null;
     if (value.includes("calc(")) {
-      return parseCalc(value);
+      return parseCalc(value, referenceWidth || CSS_CONFIG.viewportWidth);
     }
     if (value.includes("%")) {
       if (value === "50%") {
@@ -201,29 +201,87 @@
     const numericValue = parseFloat(value);
     return isNaN(numericValue) ? null : numericValue;
   }
-  function parseCalc(value) {
-    const match = value.match(/calc\(([^)]+)\)/);
+  function parseCalc(value, referenceWidth = 100) {
+    const match = value.match(/calc\((.+)\)$/);
     if (!match) return null;
-    const expression = match[1].trim();
-    const parts = expression.split(/\s*([+-])\s*/);
-    if (parts.length === 1) {
-      return parseFloat(parts[0]) || null;
-    }
-    if (parts.length === 3) {
-      const left = parseFloat(parts[0]);
-      const operator = parts[1];
-      const right = parseFloat(parts[2]);
-      if (isNaN(left) || isNaN(right)) {
-        if (parts[0].includes("px")) return parseFloat(parts[0]);
-        if (parts[2].includes("px")) return parseFloat(parts[2]);
-        return null;
+    let expression = match[1].trim();
+    const toPixels = (val) => {
+      val = val.trim();
+      if (val.endsWith("%")) {
+        const pct = parseFloat(val);
+        return isNaN(pct) ? null : pct / 100 * referenceWidth;
       }
-      if (operator === "+") return left + right;
-      if (operator === "-") return left - right;
+      if (val.endsWith("px")) {
+        const px = parseFloat(val);
+        return isNaN(px) ? null : px;
+      }
+      if (val.endsWith("rem")) {
+        const rem = parseFloat(val);
+        return isNaN(rem) ? null : rem * CSS_CONFIG.remBase;
+      }
+      if (val.endsWith("em")) {
+        const em = parseFloat(val);
+        return isNaN(em) ? null : em * CSS_CONFIG.remBase;
+      }
+      if (val.endsWith("vw")) {
+        const vw = parseFloat(val);
+        return isNaN(vw) ? null : vw / 100 * CSS_CONFIG.viewportWidth;
+      }
+      if (val.endsWith("vh")) {
+        const vh = parseFloat(val);
+        return isNaN(vh) ? null : vh / 100 * CSS_CONFIG.viewportHeight;
+      }
+      const num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    };
+    const tokens = [];
+    const tokenRegex = /([+-]?\d*\.?\d+(?:px|%|rem|em|vw|vh)?)|([+\-*/])/g;
+    let tokenMatch;
+    while ((tokenMatch = tokenRegex.exec(expression)) !== null) {
+      const token = (tokenMatch[1] || tokenMatch[2]).trim();
+      if (token) tokens.push(token);
     }
-    const numMatch = expression.match(/(\d+(?:\.\d+)?)\s*px/);
-    if (numMatch) return parseFloat(numMatch[1]);
-    return null;
+    if (tokens.length === 0) return null;
+    const values = [];
+    for (const token of tokens) {
+      if (["+", "-", "*", "/"].includes(token)) {
+        values.push(token);
+      } else {
+        const px = toPixels(token);
+        if (px === null) return null;
+        values.push(px);
+      }
+    }
+    const afterMultDiv = [];
+    let i = 0;
+    while (i < values.length) {
+      if (values[i] === "*" || values[i] === "/") {
+        const left = afterMultDiv.pop();
+        const right = values[i + 1];
+        if (values[i] === "*") {
+          afterMultDiv.push(left * right);
+        } else {
+          afterMultDiv.push(right !== 0 ? left / right : 0);
+        }
+        i += 2;
+      } else {
+        afterMultDiv.push(values[i]);
+        i++;
+      }
+    }
+    let result = afterMultDiv[0];
+    i = 1;
+    while (i < afterMultDiv.length) {
+      const op = afterMultDiv[i];
+      const val = afterMultDiv[i + 1];
+      if (op === "+") {
+        result += val;
+      } else if (op === "-") {
+        result -= val;
+      }
+      i += 2;
+    }
+    return Math.round(result * 100) / 100;
   }
   function parsePercentage(value) {
     if (!value || !value.includes("%")) return null;
@@ -300,24 +358,33 @@
     const result = {};
     const rotateMatch = transformValue.match(/rotate\((-?\d+(?:\.\d+)?)deg\)/);
     if (rotateMatch) {
-      result.rotation = parseFloat(rotateMatch[1]) * (Math.PI / 180);
+      result.rotation = parseFloat(rotateMatch[1]);
     }
-    const scaleMatch = transformValue.match(/scale\((\d+(?:\.\d+)?)\)/);
+    const scaleMatch = transformValue.match(/scale\((-?\d+(?:\.\d+)?)\s*(?:,\s*(-?\d+(?:\.\d+)?))?\)/);
     if (scaleMatch) {
-      result.scaleX = result.scaleY = parseFloat(scaleMatch[1]);
+      result.scaleX = parseFloat(scaleMatch[1]);
+      result.scaleY = scaleMatch[2] ? parseFloat(scaleMatch[2]) : result.scaleX;
     }
-    const scaleXMatch = transformValue.match(/scaleX\((\d+(?:\.\d+)?)\)/);
+    const scaleXMatch = transformValue.match(/scaleX\((-?\d+(?:\.\d+)?)\)/);
     if (scaleXMatch) {
       result.scaleX = parseFloat(scaleXMatch[1]);
     }
-    const scaleYMatch = transformValue.match(/scaleY\((\d+(?:\.\d+)?)\)/);
+    const scaleYMatch = transformValue.match(/scaleY\((-?\d+(?:\.\d+)?)\)/);
     if (scaleYMatch) {
       result.scaleY = parseFloat(scaleYMatch[1]);
     }
-    const translateMatch = transformValue.match(/translate\((-?\d+(?:\.\d+)?px),\s*(-?\d+(?:\.\d+)?px)\)/);
+    const translateMatch = transformValue.match(/translate\(([^,)]+)(?:,\s*([^)]+))?\)/);
     if (translateMatch) {
       result.translateX = parseSize(translateMatch[1]) || 0;
-      result.translateY = parseSize(translateMatch[2]) || 0;
+      result.translateY = translateMatch[2] ? parseSize(translateMatch[2]) || 0 : 0;
+    }
+    const translateXMatch = transformValue.match(/translateX\(([^)]+)\)/);
+    if (translateXMatch) {
+      result.translateX = parseSize(translateXMatch[1]) || 0;
+    }
+    const translateYMatch = transformValue.match(/translateY\(([^)]+)\)/);
+    if (translateYMatch) {
+      result.translateY = parseSize(translateYMatch[1]) || 0;
     }
     return result;
   }
@@ -547,6 +614,7 @@
     return Math.round(percentage / 100 * availableWidth);
   }
   function applyStylesToFrame(frame, styles) {
+    var _a, _b, _c, _d;
     if (styles["visibility"] === "hidden") {
       frame.opacity = 0;
     }
@@ -672,6 +740,15 @@
       const transform = parseTransform(styles.transform);
       if (transform.rotation !== void 0) {
         frame.rotation = transform.rotation;
+      }
+      if (transform.scaleX !== void 0 || transform.scaleY !== void 0) {
+        const scaleX = (_a = transform.scaleX) != null ? _a : 1;
+        const scaleY = (_b = transform.scaleY) != null ? _b : 1;
+        frame.resize(frame.width * scaleX, frame.height * scaleY);
+      }
+      if (transform.translateX !== void 0 || transform.translateY !== void 0) {
+        frame.x += (_c = transform.translateX) != null ? _c : 0;
+        frame.y += (_d = transform.translateY) != null ? _d : 0;
       }
     }
     if (styles.margin) {

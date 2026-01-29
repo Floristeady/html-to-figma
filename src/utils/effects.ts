@@ -82,38 +82,53 @@ export function parseBoxShadow(shadowValue: string): any | null {
 
 /**
  * Parse CSS transform property
- * Supports: rotate, scale, scaleX, scaleY, translate
+ * Supports: rotate, scale, scaleX, scaleY, translate, translateX, translateY
  */
 export function parseTransform(transformValue: string): TransformResult {
   const result: TransformResult = {};
 
-  // Parse rotate
+  // Parse rotate (degrees) - Figma uses degrees directly
   const rotateMatch = transformValue.match(/rotate\((-?\d+(?:\.\d+)?)deg\)/);
   if (rotateMatch) {
-    result.rotation = parseFloat(rotateMatch[1]) * (Math.PI / 180); // Convert to radians
+    result.rotation = parseFloat(rotateMatch[1]); // Keep in degrees for Figma
   }
 
-  // Parse scale
-  const scaleMatch = transformValue.match(/scale\((\d+(?:\.\d+)?)\)/);
+  // Parse scale(x) or scale(x, y)
+  const scaleMatch = transformValue.match(/scale\((-?\d+(?:\.\d+)?)\s*(?:,\s*(-?\d+(?:\.\d+)?))?\)/);
   if (scaleMatch) {
-    result.scaleX = result.scaleY = parseFloat(scaleMatch[1]);
+    result.scaleX = parseFloat(scaleMatch[1]);
+    result.scaleY = scaleMatch[2] ? parseFloat(scaleMatch[2]) : result.scaleX;
   }
 
-  const scaleXMatch = transformValue.match(/scaleX\((\d+(?:\.\d+)?)\)/);
+  // Parse scaleX
+  const scaleXMatch = transformValue.match(/scaleX\((-?\d+(?:\.\d+)?)\)/);
   if (scaleXMatch) {
     result.scaleX = parseFloat(scaleXMatch[1]);
   }
 
-  const scaleYMatch = transformValue.match(/scaleY\((\d+(?:\.\d+)?)\)/);
+  // Parse scaleY
+  const scaleYMatch = transformValue.match(/scaleY\((-?\d+(?:\.\d+)?)\)/);
   if (scaleYMatch) {
     result.scaleY = parseFloat(scaleYMatch[1]);
   }
 
-  // Parse translate
-  const translateMatch = transformValue.match(/translate\((-?\d+(?:\.\d+)?px),\s*(-?\d+(?:\.\d+)?px)\)/);
+  // Parse translate(x, y) - supports px, rem, em, %
+  const translateMatch = transformValue.match(/translate\(([^,)]+)(?:,\s*([^)]+))?\)/);
   if (translateMatch) {
     result.translateX = parseSize(translateMatch[1]) || 0;
-    result.translateY = parseSize(translateMatch[2]) || 0;
+    result.translateY = translateMatch[2] ? (parseSize(translateMatch[2]) || 0) : 0;
+  }
+
+  // Parse translateX
+  const translateXMatch = transformValue.match(/translateX\(([^)]+)\)/);
+  if (translateXMatch) {
+    result.translateX = parseSize(translateXMatch[1]) || 0;
+  }
+
+  // Parse translateY
+  const translateYMatch = transformValue.match(/translateY\(([^)]+)\)/);
+  if (translateYMatch) {
+    result.translateY = parseSize(translateYMatch[1]) || 0;
   }
 
   return result;

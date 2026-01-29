@@ -20,13 +20,16 @@ export const CSS_CONFIG = {
 /**
  * Parse a CSS size value to pixels
  * Supports: px, rem, em, vh, vw, calc(), percentages
+ *
+ * @param value - CSS size value
+ * @param referenceWidth - Reference width for calc() percentage calculations
  */
-export function parseSize(value: string): number | null {
+export function parseSize(value: string, referenceWidth?: number): number | null {
   if (!value || value === 'auto' || value === 'inherit' || value === 'initial') return null;
 
   // Handle calc() expressions
   if (value.includes('calc(')) {
-    return parseCalc(value);
+    return parseCalc(value, referenceWidth || CSS_CONFIG.viewportWidth);
   }
 
   // Handle percentage values for border-radius specially
@@ -79,47 +82,123 @@ export function parseSize(value: string): number | null {
 }
 
 /**
- * Parse calc() expressions
- * Handles simple cases like calc(100px - 20px), calc(50% - 10px)
+ * Parse calc() expressions with mixed units
+ * Handles: calc(100% - 50px), calc(50px + 20px), calc(100% / 3), calc(2rem * 3)
+ *
+ * @param value - CSS calc() expression
+ * @param referenceWidth - Reference width for percentage calculations (default: 100)
  */
-export function parseCalc(value: string): number | null {
-  // Extract content inside calc()
-  const match = value.match(/calc\(([^)]+)\)/);
+export function parseCalc(value: string, referenceWidth: number = 100): number | null {
+  // Extract content inside calc() - handle nested parentheses
+  const match = value.match(/calc\((.+)\)$/);
   if (!match) return null;
 
-  const expression = match[1].trim();
+  let expression = match[1].trim();
 
-  // Handle simple addition/subtraction: "100px - 20px" or "50px + 10px"
-  // Split by + or - while keeping the operator
-  const parts = expression.split(/\s*([+-])\s*/);
+  // Helper: convert a single value with unit to pixels
+  const toPixels = (val: string): number | null => {
+    val = val.trim();
 
-  if (parts.length === 1) {
-    // Single value inside calc
-    return parseFloat(parts[0]) || null;
-  }
-
-  if (parts.length === 3) {
-    // Simple binary operation: value operator value
-    const left = parseFloat(parts[0]);
-    const operator = parts[1];
-    const right = parseFloat(parts[2]);
-
-    if (isNaN(left) || isNaN(right)) {
-      // One operand might be percentage - just return the px value if one exists
-      if (parts[0].includes('px')) return parseFloat(parts[0]);
-      if (parts[2].includes('px')) return parseFloat(parts[2]);
-      return null;
+    // Percentage
+    if (val.endsWith('%')) {
+      const pct = parseFloat(val);
+      return isNaN(pct) ? null : (pct / 100) * referenceWidth;
     }
 
-    if (operator === '+') return left + right;
-    if (operator === '-') return left - right;
+    // Pixels
+    if (val.endsWith('px')) {
+      const px = parseFloat(val);
+      return isNaN(px) ? null : px;
+    }
+
+    // REM
+    if (val.endsWith('rem')) {
+      const rem = parseFloat(val);
+      return isNaN(rem) ? null : rem * CSS_CONFIG.remBase;
+    }
+
+    // EM (treat as rem for simplicity)
+    if (val.endsWith('em')) {
+      const em = parseFloat(val);
+      return isNaN(em) ? null : em * CSS_CONFIG.remBase;
+    }
+
+    // VW
+    if (val.endsWith('vw')) {
+      const vw = parseFloat(val);
+      return isNaN(vw) ? null : (vw / 100) * CSS_CONFIG.viewportWidth;
+    }
+
+    // VH
+    if (val.endsWith('vh')) {
+      const vh = parseFloat(val);
+      return isNaN(vh) ? null : (vh / 100) * CSS_CONFIG.viewportHeight;
+    }
+
+    // Plain number (assume pixels)
+    const num = parseFloat(val);
+    return isNaN(num) ? null : num;
+  };
+
+  // Tokenize the expression: split into numbers with units and operators
+  // Match: number with optional unit, or operator (+, -, *, /)
+  const tokens: string[] = [];
+  const tokenRegex = /([+-]?\d*\.?\d+(?:px|%|rem|em|vw|vh)?)|([+\-*/])/g;
+  let tokenMatch;
+
+  while ((tokenMatch = tokenRegex.exec(expression)) !== null) {
+    const token = (tokenMatch[1] || tokenMatch[2]).trim();
+    if (token) tokens.push(token);
   }
 
-  // For complex expressions, try to extract first numeric value
-  const numMatch = expression.match(/(\d+(?:\.\d+)?)\s*px/);
-  if (numMatch) return parseFloat(numMatch[1]);
+  if (tokens.length === 0) return null;
 
-  return null;
+  // Convert all values to pixels first
+  const values: (number | string)[] = [];
+  for (const token of tokens) {
+    if (['+', '-', '*', '/'].includes(token)) {
+      values.push(token);
+    } else {
+      const px = toPixels(token);
+      if (px === null) return null;
+      values.push(px);
+    }
+  }
+
+  // Evaluate: first pass for * and /
+  const afterMultDiv: (number | string)[] = [];
+  let i = 0;
+  while (i < values.length) {
+    if (values[i] === '*' || values[i] === '/') {
+      const left = afterMultDiv.pop() as number;
+      const right = values[i + 1] as number;
+      if (values[i] === '*') {
+        afterMultDiv.push(left * right);
+      } else {
+        afterMultDiv.push(right !== 0 ? left / right : 0);
+      }
+      i += 2;
+    } else {
+      afterMultDiv.push(values[i]);
+      i++;
+    }
+  }
+
+  // Second pass for + and -
+  let result = afterMultDiv[0] as number;
+  i = 1;
+  while (i < afterMultDiv.length) {
+    const op = afterMultDiv[i] as string;
+    const val = afterMultDiv[i + 1] as number;
+    if (op === '+') {
+      result += val;
+    } else if (op === '-') {
+      result -= val;
+    }
+    i += 2;
+  }
+
+  return Math.round(result * 100) / 100; // Round to 2 decimal places
 }
 
 /**
