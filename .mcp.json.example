@@ -1,0 +1,26 @@
+{
+  "_readme": [
+    "Copy this file to .mcp.json and configure:",
+    "",
+    "DEVELOPMENT (localhost):",
+    "  FIGMA_SERVER_URL: http://localhost:3003",
+    "  API_KEY: dev-key",
+    "",
+    "PRODUCTION (Render):",
+    "  FIGMA_SERVER_URL: https://html-to-figma.onrender.com",
+    "  API_KEY: figma-team-2026",
+    "",
+    "Get SESSION_ID from Figma plugin > MCP Config button"
+  ],
+  "mcpServers": {
+    "figma-html-bridge": {
+      "command": "node",
+      "args": ["./mcp-server.js"],
+      "env": {
+        "FIGMA_SERVER_URL": "http://localhost:3003",
+        "API_KEY": "dev-key",
+        "FIGMA_SESSION_ID": "YOUR_SESSION_ID_HERE"
+      }
+    }
+  }
+}
