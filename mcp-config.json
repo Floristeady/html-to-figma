@@ -1,7 +1,0 @@
-{
-  "figma-html-bridge": {
-    "command": "node",
-    "args": ["mcp-server.js"],
-    "cwd": "/Users/florosenfeld/Sites/figma-plugins/html-to-figma"
-  }
-} 

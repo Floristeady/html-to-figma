@@ -45,7 +45,6 @@ logs/
 
 # MCP and SSE runtime files
 mcp-shared-data.json
-mcp-config.json
 
 # Backup files
 *_backup*.js
