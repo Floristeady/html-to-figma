@@ -710,10 +710,42 @@
     const availableWidth = parentFrame.width - (parentFrame.paddingLeft || 0) - (parentFrame.paddingRight || 0);
     return Math.round(percentage / 100 * availableWidth);
   }
+  var CONTAINER_CLASS_PATTERNS = [
+    "container",
+    "wrapper",
+    "main",
+    "content",
+    "layout",
+    "app",
+    "page",
+    "grid",
+    "bento",
+    "card-grid",
+    "dashboard"
+  ];
+  function isMainContainer(className, tagName) {
+    if (!className && tagName !== "main") return false;
+    if (tagName === "main") return true;
+    const classLower = className.toLowerCase();
+    return CONTAINER_CLASS_PATTERNS.some((pattern) => classLower.includes(pattern));
+  }
+  function extractNodeWidth(styles) {
+    if (!styles) return null;
+    const width = styles.width ? parseSize(styles.width) : null;
+    const maxWidth = styles["max-width"] ? parseSize(styles["max-width"]) : null;
+    if (width && width > 0 && !styles.width.includes("%") && styles.width !== "auto") {
+      return width;
+    }
+    if (maxWidth && maxWidth > 0) {
+      return maxWidth;
+    }
+    return null;
+  }
   function analyzeStructure(structure) {
     var _a;
     const result = {
       explicitWidth: null,
+      containerWidth: null,
       sidebarWidth: 0,
       mainContentMargin: 0,
       hasWideGrid: false,
@@ -722,34 +754,46 @@
     };
     if (!structure || structure.length === 0) return result;
     let sectionCount = 0;
+    let containerFound = false;
     const analyzeNode = (node, depth = 0) => {
-      var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
       if (!node) return;
       const tagName = (_a2 = node.tagName) == null ? void 0 : _a2.toLowerCase();
       const className = ((_b = node.styles) == null ? void 0 : _b.class) || "";
       const position = (_c = node.styles) == null ? void 0 : _c.position;
-      if (depth <= 1 && ((_d = node.styles) == null ? void 0 : _d.width)) {
-        const width = parseSize(node.styles.width);
-        if (width && width > 400 && width < 3e3 && position !== "fixed" && position !== "absolute") {
+      const isPositioned = position === "fixed" || position === "absolute";
+      if (depth <= 1 && !isPositioned) {
+        const width = extractNodeWidth(node.styles);
+        if (width && width > 400 && width < 3e3) {
           result.explicitWidth = width;
+          console.log(`[WIDTH] Found explicit width at depth ${depth} (${tagName}): ${width}px`);
+        }
+      }
+      if (!containerFound && depth >= 1 && depth <= 3 && !isPositioned) {
+        if (isMainContainer(className, tagName)) {
+          const containerW = extractNodeWidth(node.styles);
+          if (containerW && containerW > 200 && containerW < 3e3) {
+            result.containerWidth = containerW;
+            containerFound = true;
+            console.log(`[WIDTH] Found container width in .${className || tagName} at depth ${depth}: ${containerW}px`);
+          }
         }
       }
       const isSidebarTag = tagName === "aside" || tagName === "nav";
       const isSidebarClass = className.includes("sidebar") || className.includes("sidenav");
-      const hasFixedPosition = position === "fixed" || position === "absolute";
-      if ((isSidebarTag || isSidebarClass || hasFixedPosition) && ((_e = node.styles) == null ? void 0 : _e.width)) {
+      if ((isSidebarTag || isSidebarClass || isPositioned) && ((_d = node.styles) == null ? void 0 : _d.width)) {
         const width = parseSize(node.styles.width);
         if (width && width > 0 && width < 400) {
           result.sidebarWidth = Math.max(result.sidebarWidth, width);
         }
       }
-      if ((_f = node.styles) == null ? void 0 : _f["margin-left"]) {
+      if ((_e = node.styles) == null ? void 0 : _e["margin-left"]) {
         const margin = parseSize(node.styles["margin-left"]);
         if (margin && margin > 50) {
           result.mainContentMargin = Math.max(result.mainContentMargin, margin);
         }
       }
-      if (((_g = node.styles) == null ? void 0 : _g.display) === "grid" && ((_h = node.styles) == null ? void 0 : _h["grid-template-columns"])) {
+      if (((_f = node.styles) == null ? void 0 : _f.display) === "grid" && ((_g = node.styles) == null ? void 0 : _g["grid-template-columns"])) {
         const gridCols = node.styles["grid-template-columns"];
         const repeatMatch = gridCols.match(/repeat\((\d+)/);
         if (repeatMatch && parseInt(repeatMatch[1]) >= 8) {
@@ -766,7 +810,7 @@
       if (tagName === "header" || tagName === "footer" || tagName === "main" || tagName === "aside") {
         result.isFullPage = true;
       }
-      if (((_i = node.styles) == null ? void 0 : _i.height) === "100vh" || ((_j = node.styles) == null ? void 0 : _j["min-height"]) === "100vh") {
+      if (((_h = node.styles) == null ? void 0 : _h.height) === "100vh" || ((_i = node.styles) == null ? void 0 : _i["min-height"]) === "100vh") {
         result.isFullPage = true;
       }
       if (node.children) {
@@ -800,6 +844,10 @@
     if (analysis.explicitWidth) {
       console.log("[WIDTH] RESULT: Using explicit body/root width:", analysis.explicitWidth);
       return analysis.explicitWidth;
+    }
+    if (analysis.containerWidth) {
+      console.log("[WIDTH] RESULT: Using container width (max-width):", analysis.containerWidth);
+      return analysis.containerWidth;
     }
     if (analysis.sidebarWidth > 0 && analysis.mainContentMargin > 0) {
       const calculatedWidth = analysis.sidebarWidth + 1200;

@@ -69,11 +69,56 @@ function calculatePercentageWidth(widthValue: string, parentFrame: FrameNode | n
 
 interface StructureAnalysis {
   explicitWidth: number | null;      // width explícito en body/root
+  containerWidth: number | null;     // width/max-width de contenedor principal
   sidebarWidth: number;              // ancho del sidebar detectado
   mainContentMargin: number;         // margin-left del contenido principal
   hasWideGrid: boolean;              // grid con 8+ columnas
   isFullPage: boolean;               // indicadores de página completa
   hasMultipleSections: boolean;      // múltiples <section>
+}
+
+// Clases comunes que indican un contenedor principal
+const CONTAINER_CLASS_PATTERNS = [
+  'container', 'wrapper', 'main', 'content', 'layout',
+  'app', 'page', 'grid', 'bento', 'card-grid', 'dashboard'
+];
+
+/**
+ * Detecta si un elemento es un contenedor principal basado en su clase
+ */
+function isMainContainer(className: string, tagName: string): boolean {
+  if (!className && tagName !== 'main') return false;
+
+  // Tag <main> siempre es contenedor principal
+  if (tagName === 'main') return true;
+
+  const classLower = className.toLowerCase();
+  return CONTAINER_CLASS_PATTERNS.some(pattern => classLower.includes(pattern));
+}
+
+/**
+ * Extrae el ancho de un nodo (busca width y max-width)
+ * Retorna el valor más específico encontrado
+ */
+function extractNodeWidth(styles: any): number | null {
+  if (!styles) return null;
+
+  // Prioridad: width explícito > max-width
+  // (si tiene width fijo, usarlo; si solo tiene max-width, usar ese)
+  const width = styles.width ? parseSize(styles.width) : null;
+  const maxWidth = styles['max-width'] ? parseSize(styles['max-width']) : null;
+
+  // Si tiene width fijo (no porcentaje ni auto), usarlo
+  if (width && width > 0 && !styles.width.includes('%') && styles.width !== 'auto') {
+    return width;
+  }
+
+  // Si tiene max-width, usarlo como el ancho del contenedor
+  if (maxWidth && maxWidth > 0) {
+    return maxWidth;
+  }
+
+  return null;
 }
 
 /**
@@ -82,6 +127,7 @@ interface StructureAnalysis {
 function analyzeStructure(structure: any[]): StructureAnalysis {
   const result: StructureAnalysis = {
     explicitWidth: null,
+    containerWidth: null,
     sidebarWidth: 0,
     mainContentMargin: 0,
     hasWideGrid: false,
@@ -92,6 +138,7 @@ function analyzeStructure(structure: any[]): StructureAnalysis {
   if (!structure || structure.length === 0) return result;
 
   let sectionCount = 0;
+  let containerFound = false;  // Para priorizar el primer contenedor encontrado
 
   const analyzeNode = (node: any, depth: number = 0): void => {
     if (!node) return;
@@ -99,23 +146,39 @@ function analyzeStructure(structure: any[]): StructureAnalysis {
     const tagName = node.tagName?.toLowerCase();
     const className = node.styles?.class || '';
     const position = node.styles?.position;
+    const isPositioned = position === 'fixed' || position === 'absolute';
 
-    // Detectar width explícito en body/html (depth 0-1)
-    if (depth <= 1 && node.styles?.width) {
-      const width = parseSize(node.styles.width);
-      if (width && width > 400 && width < 3000 && position !== 'fixed' && position !== 'absolute') {
+    // ===== DETECCIÓN DE ANCHO =====
+
+    // 1. Width explícito en body/html (depth 0-1)
+    if (depth <= 1 && !isPositioned) {
+      const width = extractNodeWidth(node.styles);
+      if (width && width > 400 && width < 3000) {
         result.explicitWidth = width;
+        console.log(`[WIDTH] Found explicit width at depth ${depth} (${tagName}): ${width}px`);
       }
     }
 
-    // Detectar sidebar (position:fixed con width, o aside/nav con width)
+    // 2. Contenedor principal (depth 1-3, no posicionado)
+    //    Buscar en hijos directos del body y sus primeros niveles
+    if (!containerFound && depth >= 1 && depth <= 3 && !isPositioned) {
+      if (isMainContainer(className, tagName)) {
+        const containerW = extractNodeWidth(node.styles);
+        if (containerW && containerW > 200 && containerW < 3000) {
+          result.containerWidth = containerW;
+          containerFound = true;
+          console.log(`[WIDTH] Found container width in .${className || tagName} at depth ${depth}: ${containerW}px`);
+        }
+      }
+    }
+
+    // ===== DETECCIÓN DE SIDEBAR =====
     const isSidebarTag = tagName === 'aside' || tagName === 'nav';
     const isSidebarClass = className.includes('sidebar') || className.includes('sidenav');
-    const hasFixedPosition = position === 'fixed' || position === 'absolute';
 
-    if ((isSidebarTag || isSidebarClass || hasFixedPosition) && node.styles?.width) {
+    if ((isSidebarTag || isSidebarClass || isPositioned) && node.styles?.width) {
       const width = parseSize(node.styles.width);
-      if (width && width > 0 && width < 400) { // Sidebars típicamente < 400px
+      if (width && width > 0 && width < 400) {
         result.sidebarWidth = Math.max(result.sidebarWidth, width);
       }
     }
@@ -128,7 +191,7 @@ function analyzeStructure(structure: any[]): StructureAnalysis {
       }
     }
 
-    // Detectar grid ancho (8+ columnas)
+    // ===== DETECCIÓN DE GRID ANCHO =====
     if (node.styles?.display === 'grid' && node.styles?.['grid-template-columns']) {
       const gridCols = node.styles['grid-template-columns'];
       const repeatMatch = gridCols.match(/repeat\((\d+)/);
@@ -141,12 +204,11 @@ function analyzeStructure(structure: any[]): StructureAnalysis {
       }
     }
 
-    // Contar secciones
+    // ===== DETECCIÓN DE PÁGINA COMPLETA =====
     if (tagName === 'section' || tagName === 'article') {
       sectionCount++;
     }
 
-    // Detectar indicadores de página completa
     if (tagName === 'header' || tagName === 'footer' || tagName === 'main' || tagName === 'aside') {
       result.isFullPage = true;
     }
@@ -174,7 +236,6 @@ function analyzeStructure(structure: any[]): StructureAnalysis {
 
   result.hasMultipleSections = sectionCount >= 2;
 
-  // Si tiene múltiples secciones, es página completa
   if (result.hasMultipleSections) {
     result.isFullPage = true;
   }
@@ -189,11 +250,12 @@ function analyzeStructure(structure: any[]): StructureAnalysis {
  * Prioridad:
  * 1. Meta tags (figma-width, figma-viewport) - explícito del usuario
  * 2. Width explícito en body/root
- * 3. Patrón sidebar + main content
- * 4. Grid ancho (8+ columnas) → 1920px
- * 5. Indicadores de página completa → 1440px
- * 6. Múltiples secciones → 1440px
- * 7. Sin indicadores → AUTO (null)
+ * 3. Width/max-width de contenedor principal (.container, .wrapper, .grid, etc.)
+ * 4. Patrón sidebar + main content
+ * 5. Grid ancho (8+ columnas) → 1920px
+ * 6. Indicadores de página completa → 1440px
+ * 7. Múltiples secciones → 1440px
+ * 8. Sin indicadores → AUTO (null)
  *
  * @param structure - Estructura HTML parseada
  * @param metaWidth - Ancho de meta tags (detectado por ui.html)
@@ -223,21 +285,27 @@ function calculateContainerWidth(
     return analysis.explicitWidth;
   }
 
-  // 2b. Patrón sidebar + main content
+  // 2b. Width/max-width de contenedor principal
+  if (analysis.containerWidth) {
+    console.log('[WIDTH] RESULT: Using container width (max-width):', analysis.containerWidth);
+    return analysis.containerWidth;
+  }
+
+  // 2c. Patrón sidebar + main content
   if (analysis.sidebarWidth > 0 && analysis.mainContentMargin > 0) {
     const calculatedWidth = analysis.sidebarWidth + 1200;
     console.log('[WIDTH] RESULT: Sidebar pattern detected, width:', calculatedWidth);
     return calculatedWidth;
   }
 
-  // 2c. Solo sidebar detectado (asumir contenido principal típico)
+  // 2d. Solo sidebar detectado (asumir contenido principal típico)
   if (analysis.sidebarWidth > 0) {
     const calculatedWidth = analysis.sidebarWidth + 1200;
     console.log('[WIDTH] RESULT: Sidebar detected, assuming main content, width:', calculatedWidth);
     return calculatedWidth;
   }
 
-  // 2d. Grid ancho (8+ columnas)
+  // 2e. Grid ancho (8+ columnas)
   if (analysis.hasWideGrid) {
     console.log('[WIDTH] RESULT: Wide grid detected, using:', WIDE_LAYOUT_WIDTH);
     return WIDE_LAYOUT_WIDTH;
