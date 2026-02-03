@@ -312,6 +312,34 @@
       font-size: 10px;
     }
 
+    .usage-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .usage-title {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .usage-examples {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .usage-example {
+      background: #e8f4e8;
+      color: #2d6a2d;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
     .copy-btn {
       background: #9747FF;
       color: white;
@@ -591,38 +619,34 @@
       <!-- Claude Code Config -->
       <div class="config-content active" id="claude-code-config">
         <div class="config-header">
-          <span>Run this command:</span>
+          <span>Add to <code>~/.claude.json</code>:</span>
           <button class="copy-btn" id="copy-claude-cmd">Copy</button>
         </div>
-        <pre class="config-code" id="claude-code-cmd">claude mcp add figma-html-bridge -s local \
-  -e FIGMA_SERVER_URL=http://localhost:3003 \
-  -e FIGMA_SESSION_ID=loading... \
-  -e API_KEY=dev-key \
-  -- node mcp-server.js</pre>
+        <pre class="config-code" id="claude-code-cmd">Loading...</pre>
         <div class="config-note">
-          Run in terminal, then <code>/exit</code> and restart Claude Code
+          Then <code>/exit</code> and restart Claude Code
         </div>
       </div>
 
       <!-- Cursor / Claude Desktop Config -->
       <div class="config-content" id="cursor-config">
         <div class="config-header">
-          <span>Add to config file:</span>
+          <span>Add to <code>~/.cursor/mcp.json</code>:</span>
           <button class="copy-btn" id="copy-cursor-config">Copy</button>
         </div>
-        <pre class="config-code" id="cursor-config-code">{
-  "html-to-figma": {
-    "command": "npx",
-    "args": ["-y", "github:Floristeady/html-to-figma"],
-    "env": {
-      "FIGMA_SERVER_URL": "http://localhost:3003",
-      "FIGMA_SESSION_ID": "loading...",
-      "API_KEY": "dev-key"
-    }
-  }
-}</pre>
+        <pre class="config-code" id="cursor-config-code">Loading...</pre>
         <div class="config-note">
-          Paste in: <code>~/.cursor/mcp.json</code>
+          Then restart Cursor or Claude Desktop
+        </div>
+      </div>
+
+      <!-- Usage Instructions -->
+      <div class="usage-section">
+        <div class="usage-title">After configuring, tell Claude:</div>
+        <div class="usage-examples">
+          <code class="usage-example">"Create a login form and send it to Figma with figma-html-bridge"</code>
+          <code class="usage-example">"Send this HTML to Figma using figma-html-bridge"</code>
+          <code class="usage-example">"Read index.html and send to Figma with figma-html-bridge"</code>
         </div>
       </div>
     </div>
@@ -744,17 +768,24 @@ function updateServerBadge(type) {
   }
 }
 
-// Generate Claude Code command (always show production values for user to copy)
-function generateClaudeCodeCmd() {
-  var sessionId = currentSessionId || 'YOUR_SESSION_ID';
-  return 'claude mcp add figma-html-bridge -s local \\\n' +
-    '  -e FIGMA_SERVER_URL=' + PROD_SERVER + ' \\\n' +
-    '  -e FIGMA_SESSION_ID=' + sessionId + ' \\\n' +
-    '  -e API_KEY=' + PROD_API_KEY + ' \\\n' +
-    '  -- npx -y ' + MCP_GITHUB_REPO;
+// Generate Claude Code config JSON for ~/.claude.json (with mcpServers wrapper)
+function generateClaudeCodeConfig() {
+  return JSON.stringify({
+    "mcpServers": {
+      "figma-html-bridge": {
+        "command": "npx",
+        "args": ["-y", MCP_GITHUB_REPO],
+        "env": {
+          "FIGMA_SERVER_URL": PROD_SERVER,
+          "FIGMA_SESSION_ID": currentSessionId || "YOUR_SESSION_ID",
+          "API_KEY": PROD_API_KEY
+        }
+      }
+    }
+  }, null, 2);
 }
 
-// Generate Cursor/Desktop config JSON (always show production values for user to copy)
+// Generate Cursor/Desktop config JSON for ~/.cursor/mcp.json (without wrapper)
 function generateCursorConfig() {
   return JSON.stringify({
     "figma-html-bridge": {
@@ -771,10 +802,10 @@ function generateCursorConfig() {
 
 // Update config display when session ID changes
 function updateConfigDisplay() {
-  var claudeCmd = document.getElementById('claude-code-cmd');
+  var claudeConfig = document.getElementById('claude-code-cmd');
   var cursorConfig = document.getElementById('cursor-config-code');
-  if (claudeCmd) {
-    claudeCmd.textContent = generateClaudeCodeCmd();
+  if (claudeConfig) {
+    claudeConfig.textContent = generateClaudeCodeConfig();
   }
   if (cursorConfig) {
     cursorConfig.textContent = generateCursorConfig();
@@ -813,9 +844,9 @@ document.getElementById('mcp-config-btn').addEventListener('click', function() {
   }
 });
 
-// Copy Claude Code command
+// Copy Claude Code config
 document.getElementById('copy-claude-cmd').addEventListener('click', function() {
-  if (copyToClipboard(generateClaudeCodeCmd())) {
+  if (copyToClipboard(generateClaudeCodeConfig())) {
     var btn = this;
     btn.textContent = 'Copied!';
     btn.classList.add('copied');
@@ -2170,7 +2201,7 @@ function processSSEMessage(data) {
 }
 
 function handleSSEMCPRequest(data) {
-  if (data.function === 'mcp_html_to_design_import-html') {
+  if (data.function === 'figma_html_bridge_import') {
     var htmlContent = data.arguments.html;
     var designName = data.arguments.name || 'SSE Import';
 
