@@ -4,7 +4,30 @@
 
 Convert HTML from Claude Code, Cursor, or Claude Desktop directly into Figma designs.
 
-**Steps:** Install Plugin → Get Session ID → Configure AI Client → Test → Use
+**Steps:** Check Prerequisites → Install Plugin → Get Session ID → Configure AI Client → Test → Use
+
+---
+
+## Prerequisites
+
+**Node.js 18+** is required to run the MCP server.
+
+Check if you have it installed:
+```bash
+node --version
+```
+
+If not installed, you can:
+
+**Option A:** Tell Claude to help you install it:
+```
+Help me install Node.js on my computer
+```
+
+**Option B:** Install manually:
+- **macOS:** `brew install node` (or download from https://nodejs.org)
+- **Windows:** Download from https://nodejs.org
+- **Linux:** `sudo apt install nodejs npm` or `brew install node`
 
 ---
 
