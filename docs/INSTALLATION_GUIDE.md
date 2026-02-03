@@ -1,8 +1,33 @@
 # HTML to Figma - Installation Guide
 
-## Quick Start (5 minutes)
+## Quick Start
 
 Convert HTML from Claude Code, Cursor, or Claude Desktop directly into Figma designs.
+
+**Steps:** Check Prerequisites → Install Plugin → Get Session ID → Configure AI Client → Test → Use
+
+---
+
+## Prerequisites
+
+**Node.js 18+** is required to run the MCP server.
+
+Check if you have it installed:
+```bash
+node --version
+```
+
+If not installed, you can:
+
+**Option A:** Tell Claude to help you install it:
+```
+Help me install Node.js on my computer
+```
+
+**Option B:** Install manually:
+- **macOS:** `brew install node` (or download from https://nodejs.org)
+- **Windows:** Download from https://nodejs.org
+- **Linux:** `sudo apt install nodejs npm` or `brew install node`
 
 ---
 
@@ -152,6 +177,37 @@ Send this HTML to Figma:
 ```
 
 3. The design should appear in your Figma canvas
+
+---
+
+## Step 5: Using the Tool
+
+Once configured, tell Claude to use **figma-html-bridge** to send HTML to Figma:
+
+**Generate and send:**
+```
+Create a pricing card with 3 tiers and send it to Figma with figma-html-bridge
+```
+
+**Send HTML directly:**
+```
+Send this HTML to Figma using figma-html-bridge:
+<div style="padding: 20px; background: #4F46E5; color: white;">Hello World</div>
+```
+
+**Read file and send:**
+```
+Read index.html and send to Figma with figma-html-bridge
+```
+
+**From a React/Vue component (optional):**
+```
+Read src/components/Button.tsx, generate the HTML, and send to Figma with figma-html-bridge
+```
+
+> **Important:** Always mention **"figma-html-bridge"** so Claude uses the correct tool.
+
+> **Tip:** Make sure the Figma plugin is open and shows "SSE Connected" before sending designs.
 
 ---
 

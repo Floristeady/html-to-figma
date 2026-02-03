@@ -63,7 +63,7 @@ class FigmaMCPServer {
       return {
         tools: [
           {
-            name: 'mcp_html_to_design_import-html',
+            name: 'figma_html_bridge_import',
             description: 'Import HTML content and convert it to Figma design elements. Automatically resolves external CSS files and inlines them.',
             inputSchema: {
               type: 'object',
@@ -95,7 +95,7 @@ class FigmaMCPServer {
 
       try {
         switch (name) {
-          case 'mcp_html_to_design_import-html':
+          case 'figma_html_bridge_import':
             return await this.handleHtmlImport(args);
           
           default:
@@ -156,7 +156,7 @@ class FigmaMCPServer {
       // Prepare data for communication with SSE server
       const mcpData = {
         type: 'mcp-request',
-        function: 'mcp_html_to_design_import-html',
+        function: 'figma_html_bridge_import',
         arguments: {
           html: html,
           name: name

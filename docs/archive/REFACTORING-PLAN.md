@@ -1,4 +1,4 @@
-# Incremental Refactoring Plan - HTML to Figma
+# Incremental Refactoring Plan - HTML to Figma - DONE
 
 ## Executive Summary
 
